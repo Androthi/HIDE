@@ -1,0 +1,1378 @@
+unit Make_Unit;
+
+#includeonce ("HIDE.hhf")
+#includeonce ("fileio.hhf")
+#includeonce ("math.hhf")
+#includeonce ("memory.hhf")
+#includeonce ("excepts.hhf")
+ 
+?@nodisplay:=true;
+?@align:=4;
+
+storage
+	align(4);
+	exitcode	:dword;
+	thisini		:pointer to tConfig;
+	bytesread	:dword;
+	nprocesses	:uns32;
+	nerrors		:uns32;
+	hlalevel	:uns32;
+	sat			:w.SECURITY_ATTRIBUTES;
+	startinfo	:w.STARTUPINFO;
+	pinfo		:w.PROCESS_INFORMATION;
+		
+	
+	align(4);
+	
+	#if (os.linux)
+		#includeonce ("linux.hhf")
+		storage
+			timebuf	:linux.stat_t;
+	#endif
+	
+	align(4);
+
+	testbuild	:boolean;
+	buildlink	:boolean;
+	outputchanged	:boolean;
+	runwithdebugger	:boolean;
+	align(4);
+	
+	linkobjs	:tBuffer;
+	linkfile	:tBuffer;
+	
+	buildOpt	:dword;
+
+
+readonly
+	align(4);
+	true_s		:string:="true";
+	false_s		:string:="false";
+	console_s	:string:="console";
+	windows_s	:string:="windows";
+	sep_s		:string:="------------------------------------------------------------------------";
+	nullzStr	:mzstr ("");
+
+	hla_compiler		:string:= "hlaparse";
+	
+	hla_level_strings	:string[] :=
+		[ 	"-level=high",
+			"-level=medium",
+			"-level=low",
+			"-level=machine" ];
+			
+
+const
+	PIPE_MEM	:= $100000;
+	BUF_SIZE		:=2000;		// buffer for output window
+
+proc
+
+	Exec :procedure( source: string );
+	begin Exec;
+	#if (os.win32)
+
+		dbg.put ("exec :", source);
+		mem2.fillMem(&pinfo,@size(pinfo),0);
+		mem2.fillMem(&startinfo,@size(startinfo),0);
+	
+		toOutput ( nl "Running... ", source, nl nl);
+		dbg.put("Creating process : ",source);
+		
+		w.CreateProcess(NULL, source, NULL,NULL, true, NULL, NULL, NULL,&startinfo, &pinfo);
+		
+		if (eax) then
+			toOutput ( "Process Created" nl nl);
+			w.CloseHandle(pinfo.hProcess);
+			w.CloseHandle(pinfo.hThread);
+			
+		else			
+			w.GetLastError();
+			error.syserror (eax);
+			toOutput ("Could not execute file" nl nl);
+		endif;
+		
+	#else
+
+		os2.sysexec (source);
+
+	#endif
+	end Exec;
+
+	pipeExec :procedure( source:string );
+		var
+			_buffer	:char[4092];
+			return	:dword;
+			hwrite		:dword;
+			hread		:dword;
+	
+	begin pipeExec;
+		
+		//dbg.put("pipeExec :", source );
+		// create pipe for output redirection to houtedt
+		mov (0, return);
+		inc (nprocesses);
+	
+		if (mode = mode_gui) then
+			mem2.fillMem(&pinfo,@size(pinfo),0);
+			mem2.fillMem(&startinfo,@size(startinfo),0);
+		
+			mov(@size(w.SECURITY_ATTRIBUTES),sat.niLength);
+			mov(NULL,sat.lpSecurityDescriptor);
+			mov(true,sat.bInheritHandle);
+		
+			dbg.put("piping :", source);
+			verbOut ("=> ", source, nl);
+			w.CreatePipe(hread,hwrite,&sat,PIPE_MEM);
+			
+			if (eax) then
+		
+				mov(@size(w.STARTUPINFO),startinfo.cb);
+				mov(hwrite,eax);
+				mov(eax,startinfo.hStdOutput);
+				mov(eax,startinfo.hStdError);
+				mov(w.STARTF_USESHOWWINDOW | w.STARTF_USESTDHANDLES,startinfo.dwFlags);
+				mov(w.SW_HIDE,startinfo.wShowWindow);
+				
+				filesys.gwd( strbuf );
+				dbg.put(" PIPE path :", strbuf, nl, "source :", source );
+				
+				w.CreateProcess(NULL, source, NULL,NULL, true, NULL,NULL,NULL,&startinfo, &pinfo);
+				
+				if (eax) then
+			
+					// process creation ok
+					dbg.put ("waiting for process completion...");
+					w.WaitForSingleObject(pinfo.hProcess,w.INFINITE);
+					w.GetExitCodeProcess( pinfo.hProcess, return );
+					w.CloseHandle(pinfo.hProcess);
+					w.CloseHandle(pinfo.hThread);
+					w.CloseHandle (hwrite);
+					try
+						forever
+							fileio.read (hread, _buffer, @size(_buffer)-1);
+							mov (0, _buffer[eax]);
+							lea (eax, _buffer);
+							SendStr	(houtedt, w.EM_REPLACESEL, false, eax );
+						endfor;
+					anyexception
+					endtry;
+				else
+					
+					w.GetLastError();
+					mov (eax, return);
+					error.syserror (eax);
+					w.CloseHandle(hwrite);
+					
+				endif;
+				
+				w.CloseHandle (hread);
+				
+			else
+				
+				w.GetLastError();
+				mov (eax, return);
+				error.syserror (eax);
+				
+			endif;
+		else
+			
+			os2.sysexec (source);
+			mov (eax, return);
+		endif;
+			
+		mov (return, eax);
+		if (eax) then
+			inc (nerrors);
+			toOutput ("Return :", (type uns32 eax), nl);
+		endif;
+		
+	end pipeExec;
+
+	setJobInfo :procedure( var node:var );
+	begin setJobInfo;
+		USE( EBX, EAX );
+		
+		mov( node, ebx );
+		mov( 0, buildOpt );
+
+		if( jobebx.nodeID = fnode_id ) then
+			mov( listebx.job, ebx );
+			if( ! ebx ) then
+				
+				move( settings.options, buildOpt );
+				hideini.readInt( "HIDE Settings", "HLA Level" );
+				mov( eax, hlalevel );
+				clc();
+				jmp done;
+				
+			endif;
+		endif;
+		
+		mov( &project.hpr, esi );
+		
+		iniesi.readBool( jobebx.id, "debug" );
+		if( al ) then
+			or( opt_usedebuglib, buildOpt );
+		//else
+		//	and( ! opt_usedebuglib, buildOpt );
+		endif;
+		
+		iniesi.readBool( jobebx.id, "thread safe" );
+		if( al ) then
+			or( opt_threadsafe, buildOpt );
+		//else
+		//	and( ! opt_threadsafe, buildOpt );
+		endif;
+		
+		iniesi.readBool( jobebx.id, "stdout to output" );
+		if( al ) then
+			or( opt_console, buildOpt );
+		//else
+		//	and( ! opt_console, project.options );
+		endif;
+		
+		iniesi.readBool( jobebx.id, "console" );
+		if(! al ) then
+			//and( ! opt_windows, project.options );
+		//else
+			or( opt_windows, buildOpt );
+		endif;
+		
+		iniesi.readInt( jobebx.id, "HLA Level" );
+		mov( eax, hlalevel );
+		
+		stc();
+		
+		done:
+		ENDUSE;
+	end setJobInfo;
+
+	
+	setOutputView :procedure {@noframe};
+	begin setOutputView;
+		
+		if( testz (OUTPUT, settings.winview) ) then
+
+			// open the output window and mark is as changed
+			// to toggle it back later.
+			mov( true, outputchanged );
+			w.SendMessage( hwnd, HIDE_TOGGLEOUTPUT, 0, 0 );
+			
+		else
+			
+			mov( false, outputchanged );
+			
+		endif;
+		
+		ret();
+	end setOutputView;
+
+	
+	launchProgram :procedure( path:string; useoutput:boolean; clear:boolean );
+	begin launchProgram;
+		
+		setOutputView();
+		
+		if( clear ) then
+			w.SendMessage( houtedt, w.WM_SETTEXT, 0, 0 );
+		endif;
+		
+		if( useoutput ) then
+			
+			pipeExec( path );
+			
+		else
+			
+			Exec( path );
+			
+		endif;
+		
+		push( eax );
+		if( outputchanged ) then
+			
+			CloseOutputDelay( 5000 );
+			
+		endif;
+		pop( eax );
+		
+	end launchProgram;
+
+	
+	setRunPath :procedure( var node: var; dest:string );
+	begin setRunPath;
+		
+		// figure out the executable path for the 
+		// file/job object in node.  copy to dest
+		push( ebx );
+		
+		mov( node, ebx );
+		if( ! ebx ) then
+			clc();
+			jmp done;
+		endif;
+		
+		if( jobebx.nodeID = fnode_id ) then
+			
+			if( ! listebx.isproject ) then
+				
+				str.put( dest, listebx.fullname );
+				filesys.deleteExt( dest, dest );
+				str.put2( dest, exe_c );
+				
+				filesys.extractPath( dest, hide.strbuf );
+				dbg.put("cd to :", hide.strbuf );
+				filesys.cd( hide.strbuf );
+				
+				stc();
+				jmp done;
+				
+			else
+				
+				mov( listebx.job, ebx );
+				
+			endif;
+			
+			
+		endif;
+		
+		// job node in ebx
+		filesys.cd( project.folder );
+		mov( jobebx.ftype, eax );
+		if(  eax != jobtype_program  ) then
+			
+			toOutput("Can't run this type of job" nl );
+			clc();
+			jmp done;
+			
+		endif;
+		
+		mov( &project.hpr, esi );
+		iniesi._readString( jobebx.id, "output", dest );
+		expandPathMacs( dest, dest );
+		
+		stc();
+		
+		done:
+		pop( ebx );
+	end setRunPath;
+
+	buildRunPath :procedure( path:string; dest:string; usedebug:boolean );
+	begin buildRunPath;
+		
+		if( usedebug ) then
+			
+			if( hideini.readString( "HIDE Settings", "debugger", dest ) ) then
+				
+				expandPathMacs( dest, dest );
+				str.put2( dest, " """, path, '"' );
+				stc();
+				jmp done;
+			
+			else
+				
+				toOutput ("No debugger is selected" nl "Option > Set Paths > Debugger");
+				clc();
+				jmp done;
+				
+			endif;
+			
+		endif;
+		
+				
+		if( bitSet( opt_windows, buildOpt ) ) then
+			
+			str.put( dest, '"', path, '"' );
+			
+		else
+			
+			if( bitSet( opt_console, buildOpt )) then
+				
+				str.put( dest, '"', path, '"' );
+				
+			else
+				
+				env2.get( "COMSPEC", dest );
+				str.put2( dest, " /k """, path, '"' ) 
+				
+				
+			endif;
+			
+		endif;
+		
+		stc();
+		done:
+	end buildRunPath;
+
+
+	runNode :procedure( var node: var; clear:boolean );
+	begin runNode;
+		
+		mov( node, ebx );		
+		setJobInfo( [ebx] );
+		setRunPath( [ebx], strbuf ); jnc done;
+		buildRunPath( strbuf, workpath, runwithdebugger ); jnc done;
+		
+		if( bitSet( opt_windows, buildOpt )) then
+			
+			launchProgram( workpath, false, clear );
+			
+		else
+			
+			if( bitSet( opt_console, buildOpt )) then
+				
+				launchProgram( workpath, true, clear );
+				
+			else
+				
+				launchProgram( workpath, false, clear );
+				
+			endif;
+				
+		endif;
+		
+		done:
+	end runNode;
+
+	runDebugNode :procedure( var node: var );
+	begin runDebugNode;
+		
+		mov( true, runwithdebugger );
+		mov( node, eax );
+		runNode( [eax], false );
+		mov( false, runwithdebugger );
+		
+	end runDebugNode;
+
+
+	makeSource :procedure( ftype:dword );
+	
+		proc openSource :procedure( src:string );
+		begin openSource;
+			launchProgram( src, true, false );
+			if (! eax ) then
+
+				env2.get( "hlatmp", strbuf );
+				mov( curnode, eax );
+				str.put( workpath, strbuf, dirsep_c, listeax.id );
+				filesys.deleteExt( workpath, workpath );
+				str.put2( workpath, ".asm");
+				hide_openFile( workpath );
+			
+			endif;
+
+		end openSource;
+
+	
+	begin makeSource;
+
+		mov( curnode, eax );
+		if ( eax && listeax.ftype = type_unit || listeax.ftype = type_hla || listeax.ftype = type_hhf) then
+			
+			mov( ftype, ecx );
+			if( ecx = mhlabe_c ) then
+				str.put( workpath, hla_compiler, " -@ -source -sh ", listeax.relative );
+				toOutput( nl "HLABE >", workpath, nl);
+				openSource( workpath );
+			
+			elseif( ecx = mmasm_c ) then
+				str.put( workpath, hla_compiler, " -@ -source -sm ", listeax.relative );
+				toOutput( nl, "MASM >", workpath, nl );
+				openSource( workpath );
+				
+			elseif( ecx = mfasm_c ) then
+				str.put( workpath, hla_compiler, " -@ -source -sf ", listeax.relative );
+				toOutput( nl, "FASM >", workpath, nl );
+				openSource( workpath );
+				
+			elseif( ecx = mnasm_c ) then
+				str.put( workpath, hla_compiler, " -@ -source -sn ", listeax.relative );
+				toOutput( nl, "NASM >", workpath, nl );
+				openSource( workpath );				
+				
+			elseif( ecx = mgas_c ) then
+				str.put( workpath, hla_compiler, " -@ -source -sg ", listeax.relative );
+				toOutput( nl, "GAS >", workpath, nl );
+				openSource( workpath );				
+
+			endif;
+			
+		else
+			toOutput( nl "No source window open" nl );
+		endif;
+
+	end makeSource;
+
+
+	GetFileTime :procedure ( file:string; var dest:qword);
+	begin GetFileTime;
+		push5;
+		mov (dest, eax);
+		mov (0, (type dword[eax]));
+		mov (0, (type dword[eax+4]));
+		#if (os.win32)
+			try
+				if (fileio.open (file, fileio.r)) then
+					mov (eax, ebx);
+					mov (dest, eax);
+					w.GetFileTime( ebx, NULL, NULL, [eax]);
+					fileio.close (ebx);
+					or (1, eax);
+				else
+					xor (eax, eax);
+				endif;
+			anyexception;
+				xor (eax, eax);
+			endtry;
+		
+		#elseif (os.linux)
+			linux.stat (file, timebuf);
+			mov (dest, eax);
+			mov (timebuf.st_mtime, ebx);
+			mov (ebx, [eax]);
+		
+		#endif
+		pop5;
+	end GetFileTime;
+
+	checkVarTimes :procedure (srcTime:qword; destTime:qword);
+		// return true if destTime is newer than srcTime
+	begin checkVarTimes;
+		mov (( type dword srcTime[4]), eax );
+		cmp ( eax, (type dword destTime[4]) );
+		if (@a) then
+			mov (false, eax);
+			jmp done;
+		endif;
+	
+		if (@b) then
+			mov (true, eax);
+			jmp done;
+		endif;
+		
+		// if equal, check to LO dword	
+		next:
+		mov ((type dword srcTime[0]), eax );
+		mov ((type dword destTime[0]), ecx);
+		cmp (eax, (type dword destTime[0]) );
+		if (@b) then
+			mov (true, eax);
+		else
+			mov (false, eax);
+		endif;
+		done:
+	end checkVarTimes;
+	
+
+	checkFileTimes :procedure (src:string; dest:string);
+	
+		// check src and dest last modified times
+		// if dest is newer than source, return true.
+		var
+			srcTime		:qword;
+			destTime	:qword;
+	
+	begin checkFileTimes;
+		//dbg.put ("checkFileTimes");
+		GetFileTime (src, srcTime);
+		GetFileTime (dest, destTime);
+		checkVarTimes (srcTime, destTime);
+		//dbg.put ("/checkFileTimes >", eax);
+	end checkFileTimes;
+	
+
+	checkDependencies :procedure (outfile:string; var node:fList.fnode) { @returns ("EAX") };
+	begin checkDependencies;
+	USE (EBX, ESI, EDI);
+		//dbg.put ("checkDependencies");
+		mov (node, ebx);
+		mov (listebx.deps, ebx);
+		(type tList[ebx]).getHead();
+		mov (eax, ebx);
+		while (ebx) do
+			checkFileTimes (outfile, (type string (type tList.listNode [ebx]).value) );
+			if (eax) then
+				mov (eax, ebx);
+				break;
+			endif;
+			mov ((type tList.listNode [ebx]).next, ebx);
+		endwhile;
+		mov (ebx, eax);
+		//dbg.put ("/checkDependencies");
+	ENDUSE;
+	end checkDependencies;
+
+	make_init :procedure { @noframe };
+	begin make_init;
+		
+		linkobjs.create();
+		linkfile.create();
+		
+		ret();
+	end make_init;
+
+	compile_link :procedure( var node:var );
+	
+		var
+			tmpStr	:string;
+			
+	
+	begin compile_link;
+		mov( str.talloc( 1024 ), tmpStr );
+
+		dbg.enters( "compile_link" );
+
+		mov( node, ebx );
+		if( listebx.nodeID = jnode_id ) then
+			
+			// project
+			dbg.put("project");
+				
+			mov( &project.hpr, esi );
+			str.put( tmpStr, jobebx.id, ".link" );
+			if( iniesi.readBufSection( tmpStr, linkfile ) ) then
+
+				linkfile.trim();
+				linkfile.append( nl );
+				
+			else
+				
+				linkfile.erase();
+				
+			endif;
+			
+	
+			mov( jobebx.ftype, eax );
+			if( eax = jobtype_program ) then
+	
+				if( bitSet( opt_windows, buildOpt ) ) then
+					
+					linkfile.append ("-subsystem:windows" nl);
+					
+				else
+
+					linkfile.append( "-subsystem:console" nl );
+					
+				endif;
+				linkfile.append( "-nologo" nl );
+			
+				if( bitSet( opt_usedebuglib, buildOpt ) ) then
+					
+					linkfile.append( "debug.lib" nl );
+					
+				endif;
+				 				
+			elseif( eax = jobtype_dll ) then
+				dbg.put("dll");
+				mov( &project.hpr, esi );
+				if( iniesi._readString( jobebx.id, "def", tmpStr ) ) then
+					
+					linkfile.append( "-def:", tmpStr, nl );
+					
+				else
+					
+					toOutput( "Warning: no definition specified for dll, add a def from Project Manager" nl );
+					
+				endif;
+			
+			endif;
+			
+			// get and convert output name
+			mov( &project.hpr, esi );
+			iniesi._readString( jobebx.id, "output", tmpStr );
+			expandPathMacs( tmpStr, tmpStr );
+			
+			//stripOutput( tmpStr ); // why ?!
+			
+			linkfile.append( "-out:", tmpStr, nl, linkobjs );
+			str.put( tmpStr, jobebx.id, ".extlinked" );
+			mov( &project.hpr, esi );
+			if( iniesi.readBufSection( tmpStr, linkobjs ) ) then
+			
+				linkfile.append( linkobjs, nl );
+			
+			endif;
+	
+			env2.get( "hlatmp", tmpStr );
+			str.put2( tmpStr, dirsep_c, jobebx.id, ".link");
+			linkfile.writeFileName( tmpStr );
+			str.insert( """", 0, tmpStr );
+			str.insert( """", -1, tmpStr );
+
+			mov( jobebx.ftype, eax );
+			if( eax = jobtype_program || eax = jobtype_dll ) then
+				
+				dbg.put("here");
+				str.put( workpath, "polink @", tmpStr );
+				toOutput( "Link :", jobebx.id, nl );
+				
+			elseif( eax = jobtype_library ) then
+
+				str.put( workpath, "polib @", tmpStr );
+				toOutput( "Library :", jobebx.id, nl );
+				
+			else
+
+				// add more here
+				str.cpy( "", workpath );
+
+			endif;
+
+			if( testbuild ) then
+
+				toOutput( workpath, nl );
+				mov( false, eax );
+
+			else
+
+				pipeExec( workpath );
+				hideini.readInt( "HIDE Settings", "Keep Temp" );
+				if( ! eax ) then
+
+					str.delete( tmpStr, 0, 1 );
+					str.truncate( tmpStr, 1 );
+					filesys.delete( tmpStr );
+					
+				endif;
+				
+			endif;
+
+		else
+			
+			// non project
+			
+			hideini.readBufSection( "default link", linkfile );
+			linkfile.trim();
+			linkfile.append( nl );
+			
+			if( testnz( opt_windows, settings.options ) ) then
+				
+				linkfile.append ("-subsystem:windows" nl);
+				
+			else
+				
+				linkfile.append ("-subsystem:console" nl);
+				
+			endif;
+			
+			linkfile.append( "-nologo" nl );
+			
+			mov( node, ebx );
+			str.put( tmpStr, listebx.id );
+			filesys.deleteExt( tmpStr, tmpStr );
+		
+			str.put2( tmpStr, exe_c );
+			linkfile.append( "-out:", tmpStr, nl, linkobjs, nl );
+			
+			hideini.readSection ("default libs", strbuf );
+			linkfile.append( strbuf, nl );
+			
+			env2.get( "hlatmp", tmpStr );
+			str.put2( tmpStr, dirsep_c, listebx.id, ".link" );
+			linkfile.writeFileName( tmpStr );
+
+			str.put( workpath, "polink @",'"', tmpStr, '"' );
+			toOutput( "Link :", listebx.id, nl );
+
+			if( testbuild ) then
+
+				toOutput( workpath, nl );
+				mov( false, eax );
+
+			else
+
+				pipeExec( workpath );
+				hideini.readInt( "HIDE Settings", "Keep Temp" );
+				if( ! eax ) then
+
+					filesys.delete( tmpStr );
+
+				endif;
+
+			endif;
+			
+		endif;
+		
+		dbg.enters( "compile_link" );
+	end compile_link;
+
+
+procedure compile (var node:tBaseList.baseNode; force:BOOL); @returns ("EAX");
+	@alignstack;
+
+	var
+		outfile		:string;
+		build		:boolean;
+		tempbuf		:tBuffer;
+		tmpStr		:string;
+		
+	procedure buildNode (var node:fList.fnode);
+		var
+			tmpFile	:string;
+			tmpStr	:string;
+			
+	
+	begin buildNode;
+		
+		mov (str.talloc (256), tmpFile);
+		mov (str.talloc (1024), tmpStr);
+		
+	USE (EBX, ESI, EDI);
+		mov (node, ebx); 
+		//dbg.put ("EBX = ", ebx );
+		dbg.put ("buildNode :", listebx.id);
+		toOutput ('-', listebx.relative, nl);
+
+		// build file
+		//env2.get( "hlaopt", strbuf );
+		str.put( strbuf, "-@ -win32" );
+		
+		if( ! listebx.isproject ) then
+			
+			hideini.readInt ("HIDE Settings", "HLA Level");
+			mov( eax, hlalevel );
+		endif;
+		
+		mov( hlalevel, eax );
+		str.put (tmpStr, hla_compiler, ' ', strbuf, ' ', hla_level_strings[eax*4], ' ');
+
+	
+		if( testnz (opt_usedebuglib, buildOpt )) then
+			// set compile time variable "debug" and link in debuglib.lib
+			str.put2 (tmpStr, "-ddebug ");
+		endif;
+		
+		if( testnz( opt_threadsafe, buildOpt ) ) then
+			// set thread safe variable
+			str.put2( tmpStr, "-thread " );
+		endif;
+		
+		//dbg.put("--> ", buildOpt );
+		
+		hideini.readInt( "HIDE Settings", "Verbose HLA" );
+		if( eax ) then
+			str.put2 (tmpStr, "-v ");
+		endif;
+		
+		mov (&project.hpr, esi);
+		if (listebx.isproject) then
+			if ( iniesi.readBool ("HPR Settings", "useunits")) then
+				str.put2 (tmpStr, "-obj:units " );
+			endif;
+		endif;
+
+		env2.get ("hlatmp", workpath);
+		//dbg.put ("got env:", workpath);
+		str.put2 (tmpStr, '"', listebx.relative, '"');
+		dbg.put ("tmpStr = ", tmpStr);
+
+		dbg.put ("exec = ", tmpStr);
+		if( testbuild ) then
+			toOutput( tmpStr, nl );
+			mov(false, eax );
+		else
+			pipeExec (tmpStr);
+		endif;
+			
+		
+		//dbg.put ("return exec :", eax);
+		dbg.put ("/buildNode");
+	ENDUSE;
+	end buildNode;
+	
+	procedure build_outfile; @noframe;
+	begin build_outfile;
+	USE (ESI);
+		mov (&project.hpr, esi);
+		if (listebx.isproject) then
+			if ( iniesi.readBool ("HPR Settings", "useunits")) then
+				str.put2 (ebp::outfile, "units", dirsep_c);
+			endif;
+			str.put2( ebp::outfile, listebx.id );
+		else
+			if( str.eq( listebx.id, listebx.relative ) ) then
+				
+				str.put2( ebp::outfile, listebx.id );
+			else
+				str.put2 (ebp::outfile, listebx.relative);
+			endif;
+		endif;
+			
+		filesys.deleteExt( ebp::outfile, ebp::outfile );
+		str.put2 (ebp::outfile, obj_c);
+	ENDUSE;
+	ret();
+	end build_outfile;
+
+
+begin compile;
+
+	dbg.put ("compile");
+	mov (str.talloc (pathsize_c), outfile);
+	mov (str.talloc (1024), tmpStr);
+	
+USE (EBX, ESI, EDX);
+	mov (node, ebx);
+	mov (false, build);
+	mov (&project.hpr, esi);
+	
+	//dbg.put ( " > ", listebx.id, "   action = ", listebx.ftype);
+	
+	mov (listebx.ftype, eax);
+	switch (eax);
+	case (type_hla, type_unit)
+		
+		//dbg.put ("case program/unit");
+		
+		build_outfile();
+		
+		//dbg.put ("/outfile :", outfile);
+		
+		if (force = mforce_c) then
+			
+			//dbg.put("forced");
+			mov (true, build);
+			
+		else
+
+			//dbg.put ("checking exists");
+			// see if we need a build
+			if (filesys.exists (outfile)) then
+			
+				// check dependencies
+				// 1st check default dependency
+				if (! checkFileTimes (outfile, listebx.relative)) then
+					
+					mov (false, build);
+					// source is not newer, check other dependencies, if any
+					checkDependencies (outfile, [ebx]);
+					mov (al, build); 
+				else
+					mov (true, build);
+				endif;
+			else
+				mov (true, build);
+			endif;
+		endif;
+		
+		xor (eax, eax);
+		if (build) then
+			
+			buildNode ([ebx]);
+			
+		endif;
+		
+		if (! eax) then
+			
+			if (listebx.isproject) then
+				if ( ! iniesi.readBool ("HPR Settings", "useunits")) then
+					// we need to rebuild outfile
+					if( str.eq( listebx.id, listebx.relative ) ) then
+						str.put( outfile, listebx.id );
+					else
+						str.put( outfile, listebx.relative );
+					endif;
+					filesys.deleteExt( outfile, outfile );
+					str.put2( outfile, obj_c );					
+				endif;
+			endif;
+			dbg.put( "link outfile = ", outfile );
+
+			//dbg.put ("linkobjs += ", outfile);
+			linkobjs.append (outfile, nl);
+			xor (eax, eax);
+		endif;
+	
+	case (type_rc)
+		//dbg.put ("resource file");
+		
+		build_outfile();
+		filesys.deleteExt( outfile, outfile );
+		str.put2 (outfile, ".res");
+
+		if (force = mforce_c) then
+			mov (true, build);
+			
+		else
+
+			// see if we need a build
+			if (filesys.exists (outfile)) then
+			
+				// check dependencies
+				// 1st check default dependency
+				if (! checkFileTimes (outfile, listebx.relative)) then
+					
+					mov (false, build);
+				else
+					mov (true, build);
+				endif;
+			else
+				mov (true, build);
+			endif;
+		endif;
+		
+		xor (eax, eax);
+		if (build) then
+			toOutput ('-', listebx.relative, nl)
+			str.put (tmpStr, "porc -x -Fo""", outfile, """ """, listebx.relative, '"');
+			if( testbuild ) then
+				toOutput( tmpStr, nl );
+				 mov( false, eax );
+			else
+				pipeExec (tmpStr);
+			endif;
+			
+		endif;
+		
+		if (! eax) then
+			//dbg.put ("linkobjs += ", outfile);
+			linkobjs.append (outfile, nl);
+			xor (eax, eax);
+		endif;
+
+	
+	case (type_misc, type_def, type_hhf, type_khelp, type_bin)
+		//dbg.put ("no action source");
+		xor (eax, eax);
+		
+	default
+		toOutput ("warning: unknown file action: ", (type uns32 eax), nl);
+	endswitch;
+	
+
+	done:
+ENDUSE;
+	//dbg.put ("/compile");
+end compile;
+
+procedure build_job (var node:jList.jnode; force:BOOL);
+	var
+		s0	:string;
+		str0:string;
+		str1:string;
+		buf	:tBuffer;
+		
+begin build_job;
+	
+	// a couple temp strings
+	mov (str.talloc (256), s0);
+	
+	USE (EBX);
+	mov (node, ebx);
+	setJobInfo( [ebx] );
+	
+	//dbg.put ("build_job");
+	toOutput ("Build: ", jobebx.id, nl);
+	
+	
+	mov (jobebx.ftype, eax);
+	switch (eax)
+	case ( jobtype_program, jobtype_dll, jobtype_library )
+		USE (ESI);
+			
+			linkobjs.erase();
+			fileList.getHead();
+			mov (eax, edx);
+			while (edx) do
+				if (listedx.job = ebx) then
+					compile ([edx], force);
+					//dbg.put ("//compile :", eax);
+					breakif (eax);	// breakif error during compile process
+				endif;
+				mov (listedx.next, edx);
+			welse
+				xor (eax, eax);	// done normaly, no errors
+			endwhile;
+		ENDUSE;
+		
+		if (! eax) then
+			// continue building
+			dbg.put("buildlink = ", buildlink);
+			if( buildlink ) then
+				
+				compile_link( [ebx] );
+				
+			endif;
+		endif;
+	
+	case ( jobtype_target )
+		// load the script file into a string, run it through
+		// expandPathMacs, save as temp file, exec kmake on temp
+		// file, delete temp file.
+		//dbg.put ("jobtype = target");
+		
+		mov (&project.hpr, esi);
+		
+		if (iniesi._readString (jobebx.id, "target", strbuf)) then
+			try
+				buf.create (strbuf);
+				buf.toString();
+				mov (eax, str0);
+				mov ( (type str.strRec[eax]).length, eax);
+				shl (2, eax);
+				str.alloc (eax);
+				mov (eax, str1);
+				
+				filesys.extractFilename( strbuf, strbuf );
+				str.put (s0, "temp_", strbuf );	// dest filename
+				
+				buf.erase();
+				expandPathMacs (str0, str1);
+				buf.inserts (str1);
+				str.free (str0);
+				str.free (str1);
+				buf.toFile (s0);
+				str.put (workpath, "kmake """, s0, '"');
+	
+				dbg.put ("target :", workpath);
+				if( testbuild ) then
+					toOutput( workpath, nl );
+					mov( false, eax );
+				else
+					pipeExec (workpath);
+				endif;			
+				
+				
+				filesys.delete (s0);
+				buf.destroy();
+
+			anyexception
+				
+				error.fileopenfailure (strbuf);
+			
+			endtry;
+			
+				
+		else
+			toOutput ("Selected target is missing a script, add one using Project Manager" nl);
+		endif;
+	
+	case ( jobtype_misc )
+		toOutput ("  Nothing to build" nl);
+		xor (eax, eax);
+		
+	default
+		error.warning ("Unknown job task in project build!");
+	endswitch;
+	
+	toOutput (sep_s, nl);
+	dbg.put ("/build_job");
+ENDUSE;
+
+end build_job;
+
+
+procedure build_project (force:BOOL);
+	var
+		count		:uns32;
+		
+begin build_project;
+	dbg.put ("build_project");
+	
+//	mov (0, nprocesses);
+//	mov (0, nerrors);
+	
+	mov (&project.hpr, esi);
+	iniesi.getItemCount("HPR Jobs");
+	mov (eax, count);
+	xor (ebx, ebx);
+	while (ebx < count ) do
+		mov (&project.hpr, esi);
+		iniesi.readItem ("HPR Jobs", ebx, strbuf);
+		jobList.findID (strbuf);
+		build_job ([eax], force);
+		inc (ebx);
+	endwhile;
+	//toOutput ("Build done" nl, "Processes launched : ", nprocesses, nl, "Errors Returned :", nerrors, nl);
+	mov (nerrors, eax);
+	dbg.put ("/build_project");
+end build_project;
+
+procedure MakeProc (command:dword; dparam:dword; wparam:dword);
+
+	var
+		ini				:pointer to tConfig;
+		_exitcode		:uns32;
+		s				:string;
+		curdir			:string;
+
+begin MakeProc;
+	dbg.put ("makeproc");
+	
+	mov( str.talloc( worksize_c ), s );
+	mov( str.talloc( pathsize_c ), curdir );
+	mov( false, testbuild );
+	
+	pushad();
+
+	mov( 0, nprocesses );
+	mov( 0, nerrors );
+	mov( true, buildlink );
+	
+	if( wparam = mclear_c ) then
+		
+		w.SendMessage( houtedt, w.WM_SETTEXT, 0, 0 );
+		
+	endif;
+
+	filesys.gwd( curdir );
+
+	xor( eax, eax );
+	mov( eax, _exitcode );
+	mov( al, outputchanged );
+
+	w.LoadCursor( 0, val w.IDC_WAIT );
+	w.SetCursor( eax );
+		
+	if( testz (OUTPUT, settings.winview) ) then
+
+		mov( true, outputchanged );
+		w.SendMessage( hwnd, HIDE_TOGGLEOUTPUT, 0, 0 );
+		
+	endif;
+
+	saveAll();
+	
+	mov( command, eax );
+	switch (eax)
+	case( mtestbuild_c )
+
+		mov( true, testbuild );
+		toOutput( "Testing build, command list" nl );
+		jmp mbuild;
+	
+	case (mbuild_c)
+		dbg.put ("mbuild_c");
+		mbuild:
+		
+		mov( dparam, eax );
+		
+		if( eax = mobject_c ) then
+		
+			mov( false, buildlink );
+		
+		endif;
+		
+		if( project.isOpen ) then
+
+			filesys.cd( project.folder );
+			build_project( false );
+			mov( eax, _exitcode );
+			filesys.cd( curdir );
+		
+		else
+		
+			buildnonproj:
+			mov( curnode, ebx );
+			if( ebx ) then
+				toOutput( "Build :", listebx.fullname, nl );
+				str.put( s, listebx.fullname );
+				filesys.extractPath( s, s );
+				filesys.cd( s );
+				
+				linkobjs.erase();
+				compile ([ebx], mforce_c);
+				
+				if( !EAX ) then
+					
+					if( buildlink ) then
+						
+						compile_link( [ebx] );
+						
+					endif;
+				endif;
+				filesys.cd (curdir);
+				toOutput (sep_s, nl);
+		
+			endif;
+		
+		endif;
+		
+	case (mbuildall_c)
+
+		filesys.cd (project.folder);
+		build_project (true);
+		mov (eax, _exitcode);
+		filesys.cd (curdir);
+		
+	case (mbuildone_c)
+
+		linkobjs.erase();
+		mov (dparam, eax);
+		compile ([eax], mforce_c);
+		mov (dparam, eax);
+		mov (listeax.job, eax);
+
+		if (eax) then
+			build_job ([eax], mnforce_c);
+		endif;
+		
+	case (mrebuildonejob_c)
+		
+		dbg.put ("rebuild one job");
+		mov (dparam, eax);
+		if (eax) then
+			build_job ([eax], mforce_c);
+		else
+			jmp buildnonproj;
+		endif;
+	
+	case (mbuildonejob_c)
+
+		mov (dparam, eax);
+		if (eax) then
+			build_job ([eax], mnforce_c);
+		else
+			jmp buildnonproj;
+		endif;
+		
+	case( mhla_c )
+		
+		mov( dparam, ebx );
+		if( ebx ) then
+
+			str.cpy( "", workpath );
+			env2.get( workpath, "hlaopt" );
+ 
+			if( listebx.isproject ) then
+				filesys.cd( project.folder );
+				str.put( strbuf, listebx.relative );
+			else
+				filesys.extractPath( listebx.fullname, strbuf );
+				filesys.cd( strbuf );
+				dbg.put("curdir = ", strbuf );
+				filesys.extractFilename( listebx.fullname, strbuf );
+			endif;
+			
+			str.put( s, "hla " );
+			if( str.length( workpath )) then
+				str.put2( s, workpath, ' ' );
+			endif;
+			
+			str.put2( s, '"', strbuf, '"' );
+			
+			toOutput( ">", s, nl );
+			pipeExec( s );
+			filesys.cd( curdir );
+		endif;
+		
+	endswitch;
+	
+	toOutput ("Build done" nl, "Processes launched : ", nprocesses, nl, "Errors Returned :", _exitcode, nl);
+
+	w.LoadCursor(0,val w.IDC_ARROW);
+	w.SetCursor(eax);
+	if (outputchanged) then
+		CloseOutputDelay(5000);
+	endif;
+	
+	w.SetFocus(hwnd);
+	projectview_checkUpdates();
+	popad();
+	mov(_exitcode,eax);
+dbg.put ("/makeproc");	
+end MakeProc;
+
+	
+
+end Make_Unit;

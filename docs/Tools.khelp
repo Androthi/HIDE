@@ -1,0 +1,1024 @@
+[Khelp Header]
+Author= Sevag Krikorian
+Version= 1.2
+Created= Aug 04, 2006
+Modified= Jan 10, 2010
+Licence= none
+
+
+
+[kHelp Contents]
+Wscan
+ASCIITbl
+cCalc
+.cCalc Updates
+.Supported Instructions
+.Keyboard Shortcuts
+.Bit Formulas
+..x & (x-1)
+..x & (x+1)
+..x & (-x)
+..-x & (x+1)
+..!x & (x-1)
+..x ^| (x-1)
+..x | (x-1)
+..((x | (x-1)) +1) & x
+..(x ^| y) -y
+kMake
+.Using kMake
+.Reserved Keywords
+.Writing Scripts
+..Jump Targets
+..Dependencies
+..Macros
+..Internal Commands & Directives
+...Transfer Control
+...Test Dependencies
+...Macro Expansion
+...Comments
+...Creating Files
+...DeleteFiles
+...Macros As Commands
+...WorkingDir
+...Message Printing
+...Foreach
+...Conditional Flow Control
+...Create Directory
+.Example Script
+Debug Window
+
+[Debug Window]
+v1.11
+
+Debug Window opens a text editor (SavageEd in /bin) to be used
+with the debug library ( in /hlalib )
+This library is linked in automatically when HIDE is in debug
+mode.
+
+To use the library, enter debug mode using options menu.
+Open the Debug Window using Tools menu.
+include "hide/dbgwin.hhf" in your source files.
+
+The following macros are compiled *only* if HIDE is in debug mode,
+they are ignored otherwise and add no overhead to your code.
+
+The debug library is a series of routines that output data to the
+Debug Window.
+
+dbg.put( args[] );
+	Works just like stdout.put()
+	
+dbg.putz( addr:dword);
+	Outputs a zero terminated string
+	
+dbg.putn( addr:dword; count:uns32 )
+	Works just like stdio.write()
+	
+dbg.cls;
+	Clears the debug window
+	
+dbg.separator;
+	prints a dashed line to the debug window
+	
+dbg.dumpmem( startaddr:dword; size:dword );
+	prints the contents of memory in rows of byte pairs and ascii values
+	
+dbg.dumpregs;
+	prints the contents of the general purpose 32 bit registers.
+	
+dbg.trace;
+	starts HLA @trace, same as ?@trace := true;
+	but output is directed to debug window.
+	
+dbg.endtrace;
+	ends HLA @trace, same as ?@trace := false;
+	
+dbg.timerstart;
+	Starts a timer.  This is a crude timer and is not meant for
+	accurate benchmarking.
+	
+dbg.timerend;
+	Ends the timer and displays result.
+	
+dbg.mark;
+	Emits a number of asterisks '*' corresponding with the number of times
+	dbg.mark was invoked.  mark counter is reset when dbg.cls is invoked.
+	
+dbg.enters( s:string );
+dbg.exits( s:string );
+	Every "enters" creates a tabbed 'section' of text.  Useful for isolating
+	debug statements from different procedures, and determining recursion nesting
+	errors.
+	
+
+
+[(x ^| y) -y]
+	Formula:	a) (x ^| y) -y		y- (x ^| y)
+			b) (x + y) ^| y		(y - x) ^| y
+			c) (x- (2x &y)		x- (2x & y)
+			
+	Use:	calculate absolute value of x, where y = (x SAR 31)
+		For calculating not absolute, use the second form.
+		
+	See it: (only a shown)
+		Input		16
+		NEG
+		SAR		x31 (or stop when you reach -1)
+		Copy To Op	(Op = y) 
+		Input		16
+		NEG
+		XOR
+		SUB		= 16
+		
+	
+	
+
+[((x | (x-1)) +1) & x]
+
+	Formula: ((x | (x-1)) +1) & x
+	
+	Use:	Isolate leftmost set bit
+			determine if unsigned x is in the form
+			2^j - 2^k where j => k => 0
+			
+	Result:	zero set = true
+	
+	See it:
+		Input		3
+		Op		2
+		OR
+		Op		1
+		ADD
+		Op		3
+		AND		= 0  zero set, true
+	
+
+
+[x | (x-1)]
+	Formula: x | (x-1)
+	
+	Use:	Right extend rightmost set bit
+	
+	See It:
+		Input		168
+		Op		167
+		OR		= 175
+		
+
+[x ^| (x-1)]
+	Formula: x ^| (x-1)
+	
+	Use:	Create a mask of rightmost set bit
+			and trailing zeros
+			
+	See it:
+		Input		168
+		Op		167
+		XOR		= 15
+		
+
+[!x & (x-1)]
+
+	Formula: 	a) !x & (x-1)
+			b) ! (x | -x)
+			c) (x & -x) -1
+			 
+	Use:	Create mask of trailing zeros
+		eg: 0100_1000  =>  0000_0111
+			
+	Result: zero set = x is 1
+				
+	See it:
+		a)	Input		1000
+			Op		999
+			NOT
+			AND		= 7
+			
+		b)	Input		1000
+			Copy To Op
+			NEG
+			OR
+			NOT		= 7
+			
+		c)	Input		1000
+			Copy To Op
+			AND
+			Op		1
+			SUB		= 7
+
+
+[-x & (x+1)]
+	Formula -x & (x+1)
+	
+	Use:	isolate the rightmost 0 bit
+	
+	Result:	zero set = no set bits, x = 0
+	
+	See it:
+		Input		55
+		Op		56
+		NEG
+		AND		= 8
+		
+
+[x & (-x)]
+	Formula: x & (-x)
+	
+	Use:	isolate the rightmost set bit
+			(find the smallest 1 bit)
+
+	Result: zero set = no set bits, x = 0
+	
+	See it:
+		Input		180
+		Copy To Op
+		NEG
+		AND		= 4
+		
+
+
+[x & (x+1)]
+	Formula: x & (x+1)
+	
+	Use:	determine if unsigned x is x^n-1
+	
+	Result: zero set = true
+	
+	See it:
+		Input		31
+		OP		32
+		AND		= zero set
+		
+		Input		32
+		Op		33
+		AND		= zero clear
+
+
+[x & (x-1)]
+	Formula: x & (x-1)
+	
+	Use: 	determine if unsigned x is power of 2
+		clear right-most set bit
+			
+	Result:	zero set = true
+		
+	See it:
+		Input		32
+		Op		31
+		AND		= zero set
+		
+		Input		31
+		Op		30
+		AND		= zero clear
+
+
+[Bit Formulas]
+Formula Format
+Formula	- an equasion
+Use		- the function and uses of the formula
+Result	- effect on EFLAGS
+See It	- see it in action using cCalc
+		  each line represents a command to input
+		  Unless otherwise noted, consider:
+		  Input field as dest operand or accumulator (EAX)
+		  Op field as source operand
+
+Dual formulas
+	The formulas presented here may be reversed to get
+	the opposite results.  Reversing involves exchanging
+	the operands:
+	
+	x-1	<=>	x+1
+	-x	<=>	!(x+1)
+	&	<=>	|
+	x	<=> 	x
+	!x	<=> 	!x
+
+
+[Keyboard Shortcuts]
+Command buttons have keyboard shortcuts.
+Shortcuts are accessed by pressing ctrl-key, usually denoted by an underlined letter in the command name.
+For the ones that don't have underlined letters:
+
+ESC		quit program
+MOV -> Op	ctrl enter
+ROL		ctrl left
+ROR		ctrl right
+SAR		ctrl down
+Clear All	ctrl delete
+Set All	ctrl insert
+TEST		ctrl z
+
+
+
+[Supported Instructions]
+<text>
+Supported instructions:
+SHL	(same as SAL)
+SHR
+SAR
+ROR
+ROL
+NOT
+NEG
+AND
+OR
+XOR
+ADD
+SUB
+DIV
+IDIV
+MUL
+IMUL
+TEST
+CMP	(cmp input,op)
+ADC
+SBB
+XCHG
+[ MOD ] - not really cpu instructions, displays EDX/remainder instead
+[ IMOD ] - not really cpu instructions, displays EDX/remainder instead
+
+Note: it is up to the user to know which flags are defined
+and which are not defined with each instruction.
+
+Input:
+Menu-selectable, hexadecimal or decimal
+
+Arithmatic notes:
+Input is considered the accumulator (EAX)
+Op is considered the operand (for DIV, MUL)
+and source (for ADD, SUB, CMP, TEST)
+
+
+MUL, IMUL, DIV, IDIV, [MOD], [IMOD] - always 32-bit,
+EDX is sign-extended for IDIV and [IMOD]
+
+
+</text>
+
+[cCalc]
+cCalc v 1.13
+Sevag Krikorian
+
+Licence:
+Freeware.  Use it as you will, at your own risk.
+Package it with anything, anywhere.
+
+Kudos and Curses to:
+sevag.krikorian@gmail.com
+
+
+For beginners:
+	Helps to understand how bits and flags are modified when using cpu instructions supported in cCalc.
+
+Advanced users:
+	Useful for generating bit-masks and testing out new bit manipulation formulas.
+
+
+[cCalc Updates]
+1.13	-renamed "Copy to Op" to "MOV -> Op"
+	-reordered some controls
+	-added XCHG, exchanges Input with Op
+	-added IDIV, IMUL
+	-added [MOD], [IMOD], these are in brackets
+	 since they are not really cpu instructions, but
+	 added for convenience, they display the remainder of DIV/IDIV
+	 instructions in EDX.
+1.11	-added adc, sbb
+1.08	-maintainence
+1.07	-maintainence
+1.06	-pressing tab selects the existing text in edit box
+	-fixed eflags not updating properly during some actions
+	-added SAR instruction
+1.05	-fixed error in display of sign flag
+
+[ASCIITbl]
+	Outputs an ASCII table to the standard output device, showing decimal and hexadecimal values.
+
+[Wscan]
+
+wscan manual.
+
+Sevag Krikorian
+sevag.krikorian@gmail.com
+http://sevag.krikorian.googlepages.com
+
+Current version:	2.4
+version 2.4
+-improved HIDE project scanner
+
+version 2.3
+-maintainence
+
+version 2.1
+-updated to conform with new project format HIDE 1.23.xx
+
+version 1.7
+-minor modification to text output.
+-maintenence
+
+version 1.4
+-fixed a hang caused when only 1 label is defined.
+
+version 1.3 fixes a minor bug.
+
+New in version 1.2
+fixed the scanner so that need for the 'wininc' macro
+should be rare.
+
+wscan is a utility for consolidating the symbols contained
+in the w.hhf header file into a more compact header file
+for including in your programs.
+
+This has 2 obvious benefits:
+1. vastly improving the compiling speed
+of programs that use the w.hhf header file, particularily
+in projects that contain many units that use w.hhf
+
+2. your w.hhf file may vary from someone else's due to
+customization, error fixing.  using wscan insures that
+anybody you share the code with will have the same
+equates that you use in your programs, without having
+to supply the entire w.hhf file.
+
+Defaults:
+-Looks for w.hhf in the folder pointed at by 'hlainc' environment.
+-Generates output file called "win_inc.hhf"
+
+Usage:
+
+wscan <hla source | HIDE project> [more sources] [-o][-w]
+
+Note: options are case sensitive.
+
+	-oxx	change the output name
+	-wxx	change the windows header to scan
+
+-wxx can either contain a full path/filename or an alternate
+filename to search for in the 'hlainc' environment.
+
+If your 'hlainc' environment points to the one in the HIDE package,
+you must use this option so that wscan can use the proper header
+file:
+
+-ww32\win32.hhf
+
+Other notes:
+This program scans all the sources listed (or all the project files
+if a HIDE project is used as an argument) for any 'w' namespace
+symbols.  It then searches the windows header file for these symbols
+and consolidates them into one smaller file (after sorting for
+the correct order).
+
+Once wscan generates the output, you need only include the file
+in your source to use it instead of the w.hhf header file.
+
+Sometimes, a declared symbol in your sources will indirectly reference
+another symbol within the windows header file.  wscan uses a recursive
+search to find just about all the symbols, if on some rare occasion,
+a wscan is unable to detect a symbol, use the following macro to force
+wscan to search for the missing label.
+
+#macro wininc ( __winargs__[]);
+#endmacro
+
+If HLA generates missing symbol errors, simply use the macro
+to declare the symbols in any declaration section of your source,
+for example:
+
+assuming TV_ITEMEX and WNDPROC are missing symbols:
+wininc ( w.TV_ITEMEX, w.WNDPROC );
+
+save and run wscan again to generate a new output file that includes
+the missing symbols.
+The macro accepts the HLA maximum number of arguments.
+
+However, with v1.2, the scanner is a lot smarter, need for the wininc
+macro should be rare.
+
+
+[kMake]
+
+Version 1.20.03
+
+
+kMake is a compact makescript processing utility.  It uses a native syntax and has limited support for MAKE scripts.
+
+[Using kMake]
+<text>
+kMake [/-bjmins?h] macro=value makescript[.kmk][.mak]
+
+Flags:
+-jtarget	jumps to target entry point.
+-b		builds regardless of dependency dates.
+-n		displays commands without execution
+-v		verbose display of process and warnings
+-i		does not stop after build errors
+-c		force 'make' compatibility mode
+-? -h		displays help
+
+A makescript can be typed with or without an extension.  By default, if kmake is launched with no arguments, it will look for a makescript called "kmakesrc" in the current directory.  If there is no "kmakesrc" but there is "makefile", kMake will enter compatibility mode and try to process the MAKE script.  You can also specify a makescript on the command line.  If you do not type in an extension on the specified makescript, kmake will try to match ".kmk" or ".mak" to the file, if not found, Kmake will treat it as a target within the makescript.
+
+-jtarget
+	This will cause kMake to open the start at the specified section/label in the makescript.
+
+Eg:
+kMake -jclean
+	Open "kmakesrc" and look for section called [clean] and execute that section only
+
+
+-b
+	This will force kMake to execute all commands regardless of dependency date checks.
+	
+-n
+	Display all commands that would normally execute without actually launching the processes.
+	
+-v
+	Show a more verbose display
+	
+-i
+	kMake will continue even after encountering process errors.  Note that kMake will still exit upon encountering internal or script errors.
+
+-c
+	Forces kMake into MAKE compatibility mode.  This mode has limited MAKE support.  Typically, only macros and standard labels are supported.
+
+-? -h
+	Shows a help display and quits.
+	
+</text>
+
+[Reserved Keywords]
+<text>
+In the makescript, native mode:
+
+[BUILD] This section is reserved as the main launch point
+
+[MACROS] This section is reserved as an area to declare macros
+
+<< >>	Reserved for internal commands
+#	Reserved for jump target identifier
+;	Reserved for comments
+@	Reserved identifier for dependancy comparissons
+
+Reserved macros:
+%	Macro auto-generated by <<foreach: macro>> internal command.
+
+In compatibility mode:
+#	Reserved for comments
+
+</text>
+
+[Writing Scripts]
+<text>
+This section covers instructions on writing native kMake scripts.  Compatibility mode instructions will not be covered in this document.
+
+The typical script will have a [BUILD] section, but one is not necessary.
+Without any sections, kMake will just execute commands similar to a batch-file.
+
+A script may consist of command lines, jump targets, dependency lists, internal commands and macros.
+
+A [MACROS] section may be used to define initial macros, though this can also be done anywhere using the <<macro: >> command described elsewhere.
+Scripts are line-based.  If there is a need to continue on another line, a line-continuation marker may be used so that kMake concatenates the lines.  A line-continuation marker will be the last character on a line and consists of either a back-slash '\' or a comma ','.
+
+eg:
+[MACROS]
+mymacro= this macro \
+is defined \
+on multiple lines \
+but kMake will \
+treat it as a single line \
+
+In kMake, all section headers or labels, macros, etc. are case sensitive.
+
+
+</text>
+
+[Jump Targets]
+<text>
+
+The default jump target is "BUILD" if there is a "BUILD" section in the source, execution begins there, otherwise it begins at a jump target specified on the commandline or at the top of the file.
+
+Example of a target:
+
+[buildall]
+
+To start at that target, on the command line:
+kmake -jbuildall
+
+kmake will load the makescript and begin executing the commands under the [buildall] section.
+
+Note: the -j<target> or -j:<target> are optional.  Kmake is able to distinguish jump targets without switches.
+eg: "kmake buildall" will behave identical to "kmake -j:buildall"
+
+Jump targets can also be specified within the makescript, under jump headers using the internal command '#'
+For example:
+
+[buildall]
+#mylibrary
+#myprogram
+#link
+
+Once kmake enters [buildall] it will immediately jump to [mylibrary] and process the commands in that section, if successful, it will then jump to [myprogram] and process that section, finally, if there are no errors so far, it will process the [link] section.
+
+kmake has the capacity of jumping to targets up to 20 levels deep.  Jump targets are case sensitive.
+
+
+</text>
+
+[Dependencies]
+<text>
+To build programming sources, kmake checks for dependencies.  You must specify the dependencies in the scriptfile.  To do so, you use the directive '@' at the beginning of a new line.  The first filename after '@' is the target file, every other filename on the line (separated by spaces or commas) are the dependencies. If kmake finds that the target is outdated, it will launch the command line directly below the dependency line.
+
+For example:
+
+[myprogram]
+@myprogram.obj myprogram.hla myprogram.hhf
+hla -c myprogram.hla
+
+In this scenario, "myprogram.obj" is the target file (the file that will be created).  kmake will look if myprogram.obj exists.  If not, it will launch the commands on the following line.  If "myprogram.obj" exists, kmake will compare the filetime with the filetimes of all the other files listed on the line, in this case "myprogram.hla" and "myprogram.hhf" if either of these files are newer than "myprogram.obj", kmake will delete "myprogram.obj" and then launch the command line on the following line.
+
+If the target file proves to be newer than the dependencies, kmake will skip over the next command line and continue.  In the above example, "hla -c myprogram.hla" would be skipped over and kmake would continue processing after that line.
+
+To force a build despite dependencies, pass -b on the command line.  This will execute every command in the target list.
+
+</text>
+
+[Macros]
+<text>
+Macros are a useful feature that make processing makescripts easier, especially if kmake is launched by a 3rd party program.  One may even generate 'generic' makescripts that work automatically with a variety of setups.
+
+The syntax to define a macro is simply:  macro=value
+In the scriptfile, the macro is expanded by a '$' character and the macro name enclosed in brackets ()
+
+An example of a macro on the commandline:
+kmake mymacro=myprogram myresource=myprogram
+
+Here is how that macro may be used in the "kmake" script file
+
+hla $(mymacro).hla $(myresource).res
+
+kmake will expand $(mymacro) to "myprogram" in the scriptfile and $(myresource) will also expand to "myprogram" although you can specify any legal value (in this case, it must be any legal characters for a filename), I used the same value in the example because there is a special use for it which I will get to.  After the macro expansion, that same line would look like this:
+
+hla myprogram.hla myprogram.res
+
+And now for the reason why I specified two different macros with the same value.  If kmake encounters a macro in the scriptfile which is not defined, kmake will ignore the macro and any text following the macro's closing bracket up to the first blank space.  Now suppose you do not have a resource file, you can launch kmake with:
+
+kmake mymacro=myprogram
+
+kmake will expand only the "mycamcro" macro and it will leave out the part that has the resouce "$(myresource).res"  so that the commandline kmake will launch looks like this:
+
+hla myprogram.hla
+
+If later, you add a resource file to your program, you can launch kmake with the resource macro:
+
+kmake mymacro=myprogram myresource=myprogram
+
+Now, the same line will expand to:
+
+hla myprogram.hla myprogram.res
+
+Macros that appear in the scriptfile, but are undefined will generate a kmake warning as a remainder (and has a use in debugging scriptfiles).
+Macros may be defined on the command line, in the makescript under the [MACROS] reserved header or they may be defined anywhere in the makescript via the internal commands:
+
+<< macro: macro=value >>
+<< macro: macro+=value >>
+<< macro: macro= >>
+
+See the section on internal commands for more information.
+The symbol '%' is a reserved macro used during implicit builds.
+
+</text>
+
+[Internal Commands & Directives]
+<text>
+	kMake has several directives and internal commands which can come in useful for writing more involved scripts.
+
+</text>
+
+[Transfer Control]
+<text>
+Syntax:
+#<section header>
+
+Jumps to the specified section and processes the commands there.  You may specify another #<section> in the target section and may be nested as deep as stack memory allows (this much more than you'll probably ever need).
+
+eg:
+[BUILD]
+#section1 ; execute section1
+#section2 ; upon return from section1, execute section2
+
+[section1]
+; this is the section called by #section1
+
+[section2]
+; this is the section called by #section2
+
+</text>
+
+[Test Dependencies]
+<text>
+@<target> <dependency1> [<dependency2> <dependency_n> ...]
+
+Specifes a buld target, folowed by a list of dependencies.  kmake will compare the filetimes of each dependency to the filetime of the target. If any dependency is newer, kmake will delete the target file, if any and then process the line immediately following the line where '@' appears.  After that, kmake will determine if the new target file was created.
+If the dependencies are older or the same time, kmake will skip over the line immediately following the line where '@' appears.  kmake compares the last modification time.
+If the target does not exist, kmake will launch the following line to build the target.  If the any specified dependency file is missing, kmake will stop execution with an internal error.
+
+Example:
+@myprogram.obj myprogram.asm
+
+Here, kmake will look for "myprogram.exe" and compare the filedate with  "myprogram.obj", if "myprogram.obj" is newer, kmake will execute the command on the next line.
+
+
+</text>
+
+[Macro Expansion]
+<text>
+$(<macro>)[.extension]
+
+Specifies a macro with optional extensions.  If the macro is defined, kmake will expand the macro before processing any commands.  If the macro is not defined, kmake will ignore all the characters after the closing bracket up to the first blank space it encounters.
+
+Eg:
+$(mymacro).exe
+
+Replaces "$(mymacro)" with the contents of a defined macro labeled "mymacro", or ignores the entire "$(mymacro).exe" if "mymacro" is not defined.
+
+</text>
+
+[Comments]
+<text>
+; <comment>
+	Specifies a comment line.  The ';' character may appear anywhere on the line.
+
+</text>
+
+[Creating Files]
+<text>
+
+Syntax:
+<< CreateFile: filename, [keep|delete] >>
+
+CreateFile command is used to create temporary or permanent files from sections defined elsewhere.  Files may be ascii or binary.
+The filename is both the name of the file that will be created and the section header in the makescript which contains the text for the file.
+
+By default, created files are temporary, make them permanent by using the "keep" flag.
+
+Example:
+<< CreateFile: myfile.txt, keep >>
+
+[myfile.txt]
+This is the text that will be saved to disk
+under the file name "myfile.txt"  This file
+will not be deleted.
+
+Limitations:
+This syntax does not allow you to use the '[' character in the text, also you may not create binary files.
+
+To include '[' character in the text of the file, use a special format text format.  The first line must contain "<text>" (without the quotes) and end the section with "</text>" (without the quotes)  These keywords must appear left-aligned.
+
+To create binary files, use the special keywords "<bin>" to start and "</bin>" to end the section (both without quotes).  Within this section, any combination of blank spaces, new lines and hexadecimal characters may be used (a-f, 0-9).  These are read in pairs of two and misalignment will cause an error.
+
+eg:
+[file.bin]
+<bin>
+	00	01 02
+	03 04 05
+</bin>
+
+This will create a file called "file.bin" that contains the binary characters specified in the <bin> </bin> block.
+
+</text>
+
+[DeleteFiles]
+<text>
+Syntax:
+
+<< DeleteFiles >>
+
+This command deletes all the temporary files that are not marked with the "keep" flag.  Note that this is done automatically at the completion of the makescript as well.
+
+</text>
+
+[Macros As Commands]
+<text>
+
+Syntax:
+<< macro: macro=value >>
+
+This command allows you to define a new macro anywhere in the makescript or replace an existing value of a macro with a new value.
+
+<< macro: macro+=value >>
+This allows you to concatenate text to the end of an existing macro.  If the macro does not exist, a new macro is created with the value.
+
+<< macro: macro= >>
+This allows for macro un-definition.
+
+
+</text>
+
+[WorkingDir]
+
+Syntax:
+<< WorkingDir [=] macro >>
+This allows you to define a macro that has the current working directory as its value.
+
+[Message Printing]
+<text>
+Syntax:
+<< error: errormessage >>
+Causes an error to display to standard output and halts parsing of makescript.
+
+Syntax:
+<< message: message to display >>
+Displays a message to standard output.  You may also use the shell 'echo' command for this, eg.
+
+echo message to display
+
+Macros may be used in the message and they will be shown as expanded.
+
+</text>
+
+[Foreach]
+<text>
+Syntax:
+<< foreach: macro >>
+	...
+<< endfor >>
+
+This pair of commands allows you to use an iterator to write a makescript with implicit building rules.  This requires the user to first declare an iterator macro in the form of: macro=value_1, value_2, value_3, ... , value_n
+The foreach command generates a macro with the symbol '%' and repeats the instructions between the foreach and endfor headers substituiting the next value in the iterator macro each time.
+
+Example:
+<< macro: iterator=program1, program2, program3 >>
+<< foreach: iterator >>
+	@$(%).obj $(%).hla
+	hla -c $(%)
+<< endfor >>
+
+In this example, kmake will build program1.obj, program2.obj and program3.obj.  Each iteration will replace the '%' macro with the next macro value.
+
+You may not declare foreach statements within other foreach statements (it can't be nested).
+
+</text>
+
+[Conditional Flow Control]
+<text>
+Syntax:
+<< if [!] macro[=value] >>
+<< elseif [!] macro[=value] >>
+<< else >>
+<< endif >>
+
+These four commands allow for flow-control conditional builds.  The not operator "!" may be used to test for false conditions, otherwise true conditions are tested for.  If only a macro is specified, kmake will determine if a macro is defined (containing any value), if a value is also specified, kmake will determine if the macro contains the specified value.
+
+Example of use:
+
+<< if buildmacro >>
+
+	cd examples
+	build.bat
+	cd ..
+
+<< elseif buildmacro = examples2 >>
+	
+	cd examples2
+	build.bat
+	cd ..
+
+<< else >>
+
+	echo buildmacro is not defined.
+
+<< endif >>
+
+Flow control statements may be nested and may contain other internal commands.
+
+
+</text>
+
+[Create Directory]
+<text>
+Creating directories are done through shell commands "md" and "mkdir".  This is shown here since "md" is recognized internally and checks if a directory of that name already exists, if so, the script continues without error.
+
+</text>
+
+[Example Script]
+<text>
+
+Example Makescript:
+
+	What follows is an example of a medium-project makescript.  Following that will be a brief description of how to use kmake to access the makescript and how kmake will be process the makescript.  We will assume that the makescript will be saved as "sample.kmk"
+
+==================================================================================
+
+[MACROS]
+debug=-Ddebug
+win=-w
+res=Sample
+
+[BUILD]
+#resource
+#lib
+#Sample.obj
+#functions.obj
+#link
+#clean
+
+[resource]
+@$(res).res $(res).rc
+hla -c -@ $(res).rc
+
+[lib]
+#makelib
+@SampleLib.lib SampleLib.obj Sample.hhf
+lib /out:Sample.lib /subsystem:windows SampleLib.obj
+
+[makelib]
+@Sample.lib SampleLib.hla
+hla -c -@ $(win) $(debug) SampleLib.hla
+
+[Sample.obj]
+@Sample.obj Sample.hla Sample.hhf
+hla -c -@ $(win) $(debug) Sample.hla
+
+[functions.obj]
+@functions.obj functions.hla Sample.hhf
+hla -c -@ $(win) $(debug) functions.hla
+
+[link]
+@Sample.exe Sample.obj functions.obj $(res).res Sample.lib
+link @Sample.link
+
+[clean]
+del *.asm
+del *.inc
+
+[CLEANALL]
+del *.asm
+del *.inc
+del *.obj
+del *.map
+del *.lib
+
+============================================================================
+
+To build the main project in this makescript, you can start kmake with this command line (remember that the file is saved as "sample.kmk"
+
+kmake sample
+
+-kmake will append ".kmk" to this and open sample.kmk for processing.
+
+-Next kmake looks for any macros in the [MACROS] section.  Here we find 3 macros.  kmake will expand these macros anywhere they appear in the make script.
+
+-Since no jump target is specified, kmake will begin excution at [BUILD].
+
+In the [BUILD] section, we find a series of jumps that will be processed in sequence.
+
+1.#resource > the script will transfer to the [resource] section.
+	- at the resource section, the macros will expand $(res) to Sample.
+	- kmake will look for Sample.res and compare it with Sample.rc
+	- If the Sample.rc is newer, kmake will delete sample.res and execute 	the command line:
+	hla -c sample.rc
+	- kmake will then check to see if Sample.res is created.
+	- If no build is needed, execution will transfer to the line below 
+	hla -c sample.rc
+	- In this case, it is the end of the section, so execution is returned to 	where the jump command was initiated.
+
+2.#lib > the script will transfer to the [lib] section.
+	- here, there is an immediate jump to [makelib], so execution will transfer 	to that section.
+	- kmake will build the lib the same way as the resource section.
+	- once done, execution will transfer back to [lib] and continue from there.
+
+NOTE: I did it this way to demonstrate that you may use multiple level jumps.  It would have been just as easy to keep al lib sections under one sectoin like so:
+
+[lib]
+@Sample.lib SampleLib.hla
+hla -c -@ $(win) $(debug) SampleLib.hla
+@SampleLib.lib SampleLib.obj Sample.hhf
+lib /out:Sample.lib /subsystem:windows SampleLib.obj
+
+3. kmake will continue jumping to each section and processing the commands there in a similar fashion.
+
+You may notice that the [CLEANALL] section is not jumped to anywhere in the source.  This is intentional.  You can access the [CLEANALL] section from the command line like so:
+
+kmake sample -jCLEANALL
+
+Similarily, you can jump to individual sections to build individual parts without running the entire script:
+
+kmake sample -jlib
+
+This will create sample.lib only.
+
+In this makescript, kmake will only build based on the file dependencies.  You can force kmake to ignore the dependencies and build everything:
+
+kmake sample -b
+
+If at any time, you decide that you want to build a release version, you can easily disable the $(debug) by editing sample.kmk and commenting out the debug macro.
+
+;debug=-Ddebug
+
+You can easily reactivate the debug later by deleting the semicolon (or specifying the debug macro on the commandline instead).
+
+============================================================================
+
+</text>
+

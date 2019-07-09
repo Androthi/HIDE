@@ -1,0 +1,163 @@
+unit data_unit;
+#includeonce	("HIDE.hhf")
+
+/*
+	all external symbols declared in  'externals.hhf'
+	are imported here wih the exception of procedures
+	which appear in their respective units.
+*/
+
+storage
+	align(4);
+	hout			:dword;		// handle for output dialog
+	houtedt			:dword;		// handle for output dialog edit window
+	hinst			:dword;		// instance handle
+	hwnd			:dword;		// main window handle
+	hcrtproj		:dword;		// handle for create project dialog
+	htab			:dword;		// tab window handle
+	hpaneltab		:dword;		// handle for side panel
+	htaboldproc		:dword;		// original window proc for tab window
+	htbr			:dword;		// toolbar handle
+	hlinefont		:dword;		// line font
+	hmainfont		:dword;		// main font
+	hitalic			:dword;		// italic font
+	hdialogfont		:dword;		// handle for font selection dialog
+	hfind			:dword;		// find dialog handle
+	htreeview		:dword;		// handle for treeview control
+	htree			:dword;		// handle for treeview window
+	hprop			:dword;		// handel for properties window
+	hmenu			:dword;		// menu handle
+	//hnotes			:dword; // depricated, change to scripts window in future
+	hnotesedt		:dword;		// notes edit window handle
+
+	// depricated, change to scripts window in future
+	//notes_win		:WINPOS;	// tracks position of undocked notes window
+
+	hideini			:tConfig;	// HIDE.ini configuration file in memory
+	hidesysini		:tConfig;	// hide_system.ini configuration file in memory
+	
+	configmain		:string;	// path for the main configuration hide\data\hide.ini
+	tempStr			:string;	// scratch string variable  -- I will eventuall change all instances of this into vars	
+	homepath		:string;	// path to HIDE home directory
+	tplpath			:string;	// path to template directory
+	workpath		:string;	// a string buffer for working paths, scratch path buffer  ** use with caution, should be depricated eventually
+	projectpath		:string;	// stores path of projects folder
+	strbuf			:string;	// scratch string buffer ** use with caution, do not expect contents to be preserved across funtion calls
+
+	settings		:EDITOPTS;	// main settings for HIDE
+	col				:RACOLOR;	// hilite color settings
+	usrcol			:dword[nUserColors];	// custom user colors
+	rafnt			:RAFONT;	// font info
+
+	rect			:hide.rect_t;
+	tci				:w.TC_ITEM;
+
+	findbuff		:byte[300];		// buffer for find dialog
+	replacebuf		:byte[300];		// buffer for replace dialog
+	CustColors		:dword[16];		// custom colors
+	pathbuf			:byte[300];		// keeps track of last directory visited
+	buffer			:byte[300];		// scratch buffer  ** use with caution, do not expect contents to be preserved across funtion calls
+
+
+	// handles for split procs and bars
+	hVSplitBar		:dword;
+	hHSplitBar		:dword;
+	hHsplitcursor	:dword;
+	hVsplitcursor	:dword;
+	
+	hsbr			:dword;		// status bar handle
+	Proc_OldVSplit	:dword;		// old proc for split bar
+	Proc_OldHSplit	:dword;		// old proc for split bar
+
+	autountitled	:boolean;	// if true, Untitled is saved and built into temp folder (non-project only)
+	mode			:byte;		// keeps track of current mode
+	align(4);
+
+
+static
+		
+	mainfont		:w.LOGFONT:=w.LOGFONT:[-13,0,0,0,400,0,0,0,0,3,2,1,49,strToBA("Courier New",w.LF_FACESIZE)];
+	dialogfont		:w.LOGFONT:=w.LOGFONT:[-11,0,0,0,400,0,0,0,0,3,2,1,47,strToBA("Verdana",w.LF_FACESIZE)];
+		
+	align(4);
+	fileList	:fList;
+	curnode		:pointer to fList.fnode;
+	jobList		:jList;
+	align(4);
+
+readonly
+	
+//========================================
+	zDebug		:zstring := "Debug";
+	zProject	:zstring := "Project";
+	zJobs		:zstring := "Jobs";
+	zFiles		:zstring := "Files";
+	zFolder		:zstring := "Folder";
+	zType		:zstring := "Type";
+	zGeneral	:zstring := "General";
+	zEnvironment:zstring := "Environment";
+	zSettings	:zstring := "Settings";
+	zThemes		:zstring := "Themes";
+	zSeperator	:zstring := "=====================================";
+	zRelease	:zstring := "Release";
+	zStandard	:zstring := "Standard";
+	zNotes		:zstring := "Notes";
+	zOutput		:zstring := "Output";
+	
+	
+	// as per enum id_types; must match correctly
+	id_strings	:zstring[ 20 ] := 
+	[
+		"main",
+		"type",
+		"static",
+		"readonly",
+		"val",
+		"var",
+		"const",
+		"storage",
+		"method",
+		"procedure",
+		"class",
+		"iterator",
+		"macro",
+		"label",
+		"bookmark",
+		"external",
+		"begin",
+		"end",
+		"record",
+		"endrecord"
+		
+	];
+	
+	// indexes into id_strings
+	propertyList :dword[12] :=
+	[
+		id_procedure,
+		id_bookmark,
+		id_static,
+		id_const,
+		id_storage,
+		id_readonly,
+		id_macro,
+		id_type,
+		id_var,
+		id_val,
+		id_label,
+		id_class
+	];
+	
+
+//========================================
+
+	RAEditClassName		:string := "RAEDIT";
+	RAHexedClassName	:string := "RAHEXEDIT";
+	RAHexedChildClassName	:string := "RAHEXEDITCHILD";
+
+//========================================
+
+	commaDelimcst	:cset; @nostorage;
+		cset { ',' };
+	
+end data_unit;

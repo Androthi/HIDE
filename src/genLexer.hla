@@ -1,0 +1,2034 @@
+//	genLexer.hla unit
+//	This file is machine generated using gen.exe
+//	Any changes made will be lost next time gen.exe
+//	is executed.
+
+unit genLexerUnit;
+
+	#includeonce ("genLexer.hhf")
+	#includeonce ("stdlib.hhf")
+	?@nodisplay := true;
+	?@noalignstack := true;
+
+#macro rwstr( str, start, len ):chrIndex, chrLen, chrVal;
+	?chrIndex := start;
+	?chrLen := 0;
+	?chrVal := 0;
+	#while( chrLen < len )
+
+		?chrVal := chrVal +	uns8( char( @substr( str, chrIndex, 1 ))) << (chrLen * 8 );
+		?chrLen := chrLen + 1;
+		?chrIndex := chrIndex + 1;
+
+	#endwhile
+	chrVal
+#endmacro;
+
+static
+	align(4);
+	hashValue	:dword;
+	genLine		:uns32;
+	genNumber	:dword; @nostorage;
+	genReal		:real64;
+	genID		:str.strvar (512);
+	genlcID		:str.strvar (512);
+	genEOF		:dword;
+	genGoodID		:cset; @nostorage; cset  {'0'..'9', 'A'..'Z', 'a'..'z', '_', '.' }, {};
+	genGoodNumDelimiters	:cset; @nostorage; cset -{'0'..'9', 'A'..'Z', 'a'..'z' }, -{};
+
+
+	lexJmpTbl: dword[256] := [
+		&x, &x, &x, &x, &x, &x, &x, &x, &x, &ws, &IsLF, &x, &x, &IsCR, &x, &x,
+		&x, &x, &x, &x, &x, &x, &x, &x,	&x, &x, &x, &x, &x, &x, &x, &x,
+		&ws, &Exclaim, &Quote, &Pound, &Dollar,	&Percent, &Amper, &Apost, &LParen,
+		&RParen, &Asterisk, &Plus, &Comma, &Minus, &Period, &Slash,
+		//<digits>
+		&Alpha, &Alpha, &Alpha, &Alpha, &Alpha, &Alpha, &Alpha, &Alpha, &Alpha,	&Alpha,
+		&Colon, &Semicolon, &Less, &Equal, &Greater, &Question, &Atsign,
+ 		&Alpha, &Alpha, &Alpha, &Alpha, &Alpha, &Alpha, &Alpha, &Alpha, &Alpha, &Alpha, &Alpha, &Alpha, &Alpha, &Alpha, &Alpha, &Alpha, &Alpha, &Alpha, &Alpha, &Alpha, &Alpha, &Alpha, &Alpha,	&Alpha, &Alpha, &Alpha,
+		&LBracket, &BackSlash, &RBracket, &Caret, &Underscore,
+		&GraveAccent, &Alpha, &Alpha, &Alpha, &Alpha, &Alpha, &Alpha, &Alpha, &Alpha, &Alpha, &Alpha, &Alpha, &Alpha, &Alpha, &Alpha, &Alpha, &Alpha, &Alpha, &Alpha, &Alpha, &Alpha, &Alpha, &Alpha, &Alpha, &Alpha, &Alpha, &Alpha,
+		&LBrace, &VertBar, &RBrace, &Tilde, &Del,
+		&x, &x, &x, &x, &x, &x, &x, &x,	&x, &x, &x, &x, &x, &x, &x, &x,	&x, &x, &x, &x, &x, &x, &x, &x,	&x, &x, &x, &x, &x, &x, &x, &x,	&x, &x, &x, &x, &x, &x, &x, &x,	&x, &x, &x, &x, &x, &x, &x, &x,	&x, &x, &x, &x, &x, &x, &x, &x,	&x, &x, &x, &x, &x, &x, &x, &x,	&x, &x, &x, &x, &x, &x, &x, &x,	&x, &x, &x, &x, &x, &x, &x, &x,	&x, &x, &x, &x, &x, &x, &x, &x,	&x, &x, &x, &x, &x, &x, &x, &x,	&x, &x, &x, &x, &x, &x, &x, &x,	&x, &x, &x, &x, &x, &x, &x, &x,	&x, &x, &x, &x, &x, &x, &x, &x,	&x, &x, &x, &x, &x, &x, &x, &x ];
+
+
+procedure genExtract; @noframe;
+begin genExtract;
+
+	push( eax ); push( ebx ); push( ecx ); push( edi );
+	mov( genlcID, ecx );
+	mov( genID, ebx );
+	while( edi < esi ) do
+		mov( [edi], al );
+		mov( al, [ ebx ] );
+		if( al <= 'Z' ) then
+			or( $20, al );
+		endif;
+		mov( al, [ ecx ] );
+		inc( edi );
+		inc( ecx );
+		inc( ebx );
+	endwhile;
+	mov( 0, (type byte [ebx]));
+	mov( 0, (type byte [ecx]));
+	mov( genlcID, eax );
+	mov( genID, ebx );
+	sub( eax, ecx );
+	mov( ecx, (type str.strRec [eax]).length );
+	mov( ecx, (type str.strRec [ebx]).length );
+	pop( edi ); pop( ecx ); pop( ebx ); pop( eax );
+	ret();
+end genExtract;
+
+procedure genSkipWS; @noframe;
+begin genSkipWS;
+
+	again:
+		cmp( esi, genEOF ); jae _eof;
+		mov( [esi], al );
+		cmp( al, ' '); je advance;
+		cmp( al, $09); je advance;
+		cmp( al, $0D); je advanceln2;
+		cmp( al, $0A); je advanceln1;
+		or( 1, eax ); ret();
+
+	advance: inc( esi ); jmp again;
+
+	advanceln1: inc( esi ); inc( genLine ); jmp again;
+
+	advanceln2: add( 2, esi ); inc( genLine ); jmp again;
+
+	_eof: mov( gen_error, eax ); ret();
+end genSkipWS;
+
+procedure genLex( Cursor:dword in esi );  @noframe;
+begin genLex;
+	LexAgain:
+		xor (ebx, ebx);
+		mov( esi, edi );
+		cmp( esi, genEOF );
+		jae UnexpectedEOF;
+		movzx( (type char [esi]), eax );
+		jmp( lexJmpTbl[ eax*4 ] );
+
+	UnexpectedEOF:
+		mov (gen_eof, eax);
+		ret();
+
+	BackSlash:: inc (esi); mov (gen_backslash, eax); ret();
+	GraveAccent:: inc (esi); mov (gen_grave, eax); ret();
+	Del:: inc (esi); mov (gen_del, eax); ret();
+	x::	mov (gen_error, eax); ret();
+
+	ws::
+		inc( esi ); cmp( esi, genEOF ); jae UnexpectedEOF;
+		mov( [esi], al ); cmp( al, ' ' ); je ws;
+		cmp( al, stdio.tab ); je ws;
+		jmp LexAgain;
+
+	IsCR::
+		inc( esi ); cmp( esi, genEOF ); jae UnexpectedEOF;
+		mov( [esi], al ); cmp( al, stdio.lf ); je IsLF;
+		dec( esi );
+	IsLF::
+		inc( genLine );
+		inc( esi );
+		jmp LexAgain;
+
+	Question::
+		inc( esi ); mov (gen_question, eax); ret();
+	Minus::
+		inc( esi ); mov (gen_minus, eax); ret();
+	Plus::
+		inc( esi ); mov (gen_plus, eax); ret();
+	Asterisk::
+		inc( esi ); mov (gen_asterisk, eax); ret();
+	LParen::
+		inc (esi); mov (gen_lparen, eax); ret();
+	Semicolon::
+		inc (esi); mov (gen_semicolon, eax); ret();
+	LBracket::
+		inc (esi); mov (gen_lbracket, eax); ret();
+	RBracket::
+		inc (esi); mov (gen_rbracket, eax); ret();
+	LBrace::
+		inc (esi); mov (gen_lbrace, eax); ret();
+	Comma::
+		inc (esi); mov (gen_comma, eax); ret();
+	Dollar::
+		inc (esi); mov (gen_dollar, eax); ret();
+	Percent::
+		inc (esi); mov (gen_percent, eax); ret();
+	Slash::
+	inc (esi);
+	if ( esi < genEOF) then
+		if ((type byte[esi]) = '/') then
+
+			// check for sourcemark
+			if( esi < genEOF && (type byte [esi+1]) = 'b') then
+				if( (type byte[esi+2]) = 'm') then
+					if( (type byte[esi+3]) = '=') then
+						add( 4, esi );
+						mov( gen_bookmark, eax );
+						ret();
+					endif;
+				endif;
+			endif;
+
+			// skip line comment
+			while ( esi < genEOF && (type byte[esi]) <> $a) do
+				inc (esi);
+			endwhile;
+			inc (esi);
+			inc (genLine);
+
+		elseif ((type byte[esi]) = '*') then
+
+			// skip block comment
+			inc (esi);
+			while (esi < genEOF) do
+				mov ([esi], al);
+				if (al = $a) then
+					inc (esi);
+					inc (genLine);
+				elseif (al = '*') then
+					inc (esi);
+					if ( (type byte[esi]) = '/') then
+						inc (esi);
+						break;
+					endif;
+				else
+					inc (esi);
+				endif;
+			endwhile;
+		endif;
+	endif;
+	jmp LexAgain;
+
+		VertBar::
+		inc( esi ); mov (gen_vertbar, eax); ret();
+	Caret::
+		inc( esi ); mov (gen_caret, eax); ret();
+	Amper::
+		inc( esi ); mov (gen_amper, eax); ret();
+	Colon::
+		inc( esi ); mov (gen_colon, eax); ret();
+	Period::
+		inc( esi ); mov (gen_period, eax); ret();
+	Equal::
+		inc( esi ); mov (gen_equal, eax); ret();
+	Exclaim::
+		inc( esi ); mov (gen_exclaim, eax); ret();
+	Quote::
+	inc (esi);
+	mov (esi, edi);
+	// scan to find next quote
+	// compensate for double-quote internal quotes
+	ScanQuoteChars:
+		cmp (esi, genEOF);
+		jae _donequotescan;
+		mov( [esi], al );
+		if (al = '"') then
+			if ( (type byte [esi+1]) = '"') then
+				// double quote = internal quote.  skip
+				add (2, esi);
+				jmp ScanQuoteChars;
+			else
+				// we're good
+				// edi = start of quote, esi = end of quote
+				mov (esi, eax);
+				sub (edi, eax);
+				if (eax > 80) then
+					// don't grab quotes that are too large or
+					// it may cause buffer overflow
+					push (esi);
+					mov (edi, esi);
+					add (80, esi);
+					genExtract();
+					pop (esi);
+				else
+					genExtract();
+				endif;
+				inc (esi);
+				mov (gen_id, eax);
+			endif;
+		else
+			inc (esi);
+			jmp ScanQuoteChars;
+		endif;
+		_donequotescan:
+		ret();
+
+		Apost::
+		inc (esi);
+		if ( esi < genEOF && (type byte[esi+1]) = '''') then
+			add (2, esi);
+		endif;
+		jmp LexAgain;
+
+		Greater::
+		inc( esi ); mov (gen_greater, eax); ret();
+	Less::
+		inc( esi ); mov (gen_less, eax); ret();
+	RBrace::
+		inc( esi ); mov (gen_rbrace, eax); ret();
+	RParen::
+		inc( esi ); mov (gen_rparen, eax); ret();
+	Underscore::
+		jmp Alpha;
+		Tilde::
+		inc( esi ); mov (gen_tilde, eax); ret();
+	Alpha::
+		genCheckRW( esi );
+		if (ebx = genTkn_tc) then
+			genExtract();
+			mov (gen_id, eax);
+		endif;
+		ret();
+
+	Digit::
+		ret();
+	Atsign::
+		inc (esi); mov (gen_atsign, eax); ret();
+	Pound::
+		inc( esi ); mov (gen_pound, eax); ret();
+
+end genLex;
+procedure genCheckRW( src:dword in esi ); @noframe;
+
+static(4)
+rwJmpTbl: dword[ 13, 256 ]; @nostorage;
+jmpTbl_len0: dword[ 256 ] := 256 dup [&idNotRW];
+
+
+
+jmpTbl_len00828D0E: dword[256] := 
+[
+
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW
+];
+
+
+jmpTbl_len008297FD: dword[256] := 
+[
+
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW
+];
+
+
+jmpTbl_len008236CC: dword[256] := 
+[
+
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &Len00000003_Hash0000002D_00000000, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &Len00000003_Hash00000069_00000000, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &Len00000003_Hash00000077_00000000, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW
+];
+
+
+jmpTbl_len00824209: dword[256] := 
+[
+
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &Len00000004_Hash000000B6_00000000, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &Len00000004_Hash000000C1_00000000, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &Len00000004_Hash000000F5_00000000, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW
+];
+
+
+jmpTbl_len00824D46: dword[256] := 
+[
+
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&Len00000005_Hash0000002C_00000000, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &Len00000005_Hash00000031_00000000, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &Len00000005_Hash00000045_00000000, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &Len00000005_Hash00000066_00000000, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &Len00000005_Hash000000DB_00000000, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &Len00000005_Hash000000E2_00000000, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW
+];
+
+
+jmpTbl_len0081C889: dword[256] := 
+[
+
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&Len00000006_Hash00000034_00000000, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&Len00000006_Hash00000048_00000000, &idNotRW, &idNotRW, &Len00000006_Hash0000004B_00000000, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW
+];
+
+
+jmpTbl_len0081D3C6: dword[256] := 
+[
+
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &Len00000007_Hash0000001B_00000000, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&Len00000007_Hash000000B8_00000000, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &Len00000007_Hash000000ED_00000000, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &Len00000007_Hash000000FB_00000000, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW
+];
+
+
+jmpTbl_len0081DF1D: dword[256] := 
+[
+
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &Len00000008_Hash00000041_00000000, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &Len00000008_Hash0000005E_00000000, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&Len00000008_Hash00000074_00000000, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&Len00000008_Hash000000B4_00000000, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&Len00000008_Hash000000C0_00000000, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &Len00000008_Hash000000D2_00000000, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW
+];
+
+
+jmpTbl_len0081EAA8: dword[256] := 
+[
+
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &Len00000009_Hash00000075_00000000, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &Len00000009_Hash000000D5_00000000, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW
+];
+
+
+jmpTbl_len0081F5CB: dword[256] := 
+[
+
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW
+];
+
+
+jmpTbl_len008200BA: dword[256] := 
+[
+
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &Len0000000B_Hash000000E3_00000000, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW
+];
+
+
+jmpTbl_len00820BC3: dword[256] := 
+[
+
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW, 
+	&idNotRW, &idNotRW, &idNotRW, &idNotRW
+];
+
+
+	LengthJmpTbl:dword[13] := [
+		&IsAnID, &len1, &len2, &len3, &len4, &len5, &len6,
+		&len7, &len8, &len9, &len10, &len11, &len12 ];
+begin genCheckRW;
+	push( ecx ); push( edx ); push( esi );
+	mov( esi, ecx );
+	xor( eax, eax ); xor( ebx, ebx );
+	mov( [esi], al );
+	ScanChars:
+		shl( 1, ebx );
+		xor( al, bl );
+		xor( bh, bl );
+		inc( esi ); cmp( esi, genEOF ); ja LexemeDone;
+		mov( [esi], al );
+		bt( eax, genGoodID ); jc ScanChars;
+	LexemeDone:
+		mov( ebx, hashValue );
+		neg( ecx );
+		add( esi, ecx );
+		cmp( ecx, 12 ); ja IsAnID;
+		xor( edi, edi );
+		mov( cl, bh );
+		mov( bx, di );
+		jmp( LengthJmpTbl[ ecx*4 ] );
+
+		len1:
+			mov ([esi-1], al);
+			or ($20, al);
+			jmp (rwJmpTbl [edi*4]);
+		len2:
+			mov( [esi-2], ax );
+			or( $2020, ax );
+			jmp( rwJmpTbl[ edi*4 ] );
+		len3:
+			mov( [esi-3], ax );
+			mov( [esi-1], bl );
+			or( $2020, ax );
+			or( $20, bl );
+			jmp( rwJmpTbl[ edi*4 ] );
+		len4:
+			mov( [esi-4], eax );
+			or( $20202020, eax );
+			jmp( rwJmpTbl[ edi*4 ] );
+		len5:
+			mov( [esi-5], eax );
+			mov( [esi-1], bl );
+			or( $20202020, eax );
+			or( $20, bl );
+			jmp( rwJmpTbl[ edi*4 ] );
+		len6:
+			mov( [esi-6], eax );
+			mov( [esi-2], bx );
+			or( $20202020, eax );
+			or( $2020, bx );
+			jmp( rwJmpTbl[ edi*4 ] );
+		len7:
+			mov( [esi-7], eax );
+			mov( [esi-3], bx );
+			mov( [esi-1], cl );
+			or( $20202020, eax );
+			or( $2020, bx );
+			or( $20, cl );
+			jmp( rwJmpTbl[ edi*4 ] );
+		len8:
+			mov( [esi-8], eax );
+			mov( [esi-4], ebx );
+			or( $20202020, eax );
+			or( $20202020, ebx );
+			jmp( rwJmpTbl[ edi*4 ] );
+		len9:
+			mov( [esi-9], eax );
+			mov( [esi-5], ebx );
+			mov( [esi-1], cl );
+			or( $20202020, eax );
+			or( $20202020, ebx );
+			or( $20, cl );
+			jmp( rwJmpTbl[ edi*4 ] );
+		len10:
+			mov( [esi-10], eax );
+			mov( [esi-6], ebx );
+			mov( [esi-2], cx );
+			or( $20202020, eax );
+			or( $20202020, ebx );
+			or( $2020, cx );
+			jmp( rwJmpTbl[ edi*4 ] );
+		len11:
+			mov( [esi-11], eax );
+			mov( [esi-7], ebx );
+			mov( [esi-3], cx );
+			mov( [esi-1], dl );
+			or( $20202020, eax );
+			or( $20202020, ebx );
+			or( $2020, cx );
+			or( $20, dl );
+			jmp( rwJmpTbl[ edi*4 ] );
+		len12:
+			mov( [esi-12], eax );
+			mov( [esi-8], ebx );
+			mov( [esi-4], ecx );
+			or( $20202020, eax );
+			or( $20202020, ebx );
+			or( $20202020, ecx );
+			jmp( rwJmpTbl[ edi*4 ] );
+
+Len00000003_Hash0000002D_00000000:
+	cmp( ax, rwstr( "end", 0, 2 ));
+	jne IsAnID;
+	cmp( bl, rwstr( "end", 2, 1 ));
+	jne IsAnID;
+	mov( tkn_end, eax );
+	mov( hla_tc, ebx );
+	jmp rwDone;
+
+Len00000003_Hash00000069_00000000:
+	cmp( ax, rwstr( "var", 0, 2 ));
+	jne IsAnID;
+	cmp( bl, rwstr( "var", 2, 1 ));
+	jne IsAnID;
+	mov( tkn_var, eax );
+	mov( hla_tc, ebx );
+	jmp rwDone;
+
+Len00000003_Hash00000077_00000000:
+	cmp( ax, rwstr( "val", 0, 2 ));
+	jne IsAnID;
+	cmp( bl, rwstr( "val", 2, 1 ));
+	jne IsAnID;
+	mov( tkn_val, eax );
+	mov( hla_tc, ebx );
+	jmp rwDone;
+
+Len00000004_Hash000000B6_00000000:
+	cmp( eax, rwstr( "unit", 0, 4 ));
+	jne IsAnID;
+	mov( tkn_unit, eax );
+	mov( hla_tc, ebx );
+	jmp rwDone;
+
+Len00000004_Hash000000C1_00000000:
+	cmp( eax, rwstr( "type", 0, 4 ));
+	jne IsAnID;
+	mov( tkn_type, eax );
+	mov( hla_tc, ebx );
+	jmp rwDone;
+
+Len00000004_Hash000000F5_00000000:
+	cmp( eax, rwstr( "proc", 0, 4 ));
+	jne IsAnID;
+	mov( tkn_proc, eax );
+	mov( hla_tc, ebx );
+	jmp rwDone;
+
+Len00000005_Hash0000002C_00000000:
+	cmp( eax, rwstr( "begin", 0, 4 ));
+	jne IsAnID;
+	cmp( bl, rwstr( "begin", 4, 1 ));
+	jne IsAnID;
+	mov( tkn_begin, eax );
+	mov( hla_tc, ebx );
+	jmp rwDone;
+
+Len00000005_Hash00000031_00000000:
+	cmp( eax, rwstr( "union", 0, 4 ));
+	jne IsAnID;
+	cmp( bl, rwstr( "union", 4, 1 ));
+	jne IsAnID;
+	mov( tkn_union, eax );
+	mov( hla_tc, ebx );
+	jmp rwDone;
+
+Len00000005_Hash00000045_00000000:
+	cmp( eax, rwstr( "class", 0, 4 ));
+	jne IsAnID;
+	cmp( bl, rwstr( "class", 4, 1 ));
+	jne IsAnID;
+	mov( tkn_class, eax );
+	mov( hla_tc, ebx );
+	jmp rwDone;
+
+Len00000005_Hash00000066_00000000:
+	cmp( eax, rwstr( "const", 0, 4 ));
+	jne IsAnID;
+	cmp( bl, rwstr( "const", 4, 1 ));
+	jne IsAnID;
+	mov( tkn_const, eax );
+	mov( hla_tc, ebx );
+	jmp rwDone;
+
+Len00000005_Hash000000DB_00000000:
+	cmp( eax, rwstr( "macro", 0, 4 ));
+	jne IsAnID;
+	cmp( bl, rwstr( "macro", 4, 1 ));
+	jne IsAnID;
+	mov( tkn_macro, eax );
+	mov( hla_tc, ebx );
+	jmp rwDone;
+
+Len00000005_Hash000000E2_00000000:
+	cmp( eax, rwstr( "label", 0, 4 ));
+	jne IsAnID;
+	cmp( bl, rwstr( "label", 4, 1 ));
+	jne IsAnID;
+	mov( tkn_label, eax );
+	mov( hla_tc, ebx );
+	jmp rwDone;
+
+Len00000006_Hash00000034_00000000:
+	cmp( eax, rwstr( "record", 0, 4 ));
+	jne IsAnID;
+	cmp( bx, rwstr( "record", 4, 2 ));
+	jne IsAnID;
+	mov( tkn_record, eax );
+	mov( hla_tc, ebx );
+	jmp rwDone;
+
+Len00000006_Hash00000048_00000000:
+	cmp( eax, rwstr( "static", 0, 4 ));
+	jne IsAnID;
+	cmp( bx, rwstr( "static", 4, 2 ));
+	jne IsAnID;
+	mov( tkn_static, eax );
+	mov( hla_tc, ebx );
+	jmp rwDone;
+
+Len00000006_Hash0000004B_00000000:
+	cmp( eax, rwstr( "method", 0, 4 ));
+	jne IsAnID;
+	cmp( bx, rwstr( "method", 4, 2 ));
+	jne IsAnID;
+	mov( tkn_method, eax );
+	mov( hla_tc, ebx );
+	jmp rwDone;
+
+Len00000007_Hash0000001B_00000000:
+	cmp( eax, rwstr( "storage", 0, 4 ));
+	jne IsAnID;
+	cmp( bx, rwstr( "storage", 4, 2 ));
+	jne IsAnID;
+	cmp( cl, rwstr( "storage", 6, 1 ));
+	jne IsAnID;
+	mov( tkn_storage, eax );
+	mov( hla_tc, ebx );
+	jmp rwDone;
+
+Len00000007_Hash000000B8_00000000:
+	cmp( eax, rwstr( "include", 0, 4 ));
+	jne IsAnID;
+	cmp( bx, rwstr( "include", 4, 2 ));
+	jne IsAnID;
+	cmp( cl, rwstr( "include", 6, 1 ));
+	jne IsAnID;
+	mov( tkn_include, eax );
+	mov( hla_tc, ebx );
+	jmp rwDone;
+
+Len00000007_Hash000000ED_00000000:
+	cmp( eax, rwstr( "forward", 0, 4 ));
+	jne IsAnID;
+	cmp( bx, rwstr( "forward", 4, 2 ));
+	jne IsAnID;
+	cmp( cl, rwstr( "forward", 6, 1 ));
+	jne IsAnID;
+	mov( tkn_forward, eax );
+	mov( hla_tc, ebx );
+	jmp rwDone;
+
+Len00000007_Hash000000FB_00000000:
+	cmp( eax, rwstr( "program", 0, 4 ));
+	jne IsAnID;
+	cmp( bx, rwstr( "program", 4, 2 ));
+	jne IsAnID;
+	cmp( cl, rwstr( "program", 6, 1 ));
+	jne IsAnID;
+	mov( tkn_program, eax );
+	mov( hla_tc, ebx );
+	jmp rwDone;
+
+Len00000008_Hash00000041_00000000:
+	cmp( eax, rwstr( "readonly", 0, 4 ));
+	jne IsAnID;
+	cmp( ebx, rwstr( "readonly", 4, 4 ));
+	jne IsAnID;
+	mov( tkn_readonly, eax );
+	mov( hla_tc, ebx );
+	jmp rwDone;
+
+Len00000008_Hash0000005E_00000000:
+	cmp( eax, rwstr( "endmacro", 0, 4 ));
+	jne IsAnID;
+	cmp( ebx, rwstr( "endmacro", 4, 4 ));
+	jne IsAnID;
+	mov( tkn_endmacro, eax );
+	mov( hla_tc, ebx );
+	jmp rwDone;
+
+Len00000008_Hash00000074_00000000:
+	cmp( eax, rwstr( "iterator", 0, 4 ));
+	jne IsAnID;
+	cmp( ebx, rwstr( "iterator", 4, 4 ));
+	jne IsAnID;
+	mov( tkn_iterator, eax );
+	mov( hla_tc, ebx );
+	jmp rwDone;
+
+Len00000008_Hash000000B4_00000000:
+	cmp( eax, rwstr( "endunion", 0, 4 ));
+	jne IsAnID;
+	cmp( ebx, rwstr( "endunion", 4, 4 ));
+	jne IsAnID;
+	mov( tkn_endunion, eax );
+	mov( hla_tc, ebx );
+	jmp rwDone;
+
+Len00000008_Hash000000C0_00000000:
+	cmp( eax, rwstr( "endclass", 0, 4 ));
+	jne IsAnID;
+	cmp( ebx, rwstr( "endclass", 4, 4 ));
+	jne IsAnID;
+	mov( tkn_endclass, eax );
+	mov( hla_tc, ebx );
+	jmp rwDone;
+
+Len00000008_Hash000000D2_00000000:
+	cmp( eax, rwstr( "external", 0, 4 ));
+	jne IsAnID;
+	cmp( ebx, rwstr( "external", 4, 4 ));
+	jne IsAnID;
+	mov( tkn_external, eax );
+	mov( hla_tc, ebx );
+	jmp rwDone;
+
+Len00000009_Hash00000075_00000000:
+	cmp( eax, rwstr( "endrecord", 0, 4 ));
+	jne IsAnID;
+	cmp( ebx, rwstr( "endrecord", 4, 4 ));
+	jne IsAnID;
+	cmp( cl, rwstr( "endrecord", 8, 1 ));
+	jne IsAnID;
+	mov( tkn_endrecord, eax );
+	mov( hla_tc, ebx );
+	jmp rwDone;
+
+Len00000009_Hash000000D5_00000000:
+	cmp( eax, rwstr( "procedure", 0, 4 ));
+	jne IsAnID;
+	cmp( ebx, rwstr( "procedure", 4, 4 ));
+	jne IsAnID;
+	cmp( cl, rwstr( "procedure", 8, 1 ));
+	jne IsAnID;
+	mov( tkn_procedure, eax );
+	mov( hla_tc, ebx );
+	jmp rwDone;
+
+Len0000000B_Hash000000E3_00000000:
+	cmp( eax, rwstr( "includeonce", 0, 4 ));
+	jne IsAnID;
+	cmp( ebx, rwstr( "includeonce", 4, 4 ));
+	jne IsAnID;
+	cmp( cx, rwstr( "includeonce", 8, 2 ));
+	jne IsAnID;
+	cmp( dl, rwstr( "includeonce", 10, 1 ));
+	jne IsAnID;
+	mov( tkn_includeonce, eax );
+	mov( hla_tc, ebx );
+	jmp rwDone;
+
+
+
+// End of gen reserved word scanner hash table.
+	IsAnID:	idNotRW:
+		mov( genTkn_tc, ebx );
+	rwDone:
+	pop( edi );	pop( edx );	pop( ecx );
+	ret();
+
+end genCheckRW;
+
+
+
+
+procedure checkKW ( src:string); @nodisplay;
+	// on exit:
+	//	EAX = 0 - no matches found in tree
+	// 	EAX = token of matched string
+	static(4)
+	LengthJmpTbl:dword[17] :=[
+		&BadFuncID,	&FID1, &FID2, &FID3, &FID4, &FID5, &FID6, &FID7,
+		&FID8, &FID9, &FID10, &FID11, &FID12, &FID13, &FID14, &FID15,
+		&FID16	]; 
+	endstatic;
+begin checkKW;
+	push (ebx); push( ecx ); push( edx ); push( esi ); push (edi); 
+	mov (src, esi);
+	mov( esi, ecx );
+	xor( eax, eax );
+	mov (esi, edi);
+	dec (esi);
+	ScanChars:
+		inc( esi );
+		mov ([esi], al);
+		test (al, al); jz LexemeDone;
+		bt( eax, genGoodID ); jc ScanChars;
+	LexemeDone:
+		neg( ecx ); add( esi, ecx ); cmp( ecx, 16 ); ja BadFuncID;
+		jmp( LengthJmpTbl[ ecx*4 ] );
+
+	FID1:	mov( [edi], al ); or( $20, al ); jmp cmpfuncs_00000001_00000000;
+	FID2:	mov( [edi], ah ); mov( [edi+1], al ); or( $2020, ax ); jmp cmpfuncs_00000002_00000000;
+	FID3:	xor( eax, eax ); mov( [edi], ah ); shl( 8, eax ); mov( [edi+1], ah ); mov( [edi+2], al ); or( $202020, eax ); jmp cmpfuncs_00000003_00000000;
+	FID4:	mov( [edi], eax ); bswap( eax ); or( $20202020, eax ); jmp cmpfuncs_00000004_00000000;
+	FID5:	mov( [edi], eax ); bswap( eax ); mov( [edi+4], bl ); or( $20202020, eax ); or( $20, bl ); jmp cmpfuncs_00000005_00000000;
+	FID6:	mov( [edi], eax ); bswap( eax ); mov( [edi+4], bh ); mov( [edi+5], bl ); or( $20202020, eax ); or( $2020, bx ); jmp cmpfuncs_00000006_00000000;
+	FID7:	mov( [edi], eax ); bswap( eax ); xor( ebx, ebx ); mov( [edi+4], bh ); shl( 8, ebx ); mov( [edi+5], bh ); mov( [edi+6], bl ); or( $20202020, eax ); or( $202020, ebx ); jmp cmpfuncs_00000007_00000000;
+	FID8:	mov( [edi], eax ); bswap( eax ); mov( [edi+4], ebx ); bswap( ebx ); or( $20202020, eax ); or( $20202020, ebx ); jmp cmpfuncs_00000008_00000000;
+	FID9:	mov( [edi], eax ); bswap( eax ); mov( [edi+4], ebx ); bswap( ebx ); mov( [edi+8], cl ); or( $20202020, eax ); or( $20202020, ebx ); or( $20, cl ); jmp cmpfuncs_00000009_00000000;
+	FID10:	mov( [edi], eax ); bswap( eax ); mov( [edi+4], ebx ); bswap( ebx ); mov( [edi+8], ch ); mov( [edi+9], cl ); or( $20202020, eax ); or( $20202020, ebx ); or( $2020, cx ); jmp cmpfuncs_0000000A_00000000;
+	FID11:	mov( [edi], eax ); bswap( eax ); mov( [edi+4], ebx ); bswap( ebx ); xor( ecx, ecx ); mov( [edi+8], ch ); shl( 8, ecx ); mov( [edi+9], ch ); mov( [edi+10], cl ); or( $20202020, eax ); or( $20202020, ebx ); or( $202020, ecx ); jmp cmpfuncs_0000000B_00000000;
+	FID12:	mov( [edi], eax ); bswap( eax ); mov( [edi+4], ebx ); bswap( ebx ); mov( [edi+8], ecx ); bswap( ecx ); or( $20202020, eax ); or( $20202020, ebx ); or( $20202020, ecx ); jmp cmpfuncs_0000000C_00000000;
+	FID13:	mov( [edi], eax ); bswap( eax ); mov( [edi+4], ebx ); bswap( ebx ); mov( [edi+8], ecx ); bswap( ecx ); mov( [edi+12], dl ); or( $20202020, eax ); or( $20202020, ebx ); or( $20202020, ecx ); or( $20, dl ); jmp cmpfuncs_0000000D_00000000;
+	FID14:	mov( [edi], eax ); bswap( eax ); mov( [edi+4], ebx ); bswap( ebx ); mov( [edi+8], ecx ); bswap( ecx ); mov( [edi+12], dh ); mov( [edi+13], dl ); or( $20202020, eax ); or( $20202020, ebx ); or( $20202020, ecx ); or( $2020, dx ); jmp cmpfuncs_0000000E_00000000;
+	FID15:	mov( [edi], eax ); bswap( eax ); mov( [edi+4], ebx ); bswap( ebx ); mov( [edi+8], ecx ); bswap( ecx ); xor( edx, edx ); mov( [edi+12], dh ); shl( 8, edx ); mov( [edi+13], dh ); mov( [edi+14], dl ); or( $20202020, eax ); or( $20202020, ebx ); or( $20202020, ecx ); or( $202020, edx ); jmp cmpfuncs_0000000F_00000000;
+	FID16:	mov( [edi], eax ); bswap( eax ); mov( [edi+4], ebx ); bswap( ebx ); mov( [edi+8], ecx ); bswap( ecx ); mov( [edi+12], edx ); bswap( edx ); or( $20202020, eax ); or( $20202020, ebx ); or( $20202020, ecx ); or( $20202020, edx ); jmp cmpfuncs_00000010_00000000;
+
+	BadFuncID:
+		xor (eax, eax); jmp funcsDone;
+cmpfuncs_00000002_00000000:
+	cmp( ax, funcstr( "if", 0, 00000002) );
+	jne BadFuncID;
+	mov( kw_if, eax );
+	jmp funcsDone;
+
+cmpfuncs_00000003_00000000:
+	cmp( eax, funcstr( "try", 0, 00000003) );
+	jb cmpfuncs_00000003_00000001;
+	ja cmpfuncs_00000003_00000003;
+	mov( kw_try, eax );
+	jmp funcsDone;
+
+cmpfuncs_00000003_00000001:
+	cmp( eax, funcstr( "for", 0, 00000003) );
+	jb cmpfuncs_00000003_00000002;
+	ja BadFuncID;
+	mov( kw_for, eax );
+	jmp funcsDone;
+
+cmpfuncs_00000003_00000002:
+	cmp( eax, funcstr( "end", 0, 00000003) );
+	jne BadFuncID;
+	mov( kw_end, eax );
+	jmp funcsDone;
+
+cmpfuncs_00000003_00000003:
+	cmp( eax, funcstr( "var", 0, 00000003) );
+	jb cmpfuncs_00000003_00000004;
+	ja BadFuncID;
+	mov( kw_var, eax );
+	jmp funcsDone;
+
+cmpfuncs_00000003_00000004:
+	cmp( eax, funcstr( "val", 0, 00000003) );
+	jne BadFuncID;
+	mov( kw_val, eax );
+	jmp funcsDone;
+
+cmpfuncs_00000004_00000000:
+	cmp( eax, funcstr( "type", 0, 00000004) );
+	jb cmpfuncs_00000004_00000001;
+	ja cmpfuncs_00000004_00000003;
+	mov( kw_type, eax );
+	jmp funcsDone;
+
+cmpfuncs_00000004_00000001:
+	cmp( eax, funcstr( "proc", 0, 00000004) );
+	jb cmpfuncs_00000004_00000002;
+	ja BadFuncID;
+	mov( kw_proc, eax );
+	jmp funcsDone;
+
+cmpfuncs_00000004_00000002:
+	cmp( eax, funcstr( "else", 0, 00000004) );
+	jne BadFuncID;
+	mov( kw_else, eax );
+	jmp funcsDone;
+
+cmpfuncs_00000004_00000003:
+	cmp( eax, funcstr( "unit", 0, 00000004) );
+	jne BadFuncID;
+	mov( kw_unit, eax );
+	jmp funcsDone;
+
+cmpfuncs_00000005_00000000:
+	cmp( eax, funcstr( "macro", 0, 4) );
+	jb cmpfuncs_00000005_00000001;
+	ja cmpfuncs_00000005_00000004;
+	cmp( bl, funcstr( "macro", 4, 1) );
+	jb cmpfuncs_00000005_00000001;
+	ja cmpfuncs_00000005_00000004;
+	mov( kw_macro, eax );
+	jmp funcsDone;
+
+cmpfuncs_00000005_00000001:
+	cmp( eax, funcstr( "class", 0, 4) );
+	jb cmpfuncs_00000005_00000002;
+	ja cmpfuncs_00000005_00000003;
+	cmp( bl, funcstr( "class", 4, 1) );
+	jb cmpfuncs_00000005_00000002;
+	ja cmpfuncs_00000005_00000003;
+	mov( kw_class, eax );
+	jmp funcsDone;
+
+cmpfuncs_00000005_00000002:
+	cmp( eax, funcstr( "begin", 0, 4) );
+	jne BadFuncID;
+	cmp( bl, funcstr( "begin", 4, 1) );
+	jne BadFuncID;
+	mov( kw_begin, eax );
+	jmp funcsDone;
+
+cmpfuncs_00000005_00000003:
+	cmp( eax, funcstr( "const", 0, 4) );
+	jne BadFuncID;
+	cmp( bl, funcstr( "const", 4, 1) );
+	jne BadFuncID;
+	mov( kw_const, eax );
+	jmp funcsDone;
+
+cmpfuncs_00000005_00000004:
+	cmp( eax, funcstr( "while", 0, 4) );
+	jb cmpfuncs_00000005_00000005;
+	ja BadFuncID;
+	cmp( bl, funcstr( "while", 4, 1) );
+	jb cmpfuncs_00000005_00000005;
+	ja BadFuncID;
+	mov( kw_while, eax );
+	jmp funcsDone;
+
+cmpfuncs_00000005_00000005:
+	cmp( eax, funcstr( "union", 0, 4) );
+	jne BadFuncID;
+	cmp( bl, funcstr( "union", 4, 1) );
+	jne BadFuncID;
+	mov( kw_union, eax );
+	jmp funcsDone;
+
+cmpfuncs_00000006_00000000:
+	cmp( eax, funcstr( "record", 0, 4) );
+	jb cmpfuncs_00000006_00000001;
+	ja cmpfuncs_00000006_00000003;
+	cmp( bx, funcstr( "record", 4, 2) );
+	jb cmpfuncs_00000006_00000001;
+	ja cmpfuncs_00000006_00000003;
+	mov( kw_record, eax );
+	jmp funcsDone;
+
+cmpfuncs_00000006_00000001:
+	cmp( eax, funcstr( "method", 0, 4) );
+	jb cmpfuncs_00000006_00000002;
+	ja BadFuncID;
+	cmp( bx, funcstr( "method", 4, 2) );
+	jb cmpfuncs_00000006_00000002;
+	ja BadFuncID;
+	mov( kw_method, eax );
+	jmp funcsDone;
+
+cmpfuncs_00000006_00000002:
+	cmp( eax, funcstr( "elseif", 0, 4) );
+	jne BadFuncID;
+	cmp( bx, funcstr( "elseif", 4, 2) );
+	jne BadFuncID;
+	mov( kw_elseif, eax );
+	jmp funcsDone;
+
+cmpfuncs_00000006_00000003:
+	cmp( eax, funcstr( "static", 0, 4) );
+	jb cmpfuncs_00000006_00000004;
+	ja BadFuncID;
+	cmp( bx, funcstr( "static", 4, 2) );
+	jb cmpfuncs_00000006_00000004;
+	ja BadFuncID;
+	mov( kw_static, eax );
+	jmp funcsDone;
+
+cmpfuncs_00000006_00000004:
+	cmp( eax, funcstr( "repeat", 0, 4) );
+	jne BadFuncID;
+	cmp( bx, funcstr( "repeat", 4, 2) );
+	jne BadFuncID;
+	mov( kw_repeat, eax );
+	jmp funcsDone;
+
+cmpfuncs_00000007_00000000:
+	cmp( eax, funcstr( "program", 0, 4) );
+	jb cmpfuncs_00000007_00000001;
+	ja cmpfuncs_00000007_00000003;
+	cmp( ebx, funcstr( "program", 4, 3) );
+	jb cmpfuncs_00000007_00000001;
+	ja cmpfuncs_00000007_00000003;
+	mov( kw_program, eax );
+	jmp funcsDone;
+
+cmpfuncs_00000007_00000001:
+	cmp( eax, funcstr( "forever", 0, 4) );
+	jb cmpfuncs_00000007_00000002;
+	ja BadFuncID;
+	cmp( ebx, funcstr( "forever", 4, 3) );
+	jb cmpfuncs_00000007_00000002;
+	ja BadFuncID;
+	mov( kw_forever, eax );
+	jmp funcsDone;
+
+cmpfuncs_00000007_00000002:
+	cmp( eax, funcstr( "foreach", 0, 4) );
+	jne BadFuncID;
+	cmp( ebx, funcstr( "foreach", 4, 3) );
+	jne BadFuncID;
+	mov( kw_foreach, eax );
+	jmp funcsDone;
+
+cmpfuncs_00000007_00000003:
+	cmp( eax, funcstr( "storage", 0, 4) );
+	jne BadFuncID;
+	cmp( ebx, funcstr( "storage", 4, 3) );
+	jne BadFuncID;
+	mov( kw_storage, eax );
+	jmp funcsDone;
+
+cmpfuncs_00000008_00000000:
+	cmp( eax, funcstr( "readonly", 0, 4) );
+	jne BadFuncID;
+	cmp( ebx, funcstr( "readonly", 4, 4) );
+	jne BadFuncID;
+	mov( kw_readonly, eax );
+	jmp funcsDone;
+
+cmpfuncs_00000009_00000000:
+	cmp( eax, funcstr( "procedure", 0, 4) );
+	jb cmpfuncs_00000009_00000001;
+	ja BadFuncID;
+	cmp( ebx, funcstr( "procedure", 4, 4) );
+	jb cmpfuncs_00000009_00000001;
+	ja BadFuncID;
+	cmp( cl, funcstr( "procedure", 8, 1) );
+	jb cmpfuncs_00000009_00000001;
+	ja BadFuncID;
+	mov( kw_procedure, eax );
+	jmp funcsDone;
+
+cmpfuncs_00000009_00000001:
+	cmp( eax, funcstr( "exception", 0, 4) );
+	jne BadFuncID;
+	cmp( ebx, funcstr( "exception", 4, 4) );
+	jne BadFuncID;
+	cmp( cl, funcstr( "exception", 8, 1) );
+	jne BadFuncID;
+	mov( kw_exception, eax );
+	jmp funcsDone;
+
+cmpfuncs_0000000C_00000000:
+	cmp( eax, funcstr( "anyexception", 0, 4) );
+	jne BadFuncID;
+	cmp( ebx, funcstr( "anyexception", 4, 4) );
+	jne BadFuncID;
+	cmp( ecx, funcstr( "anyexception", 8, 4) );
+	jne BadFuncID;
+	mov( kw_anyexception, eax );
+	jmp funcsDone;
+
+
+
+	cmpfuncs_00000001_00000000: cmpfuncs_0000000A_00000000: cmpfuncs_0000000B_00000000: cmpfuncs_0000000D_00000000: cmpfuncs_0000000E_00000000: cmpfuncs_0000000F_00000000: cmpfuncs_00000010_00000000: 
+	jmp BadFuncID;
+
+	funcsDone:
+		pop (edi); pop( esi ); pop( edx ); pop( ecx ); pop (ebx);
+end checkKW;
+
+
+
+
+
+
+procedure checkSA ( src:string); @nodisplay;
+	// on exit:
+	//	EAX = 0 - no matches found in tree
+	// 	EAX = token of matched string
+	static(4)
+	LengthJmpTbl:dword[17] :=[
+		&BadFuncID,	&FID1, &FID2, &FID3, &FID4, &FID5, &FID6, &FID7,
+		&FID8, &FID9, &FID10, &FID11, &FID12, &FID13, &FID14, &FID15,
+		&FID16	]; 
+	endstatic;
+begin checkSA;
+	push (ebx); push( ecx ); push( edx ); push( esi ); push (edi); 
+	mov (src, esi);
+	mov( esi, ecx );
+	xor( eax, eax );
+	mov (esi, edi);
+	dec (esi);
+	ScanChars:
+		inc( esi );
+		mov ([esi], al);
+		test (al, al); jz LexemeDone;
+		bt( eax, genGoodID ); jc ScanChars;
+	LexemeDone:
+		neg( ecx ); add( esi, ecx ); cmp( ecx, 16 ); ja BadFuncID;
+		jmp( LengthJmpTbl[ ecx*4 ] );
+
+	FID1:	mov( [edi], al ); or( $20, al ); jmp cmpfuncs_00000001_00000000;
+	FID2:	mov( [edi], ah ); mov( [edi+1], al ); or( $2020, ax ); jmp cmpfuncs_00000002_00000000;
+	FID3:	xor( eax, eax ); mov( [edi], ah ); shl( 8, eax ); mov( [edi+1], ah ); mov( [edi+2], al ); or( $202020, eax ); jmp cmpfuncs_00000003_00000000;
+	FID4:	mov( [edi], eax ); bswap( eax ); or( $20202020, eax ); jmp cmpfuncs_00000004_00000000;
+	FID5:	mov( [edi], eax ); bswap( eax ); mov( [edi+4], bl ); or( $20202020, eax ); or( $20, bl ); jmp cmpfuncs_00000005_00000000;
+	FID6:	mov( [edi], eax ); bswap( eax ); mov( [edi+4], bh ); mov( [edi+5], bl ); or( $20202020, eax ); or( $2020, bx ); jmp cmpfuncs_00000006_00000000;
+	FID7:	mov( [edi], eax ); bswap( eax ); xor( ebx, ebx ); mov( [edi+4], bh ); shl( 8, ebx ); mov( [edi+5], bh ); mov( [edi+6], bl ); or( $20202020, eax ); or( $202020, ebx ); jmp cmpfuncs_00000007_00000000;
+	FID8:	mov( [edi], eax ); bswap( eax ); mov( [edi+4], ebx ); bswap( ebx ); or( $20202020, eax ); or( $20202020, ebx ); jmp cmpfuncs_00000008_00000000;
+	FID9:	mov( [edi], eax ); bswap( eax ); mov( [edi+4], ebx ); bswap( ebx ); mov( [edi+8], cl ); or( $20202020, eax ); or( $20202020, ebx ); or( $20, cl ); jmp cmpfuncs_00000009_00000000;
+	FID10:	mov( [edi], eax ); bswap( eax ); mov( [edi+4], ebx ); bswap( ebx ); mov( [edi+8], ch ); mov( [edi+9], cl ); or( $20202020, eax ); or( $20202020, ebx ); or( $2020, cx ); jmp cmpfuncs_0000000A_00000000;
+	FID11:	mov( [edi], eax ); bswap( eax ); mov( [edi+4], ebx ); bswap( ebx ); xor( ecx, ecx ); mov( [edi+8], ch ); shl( 8, ecx ); mov( [edi+9], ch ); mov( [edi+10], cl ); or( $20202020, eax ); or( $20202020, ebx ); or( $202020, ecx ); jmp cmpfuncs_0000000B_00000000;
+	FID12:	mov( [edi], eax ); bswap( eax ); mov( [edi+4], ebx ); bswap( ebx ); mov( [edi+8], ecx ); bswap( ecx ); or( $20202020, eax ); or( $20202020, ebx ); or( $20202020, ecx ); jmp cmpfuncs_0000000C_00000000;
+	FID13:	mov( [edi], eax ); bswap( eax ); mov( [edi+4], ebx ); bswap( ebx ); mov( [edi+8], ecx ); bswap( ecx ); mov( [edi+12], dl ); or( $20202020, eax ); or( $20202020, ebx ); or( $20202020, ecx ); or( $20, dl ); jmp cmpfuncs_0000000D_00000000;
+	FID14:	mov( [edi], eax ); bswap( eax ); mov( [edi+4], ebx ); bswap( ebx ); mov( [edi+8], ecx ); bswap( ecx ); mov( [edi+12], dh ); mov( [edi+13], dl ); or( $20202020, eax ); or( $20202020, ebx ); or( $20202020, ecx ); or( $2020, dx ); jmp cmpfuncs_0000000E_00000000;
+	FID15:	mov( [edi], eax ); bswap( eax ); mov( [edi+4], ebx ); bswap( ebx ); mov( [edi+8], ecx ); bswap( ecx ); xor( edx, edx ); mov( [edi+12], dh ); shl( 8, edx ); mov( [edi+13], dh ); mov( [edi+14], dl ); or( $20202020, eax ); or( $20202020, ebx ); or( $20202020, ecx ); or( $202020, edx ); jmp cmpfuncs_0000000F_00000000;
+	FID16:	mov( [edi], eax ); bswap( eax ); mov( [edi+4], ebx ); bswap( ebx ); mov( [edi+8], ecx ); bswap( ecx ); mov( [edi+12], edx ); bswap( edx ); or( $20202020, eax ); or( $20202020, ebx ); or( $20202020, ecx ); or( $20202020, edx ); jmp cmpfuncs_00000010_00000000;
+
+	BadFuncID:
+		xor (eax, eax); jmp funcsDone;
+cmpfuncs_00000003_00000000:
+	cmp( eax, funcstr( "dll", 0, 00000003) );
+	jb cmpfuncs_00000003_00000001;
+	ja BadFuncID;
+	mov( sa_dll, eax );
+	jmp funcsDone;
+
+cmpfuncs_00000003_00000001:
+	cmp( eax, funcstr( "def", 0, 00000003) );
+	jne BadFuncID;
+	mov( sa_def, eax );
+	jmp funcsDone;
+
+cmpfuncs_00000004_00000000:
+	cmp( eax, funcstr( "misc", 0, 00000004) );
+	jne BadFuncID;
+	mov( sa_misc, eax );
+	jmp funcsDone;
+
+cmpfuncs_00000005_00000000:
+	cmp( eax, funcstr( "kmake", 0, 4) );
+	jb cmpfuncs_00000005_00000001;
+	ja BadFuncID;
+	cmp( bl, funcstr( "kmake", 4, 1) );
+	jb cmpfuncs_00000005_00000001;
+	ja BadFuncID;
+	mov( sa_kmake, eax );
+	jmp funcsDone;
+
+cmpfuncs_00000005_00000001:
+	cmp( eax, funcstr( "khelp", 0, 4) );
+	jne BadFuncID;
+	cmp( bl, funcstr( "khelp", 4, 1) );
+	jne BadFuncID;
+	mov( sa_khelp, eax );
+	jmp funcsDone;
+
+cmpfuncs_00000006_00000000:
+	cmp( eax, funcstr( "target", 0, 4) );
+	jb cmpfuncs_00000006_00000001;
+	ja BadFuncID;
+	cmp( bx, funcstr( "target", 4, 2) );
+	jb cmpfuncs_00000006_00000001;
+	ja BadFuncID;
+	mov( sa_target, eax );
+	jmp funcsDone;
+
+cmpfuncs_00000006_00000001:
+	cmp( eax, funcstr( "binary", 0, 4) );
+	jne BadFuncID;
+	cmp( bx, funcstr( "binary", 4, 2) );
+	jne BadFuncID;
+	mov( sa_binary, eax );
+	jmp funcsDone;
+
+cmpfuncs_00000007_00000000:
+	cmp( eax, funcstr( "miscjob", 0, 4) );
+	jb cmpfuncs_00000007_00000001;
+	ja cmpfuncs_00000007_00000004;
+	cmp( ebx, funcstr( "miscjob", 4, 3) );
+	jb cmpfuncs_00000007_00000001;
+	ja cmpfuncs_00000007_00000004;
+	mov( sa_miscjob, eax );
+	jmp funcsDone;
+
+cmpfuncs_00000007_00000001:
+	cmp( eax, funcstr( "include", 0, 4) );
+	jb cmpfuncs_00000007_00000002;
+	ja cmpfuncs_00000007_00000003;
+	cmp( ebx, funcstr( "include", 4, 3) );
+	jb cmpfuncs_00000007_00000002;
+	ja cmpfuncs_00000007_00000003;
+	mov( sa_include, eax );
+	jmp funcsDone;
+
+cmpfuncs_00000007_00000002:
+	cmp( eax, funcstr( "hlaunit", 0, 4) );
+	jne BadFuncID;
+	cmp( ebx, funcstr( "hlaunit", 4, 3) );
+	jne BadFuncID;
+	mov( sa_hlaunit, eax );
+	jmp funcsDone;
+
+cmpfuncs_00000007_00000003:
+	cmp( eax, funcstr( "library", 0, 4) );
+	jne BadFuncID;
+	cmp( ebx, funcstr( "library", 4, 3) );
+	jne BadFuncID;
+	mov( sa_library, eax );
+	jmp funcsDone;
+
+cmpfuncs_00000007_00000004:
+	cmp( eax, funcstr( "program", 0, 4) );
+	jb cmpfuncs_00000007_00000005;
+	ja BadFuncID;
+	cmp( ebx, funcstr( "program", 4, 3) );
+	jb cmpfuncs_00000007_00000005;
+	ja BadFuncID;
+	mov( sa_program, eax );
+	jmp funcsDone;
+
+cmpfuncs_00000007_00000005:
+	cmp( eax, funcstr( "modular", 0, 4) );
+	jne BadFuncID;
+	cmp( ebx, funcstr( "modular", 4, 3) );
+	jne BadFuncID;
+	mov( sa_modular, eax );
+	jmp funcsDone;
+
+cmpfuncs_00000008_00000000:
+	cmp( eax, funcstr( "resource", 0, 4) );
+	jne BadFuncID;
+	cmp( ebx, funcstr( "resource", 4, 4) );
+	jne BadFuncID;
+	mov( sa_resource, eax );
+	jmp funcsDone;
+
+cmpfuncs_00000009_00000000:
+	cmp( eax, funcstr( "extlinked", 0, 4) );
+	jne BadFuncID;
+	cmp( ebx, funcstr( "extlinked", 4, 4) );
+	jne BadFuncID;
+	cmp( cl, funcstr( "extlinked", 8, 1) );
+	jne BadFuncID;
+	mov( sa_extlinked, eax );
+	jmp funcsDone;
+
+cmpfuncs_0000000A_00000000:
+	cmp( eax, funcstr( "hlaprogram", 0, 4) );
+	jb cmpfuncs_0000000A_00000001;
+	ja BadFuncID;
+	cmp( ebx, funcstr( "hlaprogram", 4, 4) );
+	jb cmpfuncs_0000000A_00000001;
+	ja BadFuncID;
+	cmp( cx, funcstr( "hlaprogram", 8, 2) );
+	jb cmpfuncs_0000000A_00000001;
+	ja BadFuncID;
+	mov( sa_hlaprogram, eax );
+	jmp funcsDone;
+
+cmpfuncs_0000000A_00000001:
+	cmp( eax, funcstr( "executable", 0, 4) );
+	jne BadFuncID;
+	cmp( ebx, funcstr( "executable", 4, 4) );
+	jne BadFuncID;
+	cmp( cx, funcstr( "executable", 8, 2) );
+	jne BadFuncID;
+	mov( sa_executable, eax );
+	jmp funcsDone;
+
+
+
+	cmpfuncs_00000001_00000000: cmpfuncs_00000002_00000000: cmpfuncs_0000000B_00000000: cmpfuncs_0000000C_00000000: cmpfuncs_0000000D_00000000: cmpfuncs_0000000E_00000000: cmpfuncs_0000000F_00000000: cmpfuncs_00000010_00000000: 
+	jmp BadFuncID;
+
+	funcsDone:
+		pop (edi); pop( esi ); pop( edx ); pop( ecx ); pop (ebx);
+end checkSA;
+
+
+
+
+
+end genLexerUnit;

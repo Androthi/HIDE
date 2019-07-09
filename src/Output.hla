@@ -1,0 +1,487 @@
+unit OutputUnit;
+	
+	#includeonce ("HIDE.hhf")
+	#includeonce ("patterns.hhf")
+	#includeonce ("conv.hhf")
+	#includeonce	("memory.hhf")
+	#includeonce ("stdout.hhf")
+	
+	?@nodisplay :=true;
+	?@align:=4;
+
+
+storage
+	oldoutputedit	:dword;
+	oldhout			:dword;
+	active_edt		:dword;
+
+	htimer			:dword;
+
+procedure CloseOutputTimer(lparam:dword; wparam:dword; umsg:uns32; hwin:dword);
+begin CloseOutputTimer;
+	w.KillTimer(hout,201);
+	w.SendMessage(hout,w.WM_CLOSE,0,0);
+	mov (0, htimer);
+end CloseOutputTimer;
+
+procedure CloseOutputDelay(ntime:dword);
+begin CloseOutputDelay;
+	w.SetTimer(hout,201,ntime,&CloseOutputTimer);
+	mov (eax, htimer);
+end CloseOutputDelay;
+
+procedure CancelTimer (htime:dword);
+begin CancelTimer;
+	if (htime) then
+		w.KillTimer (hout, htime);
+		mov (0, htimer);
+	endif;
+end CancelTimer;
+
+procedure CancelTimerCloseOutput; @noframe;
+begin CancelTimerCloseOutput;
+	w.KillTimer( hout, htimer );
+	mov( 0, htimer );
+	w.SendMessage( hout, w.WM_CLOSE, 0, 0 );
+	ret();
+end CancelTimerCloseOutput;
+
+
+
+procedure Notes_Open;
+	var
+		buf	:tBuffer;
+		
+begin Notes_Open;
+//	dbg.put ("NOTES_OPEN");
+	pushabi;
+	if (project.isOpen) then
+		buf.create();
+		mov (&project.hpr, esi);
+		
+		if( iniesi.readBufSection( "Notes", buf ) ) then
+			
+			buf.eof();
+			buf.putByte( 0 );
+			buf.bof();
+			w.SendMessage( hnotesedt, w.WM_SETTEXT, 0, EAX );
+		endif;
+		
+		buf.destroy();
+		
+	endif;
+	w.SendMessage (hnotesedt, w.EM_SETMODIFY, false, 0);
+	popabi;
+//	dbg.put ("/NOTES_OPEN");
+
+end Notes_Open;
+
+procedure Notes_Save;
+	var
+		buf	:tBuffer;
+		s	:string;
+
+begin Notes_Save;
+	//dbg.put ("notes_save");
+
+	w.SendMessage ( hnotesedt, w.EM_GETMODIFY, 0, 0);
+	if (eax) then
+		
+		// need to preserve current dir
+		mov (str.talloc (pathsize_c), s);
+		filesys.gwd (s);
+	
+		pushabi;
+		buf.create( $10000 );
+		mov( buf.cursor, eax );
+		w.SendMessage( hnotesedt, w.WM_GETTEXT, $10000, EAX );
+		mov( eax, buf.length );
+		buf.bof();
+
+		if (project.isOpen) then
+			buf.inserts ("<text>" nl);
+			buf.eof();
+			buf.puts( nl );
+			buf.puts( "</text>" nl );
+
+			lea (esi, project.hpr);
+			iniesi.writeBufSection ("Notes", buf);
+			filesys.cd (project.folder);
+			iniesi.write (project.id);
+		endif;
+		
+		filesys.cd (s);	
+		buf.destroy();
+		popabi;
+	endif;
+	//dbg.put ("/notes_save");
+end Notes_Save;
+
+procedure Notes_Clear; @noframe;
+begin Notes_Clear;
+	w.SendMessage (hnotesedt, w.EM_SETSEL, 0, -1);
+	w.SendMessage(hnotesedt, w.WM_CLEAR,0,0);
+	ret();
+end Notes_Clear;
+
+procedure Output_View ( message:dword);
+	
+begin Output_View;
+	mov(message,eax);
+	
+	if (eax = w.SW_HIDE) then
+		w.CheckMenuItem(hmenu,IDM_VIEW_OUTPUT,w.MF_BYCOMMAND);
+		w.ShowWindow(hout,w.SW_HIDE);
+		w.ShowWindow(hVSplitBar,w.SW_HIDE);
+		and(! (VSPLIT), settings.winview);
+		and(! (OUTPUT), settings.winview);
+			
+	elseif (eax = w.SW_SHOW) then
+		w.CheckMenuItem(hmenu,IDM_VIEW_OUTPUT,w.MF_BYCOMMAND |w.MF_CHECKED);
+		w.ShowWindow(hout,w.SW_SHOW);
+		or(OUTPUT,settings.winview);
+		test(OUTPUT_D,settings.winview);
+		if(@nz) then
+			w.ShowWindow(hVSplitBar,w.SW_SHOW);
+			or(VSPLIT,settings.winview);
+		endif;
+
+	elseif (eax = DOCK_YES) then
+		w.GetWindowLong(hout,w.GWL_STYLE);
+		and(!(w.WS_SIZEBOX),eax);
+		w.SetWindowLong(hout,w.GWL_STYLE,eax);
+		w.SetParent(hout,hwnd);
+		mov(eax,oldhout);
+		w.CheckMenuItem(hmenu,IDM_VIEW_OUT_DOCK,(w.MF_BYCOMMAND | w.MF_CHECKED));
+		or(OUTPUT_D,settings.winview);
+		test(OUTPUT,settings.winview);
+		if(@nz) then
+			Output_View(w.SW_SHOW);
+		endif;
+		
+	elseif (eax = DOCK_NO) then
+		w.SetParent(hout,oldhout);
+		mov(0,oldhout);
+		w.GetWindowLong(hout,w.GWL_STYLE);
+		or(w.WS_SIZEBOX,eax);
+		w.SetWindowLong(hout,w.GWL_STYLE,eax);
+		w.CheckMenuItem(hmenu,IDM_VIEW_OUT_DOCK,(w.MF_BYCOMMAND));
+		w.ShowWindow(hVSplitBar,w.SW_HIDE);
+		and(!(VSPLIT),settings.winview);
+		and(!(OUTPUT_D),settings.winview);
+		
+	endif;
+	
+	w.SendMessage(hwnd,w.WM_SIZE,0,0);
+	w.SetFocus (hwnd);
+  
+end Output_View;
+
+procedure Proc_OutputEdit(lparam:dword; wparam:dword; umsg:uns32; hwin:dword);
+var
+	_chrg			:w.CHARRANGE;
+	_extFileName	:string;
+	_extLineNum		:string;
+	_linenum		:uns32;
+	_somestr		:string;
+endvar;
+
+begin Proc_OutputEdit;
+	pushabi;
+	mov(umsg,eax);
+	if(eax=w.WM_LBUTTONDBLCLK) then
+		dbg.put("click in outputwin");
+		
+		lea(eax,_chrg);
+		w.SendMessage(houtedt,w.EM_EXGETSEL,0,eax);
+		w.SendMessage(houtedt,w.EM_EXLINEFROMCHAR,0,_chrg.cpMin);
+		//dbg.put("line index = ", (type int32 eax) );
+		mov(&buffer,esi);
+		mov(@size(buffer),(type word [esi]));
+		
+		w.SendMessage(houtedt,w.EM_GETLINE,eax,&buffer);
+		str.a_cpyz(&buffer);
+		mov(eax,_somestr);
+		
+		//dbg.put("returned length = ",(type uns32 eax));		
+		//dbg.put("captured line:");
+		//dbg.put(_somestr);
+
+		// parse the line to find HLA errors, grab the file name,
+		// grab the line number and jump to that word, highlight the line.
+		
+		pat.match(_somestr);
+			pat.matchStr("Error in file ");
+			dbg.putz(esi);
+			inc(esi);			// skip 1st '"'
+			pat.upToChar('"');	// find closing quote
+			pat.a_extract(_extFileName);
+			
+			// get line number
+			pat.matchToStr("at line ");
+			mov(esi,ebx);
+			pat.upToChar('[');
+			dec(esi);
+			pat.a_extract(_extLineNum);
+			dbg.put("file: ", _extFileName);
+			dbg.put("line: ", _extLineNum);
+			
+			// convert path from UNIX to MS-DOS style
+			USE (ESI);
+				mov (_extFileName, esi);
+				forever
+					mov ([esi], al);
+					breakif (! al);
+					if (al = '/' || al = '\') then
+						mov (dirsep_c, (type byte [esi]));
+					endif;
+					inc (esi);
+				endfor;
+				if (! selectOpen (_extFileName)) then
+					// is it a project file?
+					dbg.put ("file: ", _extFileName);
+					if  ( fileList.findFullname(_extFileName)) then
+						//dbg.put ("found :", listeax.id);
+						mov (eax, ebx);
+						if (! selectOpenMem ([ebx])) then
+							hide_openNode( [ebx] );
+							//tabtool_add ([ebx]);
+						endif;
+
+					elseif (fileList.findID (_extFileName)) then
+						mov (eax, ebx);
+						if (! selectOpenMem ([ebx])) then
+							hide_openNode( [ebx] );
+							//tabtool_add ([ebx]);
+						endif;
+						
+					else
+						
+						dbg.put ("not found in project, opening :", _extFileName);
+						if (! hide_openFile (_extFileName)) then
+							toOutput (nl nl"File not found :", _extFileName, nl nl);
+							jmp _skip;
+						endif;
+					endif;	
+				endif;
+				mov (curnode, ebx);
+				conv.strTou32(_extLineNum,0);
+				dec(eax);
+				mov(eax,_linenum);
+				//dbg.put("line number = ",_linenum);
+				
+				w.SendMessage(listebx.hwnd,w.EM_LINEINDEX,_linenum,0);
+				mov	(eax, _chrg.cpMin);
+				mov	(eax, _chrg.cpMax);
+				lea(eax,_chrg);
+				w.SendMessage(listebx.hwnd, w.EM_EXSETSEL,0,eax);
+				w.SendMessage(listebx.hwnd, w.EM_SCROLLCARET,0,0);
+				mov(&col,eax);
+				w.SendMessage(listebx.hwnd,REM_SETHILITELINE,_linenum,3);
+				_skip:
+			ENDUSE;
+
+			str.free(_extFileName);
+			str.free(_extLineNum);
+			pat.EOS();
+		pat.if_failure;
+			dbg.put("failure");
+		pat.endmatch;
+		str.free (_somestr);
+	
+	endif;
+	w.CallWindowProc(oldoutputedit,hwin,umsg,wparam,lparam);
+	popabi;
+end Proc_OutputEdit;
+
+procedure Proc_Output (lparam:dword; wparam:dword; umsg:uns32; hwin:dword);
+
+	var		chrg	:w.CHARRANGE;
+	
+	procedure doButton( id:uns32 );
+	begin doButton;
+		mov( id, eax ); dbg.put("dobutton :", eax );
+		if (eax = output_btn) then
+				
+			caption.CheckButton(hout, output_btn, true);
+			caption.CheckButton(hout, notes_btn, false);
+			hideini.writeInt ("HIDE Settings", "output mode", output_btn);
+			w.SetWindowText( hout, (type string zOutput) );
+			w.ShowWindow(hnotesedt, w.SW_HIDE);
+			w.ShowWindow(houtedt, w.SW_SHOW);
+			move( houtedt,active_edt ); 
+			
+		elseif( eax = notes_btn) then
+			
+			caption.CheckButton(hout, notes_btn, true);
+			caption.CheckButton(hout, output_btn, false);
+			hideini.writeInt ("HIDE Settings", "output mode", notes_btn);
+			w.SetWindowText( hout, (type string zNotes) );
+			w.ShowWindow(houtedt, w.SW_HIDE);
+			w.ShowWindow(hnotesedt, w.SW_SHOW);
+			move( hnotesedt, active_edt );
+		endif;
+
+	end doButton;
+
+	
+begin 	Proc_Output;
+	pushabi;
+		mov(umsg,eax);
+		cmp(eax,w.WM_MOVING);
+		je _changing;
+		cmp(eax,w.WM_SIZE);
+		je _size;
+		cmp(eax,w.WM_INITDIALOG);
+		je _init;
+		cmp(eax,w.WM_CLOSE);
+		je _close;
+		cmp(eax,w.WM_DESTROY);
+		je _destroy;
+		cmp(eax,w.WM_MOUSEACTIVATE);
+		je _activate;
+		cmp( eax, w.WM_COMMAND);
+		je _command;
+		jmp xProc_Output;
+		
+	_command:	
+		mov(wparam,eax);
+		mov(eax,edx);
+		shr(16,edx);
+		and($0ffff,eax);
+		
+		if (edx = w.BN_CLICKED) then
+
+			doButton( eax );
+			w.SendMessage(hwin,w.WM_SIZE,0,0);	
+		endif;
+		jmp xProc_Output;
+
+		
+	_changing:
+			cmp(oldhout,0);
+			je xProc_Output;
+			Output_View(DOCK_NO);
+			jmp xProc_Output;
+			
+	_size:
+			w.GetClientRect(hwin, &rect);
+			mov	(rect.bottom,eax);
+			sub	(rect.top,eax);
+			// eax = height
+			w.MoveWindow( active_edt, 0, rect.top, rect.right, eax, true );
+			call _savepos;
+			w.InvalidateRect(hout,NULL,true);
+			jmp xProc_Output;
+		
+	_init:	
+			mov(hwin,eax);
+			mov(eax,hout);
+			w.CreateWindowEx(w.WS_EX_CLIENTEDGE, RAEditClassName,NULL,w.WS_CHILD |
+						STYLE_NOSPLITT | STYLE_NOLINENUMBER | STYLE_NOCOLLAPSE | STYLE_NOHILITE | STYLE_NODIVIDERLINE,
+						0,0,0,0,hwin,NULL,hinst,NULL);
+			mov(eax,houtedt);
+	
+			w.CreateWindowEx(w.WS_EX_CLIENTEDGE, RAEditClassName,NULL,w.WS_CHILD |
+						STYLE_NOSPLITT | STYLE_NOLINENUMBER | STYLE_NOCOLLAPSE | STYLE_NOHILITE | STYLE_NODIVIDERLINE,
+						0,0,0,0,hwin,NULL,hinst,NULL);
+			mov(eax,hnotesedt); 
+			
+			dbg.put("*********notes edt = ", hnotesedt );
+	
+			mov(hmainfont,rafnt.hFont);
+			mov(hitalic,rafnt.hIFont);
+			mov(hlinefont,rafnt.hLnrFont);
+
+			w.SendMessage(houtedt,REM_SETFONT,0,&rafnt);
+			w.SendMessage(houtedt,REM_SETCOLOR,0,&col);
+			w.SendMessage(hnotesedt,REM_SETFONT,0,&rafnt);
+			w.SendMessage(hnotesedt,REM_SETCOLOR,0,&col);
+
+	
+			w.SendMessage(houtedt,REM_SUBCLASS,0,&Proc_OutputEdit);
+			mov(eax,oldoutputedit);
+			
+			// setup outwindow mode mode
+			hideini.readInt ("HIDE Settings", "output mode");
+			if( ! eax ) then
+				hideini.writeInt( "HIDE Settings", "output mode", output_btn );
+				mov( output_btn, eax );
+			endif;
+			doButton( eax );
+			
+			
+			test(OUTPUT_D,settings.winview);
+			if(@nz) then
+				Output_View(DOCK_YES);
+			else
+				w.MoveWindow(hwin,settings.outwin.x,settings.outwin.y,settings.outwin.wt,settings.outwin.ht,true);
+				w.SendMessage(hwin,w.WM_SIZE,0,0);			
+			endif;
+			
+			jmp xProc_Output;
+	
+	_activate:
+		CancelTimer (htimer);
+		w.SetForegroundWindow(hwnd);
+		jmp xProc_Output;
+	
+	_destroy:
+			call _savepos;
+			jmp xProc_Output;
+			
+	_close:
+			call _savepos;	
+			Output_View( w.SW_HIDE);
+			w.SendMessage(hwnd,w.WM_SIZE,0,0);			
+
+		
+xProc_Output:
+	mov(false,eax);
+	popabi;		
+	exit Proc_Output;
+		
+// local procs
+_savepos:
+		w.GetWindowLong(hwin,w.GWL_STYLE);
+		test(w.WS_MAXIMIZE,eax);
+		jnz _setmax;
+		test(w.WS_MINIMIZE,eax);
+		jnz _retsavepos;
+		mov(false,settings.outwin.fmax);
+		w.GetWindowRect(hwin,&rect);
+		mov(rect.left,settings.outwin.x);
+		mov(rect.top,settings.outwin.y);
+		mov(rect.right,eax);
+		sub(rect.left,eax);
+		mov(eax,settings.outwin.wt);
+		mov(rect.bottom,eax);
+		sub(rect.top,eax);
+		mov(eax,settings.outwin.ht);
+		ret();
+	
+_setmax:	
+		mov(true,settings.outwin.fmax);
+_retsavepos:
+		ret();
+
+end 		Proc_Output;
+
+procedure WriteOutput ( _msg_:string);
+begin WriteOutput;
+USE (esi, edi, eax, ecx, ebx, edx);
+if (mode=mode_gui) then
+	// activate OUTPUT window if not visible.
+
+	if (testz (OUTPUT, settings.winview)) then
+		w.SendMessage( hwnd, HIDE_TOGGLEOUTPUT,0,5000);
+	endif;
+	SendStr	(houtedt, w.EM_REPLACESEL, false, _msg_ );
+
+else
+	stdout.put (_msg_, nl);
+endif;
+ENDUSE;
+end WriteOutput;
+
+end OutputUnit;

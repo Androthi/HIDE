@@ -1,0 +1,34 @@
+////////////////////////////////////////////////////////////////////////////////////
+// File: autocompletion.hhf
+// Author: Bernd Kastenholz
+// Created: July 2006
+// Email: Bernd Kastenholz@web.de
+
+const 
+	IDD_DLGAUTOSETTINGS := 1200;
+	IDC_CHKSORT := 1201;
+	IDC_CHKCASE := 1202;
+	IDD_DLGAUTO := 1215;
+	IDC_LSTAUTOCOMPLETION := 1216;
+
+type
+	 
+
+	RAutoCompletion :record
+		hListbox		:dword;			// Handle of the listbox
+		hDialog			:dword;			// Handle of the dialog
+		oldProcListbox	:dword;		 	// super procedure of the subclassed listbox		
+		sort			:boolean; 		// create a sorted or unsorted listbox
+		caseSensitive	:boolean;		// true = upper case; false = lower case
+	endrecord;
+	
+
+procedure AutoCompletion_DOIT(hwin:dword);@external;
+procedure AutoCompletion_INIT;@external;
+procedure AutoCompletion_ONMOVE;@external;
+procedure AutoCompletion_ONSIZE;@external;
+
+static
+	align(4);
+	m_autocompletion	:	RAutoCompletion;	@external;
+	

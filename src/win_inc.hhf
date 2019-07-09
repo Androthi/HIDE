@@ -1,0 +1,2455 @@
+/*
+	Extracted Windows header
+	This file created by wscan v3.0
+	by Sevag Krikorian, released to public domain.
+
+	This file is machine generated.
+Include it into programs and units that were scanned
+	If after using the program, you get missing symbol
+	errors (this should be very rare, and is provided in
+	case I missed somthing in the scanner), use the macro
+	to fill in the missing symbols, save and run the scanner
+	again
+	Example of macro usage:
+	 wininc ( w.TV_ITEMEX );
+*/
+
+#macro wininc ( __winargs__[]);
+#endmacro
+
+namespace w; @fast;
+type
+LCID:			dword;
+COLORREF: 		dword;
+THREAD_START_ROUTINE:	procedure;
+LCTYPE:					dword;
+POINT: 
+		record
+			x: dword;
+			y: dword;
+		endrecord;
+
+POINTL :POINT;
+RECT: 
+ 		record
+			left: 	dword;
+			top: 	dword;
+			right: 	dword;
+			bottom: dword;
+		endrecord;
+
+NMHDR: 
+		record
+			hwndFrom: 	dword;
+			idFrom: 	dword;
+			code: 		dword;
+		endrecord;
+
+TBBUTTON: 
+ 		record
+			iBitmap: 	dword;
+			idCommand: 	dword;
+			fsState: 	byte;
+			fsStyle: 	byte;
+			dwData: 	dword;
+			iString: 	dword;
+		endrecord;
+
+TBADDBITMAP: 
+ 		record
+			hInst: 		dword;
+			nID: 		dword;
+		endrecord;
+
+TOOLINFO: 
+ 		record
+			cbSize: 	dword;
+			uFlags: 	dword;
+			hWnd: 		dword;
+			uId: 		dword;
+			_rect: 		RECT;
+			hInst: 		dword;
+			lpszText: 	dword;
+			lParam: 	dword;
+		endrecord;
+
+NMTTDISPINFO: 
+ 		record
+			hdr: 		NMHDR;
+			lpszText: 	dword;
+			szText: 	byte[80];
+			hInst: 		dword;
+			uFlags: 	dword;
+			lParam: 	dword;
+		endrecord;
+
+TOOLTIPTEXT :NMTTDISPINFO;
+NM_UPDOWN: 
+ 		record
+			hdr: 	NMHDR;
+			iPos: 	dword;
+			iDelta: dword;
+		endrecord;
+
+LV_ITEM: 
+ 		record
+			imask: 		dword;
+			iItem: 		dword;
+			iSubItem: 	dword;
+			state: 		dword;
+			stateMask: 	dword;
+			pszText: 	dword;
+			cchTextMax: dword;
+			iImage: 	dword;
+			lParam: 	dword;
+			iIndent: 	dword;
+		endrecord;
+
+LV_COLUMN: 
+ 		record
+			imask: 		dword;
+			fmt: 		dword;
+			lx: 		dword;
+			pszText: 	dword;
+			cchTextMax: dword;
+			iSubItem: 	dword;
+			iImage: 	dword;
+			iOrder: 	dword;
+		endrecord;
+
+NM_LISTVIEW: 
+ 		record
+			hdr: 		NMHDR;
+			iItem: 		dword;
+			iSubItem: 	dword;
+			uNewState: 	dword;
+			uOldState: 	dword;
+			uChanged: 	dword;
+			ptAction: 	POINT;
+			lParam: 	dword;
+		endrecord;
+
+LV_DISPINFO: 
+ 		record
+			hdr: 	NMHDR;
+			item: 	LV_ITEM;
+		endrecord;
+
+TV_ITEM: 
+ 		record
+			imask: 			dword;
+			hItem: 			dword;
+			state: 			dword;
+			stateMask: 		dword;
+			pszText: 		dword;
+			cchTextMax: 	dword;
+			iImage: 		dword;
+			iSelectedImage: dword;
+			cChildren: 		dword;
+			lParam: 		dword;
+		endrecord;
+
+TV_ITEMEX: 
+ 		record
+			imask: 			dword;
+			hItem: 			dword;
+			state: 			dword;
+			stateMask: 		dword;
+			pszText: 		dword;
+			cchTextMax: 	dword;
+			iImage: 		dword;
+			iSelectedImage: dword;
+			cChildren: 		dword;
+			lParam: 		dword;
+			iIntegral: 		dword;
+		endrecord;
+
+TV_INSERTSTRUCT: 
+ 		record
+			hParent: 		dword;
+			hInsertAfter: 	dword;
+			union
+				itemex:	TV_ITEMEX;
+				item:		TV_ITEM;
+			endunion;
+		endrecord;
+
+TV_HITTESTINFO: 
+ 		record
+			pt: 	POINT;
+			flags: 	dword;
+			hItem: 	dword;
+		endrecord;
+
+NM_TREEVIEW: 
+ 		record
+			hdr: 		NMHDR;
+			action: 	dword;
+			itemOld: 	TV_ITEM;
+			itemNew: 	TV_ITEM;
+			ptDrag: 	POINT;
+		endrecord;
+
+TC_ITEM: 
+ 		record
+			imask: 			dword;
+			lpReserved1:	dword;
+			lpReserved2:	dword;
+			pszText:		dword;
+			cchTextMax: 	dword;
+			iImage: 		dword;
+			lParam: 		dword;
+		endrecord;
+
+CHOOSECOLOR: 
+		record
+			lStructSize: 	dword;
+			hwndOwner: 		dword;
+			hInstance: 		dword;
+			rgbResult: 		dword;
+			lpCustColors: 	dword;
+			Flags: 			dword;
+			lCustData: 		dword;
+			lpfnHook: 		dword;
+			lpTemplateName: dword;
+		endrecord;
+
+CHOOSEFONT: 
+ 		record
+			lStructSize: 	dword;
+			hWndOwner: 		dword;
+			hDC: 			dword;
+			lpLogFont: 		dword;
+			iPointSize: 	dword;
+			Flags: 		dword;
+			rgbColors: 		dword;
+			lCustData: 		dword;
+			lpfnHook: 		dword;
+			lpTemplateName: 	dword;
+			hInstance: 		dword;
+			lpszStyle: 		dword;
+			nFontType: 		word;
+			Alignment: 		word;
+			nSizeMin: 		dword;
+			nSizeMax: 		dword;
+		endrecord;
+
+PRINTDLG: 
+ 		record
+			lStructSize:				dword;
+			hWndOwner:					dword;
+			hDevMode: 					dword;
+			hDevNames: 					dword;
+			hDC: 						dword;
+			Flags: 						dword;
+			nFromPage: 					word;
+
+
+			nToPage: 					word;
+			nMinPage: 					word;
+			nMaxPage: 					word;
+			nCopies: 					word;
+			hInstance: 					dword;
+			lCustData: 					dword;
+			lpfnPrintHook: 				dword;
+			lpfnSetupHook: 				dword;
+			lpPrintTemplateName:		dword;
+			lpPrintSetupTemplateName:	dword;
+			hPrintTemplate: 			dword;
+			hSetupTemplate: 			dword;
+		endrecord;
+
+OPENFILENAME: 
+ 		record
+			lStructSize: 		dword;
+			hWndOwner: 		dword;
+			hInstance: 		dword;
+			lpstrFilter: 		dword;
+			lpstrCustomFilter: 	dword;
+			nMaxCustFilter: 	dword;
+			nFilterIndex: 	dword;
+			lpstrFile: 		dword;
+			nMaxFile: 		dword;
+			lpstrFileTitle: 	dword;
+			nMaxFileTitle: 	dword;
+			lpstrInitialDir: 	dword;
+			lpstrTitle: 		dword;
+			Flags: 		dword;
+			nFileOffset: 		word;
+			nFileExtension: 	word;
+			lpstrDefExt: 		dword;
+			lCustData: 		dword;
+			lpfnHook: 		dword;
+			lpTemplateName:	dword;
+		endrecord;
+
+const
+	LF_FACESIZE                    := 32;
+type
+CHARRANGE: 
+ 		record
+			cpMin: dword;
+			cpMax: dword;
+		endrecord;
+
+EDITSTREAM: 
+ 		record
+			dwCookie: 		dword;
+			dwError: 		dword;
+			pfnCallback:	 	dword;
+		endrecord;
+
+FINDTEXTEX: 
+ 		record
+			chrg: CHARRANGE;
+			lpstrText: dword;
+			chrgText: CHARRANGE;
+		endrecord;
+
+SIZEL: 
+		record
+			x: dword;
+			y: dword;
+		endrecord;
+
+_SIZE:SIZEL;
+MSG: 
+ 		record
+			hwnd: 		dword;
+			message: 	dword;
+			wParam: 	dword;
+			lParam: 	dword;
+			time: 		dword;
+			pt: 		POINT;
+		endrecord;
+
+OVERLAPPED: 
+ 		record
+			Internal: 		dword;
+			InternalHigh: 	dword;
+			loffset: 		dword;
+			OffsetHigh: 	dword;
+			hEvent: 		dword;
+		endrecord;
+
+SECURITY_ATTRIBUTES: 
+ 		record
+			niLength: 				dword;
+			lpSecurityDescriptor: 	dword;
+			bInheritHandle: 		dword;
+		endrecord;
+
+PROCESS_INFORMATION: 
+ 		record
+			hProcess: 		dword;
+			hThread: 		dword;
+			dwProcessId: 	dword;
+			dwThreadId: 	dword;
+		endrecord;
+
+FILETIME: 
+ 		record
+			dwLowDateTime: 	dword;
+			dwHighDateTime: dword;
+		endrecord;
+
+WNDPROC:
+		procedure
+		( 
+			var	lpPrevWndFunc	:var; 
+				hWnd			:dword; 
+				Msg				:dword; 
+				_wParam			:dword; 
+				_lParam			:dword
+		);
+			@stdcall;
+
+WNDCLASSEX: 
+ 		record
+			cbSize			: dword;
+			style			: dword;
+			lpfnWndProc		: WNDPROC;
+			cbClsExtra		: dword;
+			cbWndExtra		: dword;
+			hInstance		: dword;
+			hIcon			: dword;
+			hCursor			: dword;
+			hbrBackground	: dword;
+			lpszMenuName	: string;
+			lpszClassName	: string;
+			hIconSm			: dword;
+		endrecord;
+
+STARTUPINFO: 
+ 		record
+			cb: 				dword;
+			lpReserved: 		dword;
+			lpDesktop: 			dword;
+			lpTitle: 			dword;
+			dwX: 				dword;
+			dwY: 				dword;
+			dwXSize: 			dword;
+			dwYSize: 			dword;
+			dwXCountChars: 		dword;
+			dwYCountChars: 		dword;
+			dwFillAttribute: 	dword;
+			dwFlags: 			dword;
+			wShowWindow: 		word;
+			cbReserved2: 		word;
+			lpReserved2: 		dword;
+			hStdInput: 			dword;
+			hStdOutput: 		dword;
+			hStdError: 			dword;
+		endrecord;
+
+const
+	MAX_PATH := 260;
+type
+WIN32_FIND_DATA: 
+		record
+			dwFileAttributes: 	dword;
+			ftCreationTime: 	FILETIME;
+			ftLastAccessTime: 	FILETIME;
+			ftLastWriteTime: 	FILETIME;
+			nFileSizeHigh: 		dword;
+			nFileSizeLow: 		dword;
+			dwReserved0: 		dword;
+			dwReserved1: 		dword;
+			cFileName: 			byte[MAX_PATH];
+			cAlternate: 		byte[14];
+		endrecord;
+
+BITMAP: 
+ 		record
+			bmType: 		dword;
+			bmWidth: 		dword;
+			bmHeight: 		dword;
+			bmWidthBytes: 	dword;
+			bmPlanes: 		word;
+			bmBitsPixel: 	word;
+			bmBits: 		dword;
+		endrecord;
+
+TEXTMETRIC: 
+ 		record
+			tmHeight: 			dword;
+			tmAscent: 			dword;
+			tmDescent: 			dword;
+			tmInternalLeading: 	dword;
+			tmExternalLeading: 	dword;
+			tmAveCharWidth: 	dword;
+			tmMaxCharWidth: 	dword;
+			tmWeight: 			dword;
+			tmOverhang: 		dword;
+			tmDigitizedAspectX: dword;
+			tmDigitizedAspectY: dword;
+			tmFirstChar: 		byte;
+			tmLastChar: 		byte;
+			tmDefaultChar: 		byte;
+			tmBreakChar: 		byte;
+			tmItalic: 			byte;
+			tmUnderlined: 		byte;
+			tmStruckOut: 		byte;
+			tmPitchAndFamily: 	byte;
+			tmCharSet: 			byte;
+		endrecord;
+
+LOGFONT: 
+ 		record
+			lfHeight: 			dword;
+			lfWidth: 			dword;
+			lfEscapement: 		dword;
+			lfOrientation: 		dword;
+			lfWeight: 			dword;
+			lfItalic: 			byte;
+			lfUnderline: 		byte;
+			lfStrikeOut: 		byte;
+			lfCharSet: 			byte;
+			lfOutPrecision: 	byte;
+			lfClipPrecision: 	byte;
+			lfQuality: 			byte;
+			lfPitchAndFamily: 	byte;
+			lfFaceName: 		byte[LF_FACESIZE];
+		endrecord;
+
+DOCINFO: 
+ 		record
+			cbSize: 		dword;
+			lpszDocName: 	dword;
+			lpszOutput: 	dword;
+			lpszDatatype: 	dword;
+			fwType: 		dword;
+		endrecord;
+
+DRAWITEMSTRUCT: 
+ 		record
+			CtlType: 	dword;
+			CtlID: 		dword;
+			itemID: 	dword;
+			itemAction: dword;
+			itemState: 	dword;
+			hwndItem: 	dword;
+			hdc: 		dword;
+			rcItem: 	RECT;
+			itemData: 	dword;
+		endrecord;
+
+DLGPROC:
+		procedure
+		( 
+			hwndDlg:dword; 
+			uMsg:dword; 
+			_wParam:dword; 
+			_lParam:dword 
+		);
+		@stdcall;
+
+TIMERPROC:
+			procedure
+			(
+				hwnd		:dword;
+				uMsg		:dword;
+				idEvent		:dword;
+				dwTime		:dword
+			);
+			@stdcall;
+
+PAGESETUPDLG: record
+		lStructSize: dword;
+		hwndOwner: dword;
+		hDevMode: dword;
+		hDevNames: dword;
+		flags: dword;
+		ptPaperSize: POINT;
+		rtMinMargin: RECT;
+		rtMargin: RECT;
+		hInstance: dword;
+		lCustData: dword;
+		lpfnPageSetupHook: dword;
+		lpfnPagePaintHook: dword;
+		lpPageSetupTemplateName: dword;
+		hPageSetupTemplate: dword;
+		align(4);
+		endrecord;
+
+const
+	INVALID_HANDLE_VALUE           := -1;
+	THREAD_BASE_PRIORITY_MAX       := 2;
+	THREAD_PRIORITY_HIGHEST        :=  THREAD_BASE_PRIORITY_MAX;
+	INFINITE                       := $0FFFF;
+	WC_TABCONTROL   :string     := "SysTabControl32";
+	TOOLTIPS_CLASS  :string     := "tooltips_class32";
+	LOCALE_IMEASURE                := $0D;
+	DFC_BUTTON                     := 4;
+	DFCS_BUTTONPUSH                := $0010;
+	DFCS_PUSHED                    := $0200;
+	FORMAT_MESSAGE_FROM_SYSTEM     := $1000;
+	STARTF_USESHOWWINDOW           := $1;
+	STARTF_USESTDHANDLES           := $100;
+	SRCCOPY                        := $0CC0020;
+	SRCPAINT                       := $0EE0086;
+	RGN_XOR                        := 3;
+	ETO_OPAQUE                     := 2;
+	TRANSPARENT                    := 1;
+	MM_TEXT                        := 1;
+	BLACK_BRUSH                    := 4;
+	ANSI_FIXED_FONT                := 11;
+	SYSTEM_FIXED_FONT              := 16;
+	PS_SOLID                       := 0;
+	HORZRES                        := 8;
+	VERTRES                        := 10;
+	LOGPIXELSX                     := 88;
+	LOGPIXELSY                     := 90;
+	PHYSICALWIDTH                  := 110;
+	PHYSICALHEIGHT                 := 111;
+	PHYSICALOFFSETX                := 112;
+	PHYSICALOFFSETY                := 113;
+	SW_HIDE                        := 0;
+	SW_SHOWNORMAL                  := 1;
+	SW_MAXIMIZE                    := 3;
+	SW_SHOW                        := 5;
+	SW_SHOWNA                      := 8;
+	VK_BACK                        := $8;
+	VK_DELETE                      := $2E;
+	VK_DOWN                        := $28;
+	VK_END                         := $23;
+	VK_ESCAPE                      := $1B;
+	VK_HOME                        := $24;
+	VK_INSERT                      := $2D;
+	VK_LEFT                        := $25;
+	VK_PAUSE                       := $13;
+	VK_PGDN                        := $22;
+	VK_PGUP                        := $21;
+	VK_RETURN                      := $0D;
+	VK_RIGHT                       := $27;
+	VK_SHIFT                       := $10;
+	VK_TAB                         := $9;
+	VK_UP                          := $26;
+	VK_F1                          := $70;
+	GWL_WNDPROC                    := -4;
+	GWL_STYLE                      := -16;
+	GWL_EXSTYLE                    := -20;
+	WM_USER                        := $400;
+	WM_CREATE                      := $1;
+	WM_DESTROY                     := $2;
+	WM_MOVE                        := $3;
+	WM_SIZE                        := $5;
+	WM_ACTIVATE                    := $6;
+	WM_SETFOCUS                    := $7;
+	WM_SETREDRAW                   := $0B;
+	WM_SETTEXT                     := $0C;
+	WM_GETTEXT                     := $0D;
+	WM_GETTEXTLENGTH               := $0E;
+	WM_PAINT                       := $0F;
+	WM_CLOSE                       := $10;
+	WM_MOUSEACTIVATE               := $21;
+	WM_DRAWITEM                    := $2B;
+	WM_SETFONT                     := $30;
+	WM_NOTIFY                      := $4E;
+	WM_CONTEXTMENU                 := $7B;
+	WM_NCDESTROY                   := $82;
+	WM_NCHITTEST                   := $84;
+	WM_NCPAINT                     := $85;
+	WM_NCACTIVATE                  := $86;
+	WM_NCLBUTTONDOWN               := $0A1;
+	WM_NCLBUTTONDBLCLK             := $0A3;
+	WM_KEYFIRST                    := $100;
+	WM_KEYDOWN                     := $100;
+	WM_KEYUP                       := $101;
+	WM_CHAR                        := $102;
+	WM_KEYLAST                     := $108;
+	WM_INITDIALOG                  := $110;
+	WM_COMMAND                     := $111;
+	WM_CTLCOLORSTATIC              := $138;
+	WM_MOUSEFIRST                  := $200;
+	WM_MOUSEMOVE                   := $200;
+	WM_LBUTTONDOWN                 := $201;
+	WM_LBUTTONUP                   := $202;
+	WM_LBUTTONDBLCLK               := $203;
+	WM_RBUTTONDOWN                 := $204;
+	WM_MBUTTONDOWN                 := $207;
+	WM_MOUSELAST                   := $209;
+	WM_DROPFILES                   := $233;
+	WM_CUT                         := $300;
+	WM_COPY                        := $301;
+	WM_PASTE                       := $302;
+	WM_CLEAR                       := $303;
+	HTCAPTION                      := 2;
+	HTBORDER                       := 18;
+	SIZE_RESTORED                  := 0;
+	SIZENORMAL                     :=  SIZE_RESTORED;
+	WS_POPUP                       := $80000000;
+	WS_CHILD                       := $40000000;
+	WS_MINIMIZE                    := $20000000;
+	WS_VISIBLE                     := $10000000;
+	WS_CLIPSIBLINGS                := $4000000;
+	WS_CLIPCHILDREN                := $2000000;
+	WS_MAXIMIZE                    := $1000000;
+	WS_CAPTION                     := $0C00000;
+	WS_VSCROLL                     := $200000;
+	WS_SYSMENU                     := $80000;
+	WS_THICKFRAME                  := $40000;
+	WS_TABSTOP                     := $10000;
+	WS_MINIMIZEBOX                 := $20000;
+	WS_MAXIMIZEBOX                 := $10000;
+	WS_SIZEBOX                     :=  WS_THICKFRAME;
+	WS_EX_TOPMOST                  := $8;
+	WS_EX_TOOLWINDOW               := $00000080;
+	WS_EX_CLIENTEDGE               := $00000200;
+	WS_EX_CONTEXTHELP              := $00000400;
+	CS_VREDRAW                     := $1;
+	CS_HREDRAW                     := $2;
+	CF_TEXT                        := 1;
+	ODS_SELECTED                   := $1;
+	CW_USEDEFAULT                  := $80000000;
+	SWP_NOSIZE                     := $1;
+	SWP_NOMOVE                     := $2;
+	SWP_NOZORDER                   := $4;
+	SWP_NOACTIVATE                 := $10;
+	SWP_FRAMECHANGED               := $20;
+	SWP_DRAWFRAME                  :=  SWP_FRAMECHANGED;
+	HWND_TOPMOST                   := -1;
+	HWND_NOTOPMOST                 := -2;
+	DLGWINDOWEXTRA                 := 30;
+	SM_CXDLGFRAME                  := 7;
+	SM_CYDLGFRAME                  := 8;
+	SM_CXSIZE                      := 30;
+	SM_CYSIZE                      := 31;
+	SM_CXFRAME                     := 32;
+	SM_CYFRAME                     := 33;
+	SM_CXFIXEDFRAME                :=  SM_CXDLGFRAME;
+	SM_CYFIXEDFRAME                :=  SM_CYDLGFRAME;
+	SM_CXSIZEFRAME                 :=  SM_CXFRAME;
+	SM_CYSIZEFRAME                 :=  SM_CYFRAME;
+	SM_CXSMSIZE                    := 52;
+	SM_CYSMSIZE                    := 53;
+	TPM_RIGHTBUTTON                := $2;
+	TPM_LEFTALIGN                  := $0;
+	MB_OK                          := $0;
+	MB_YESNOCANCEL                 := $3;
+	MB_YESNO                       := $4;
+	MB_ICONHAND                    := $10;
+	MB_ICONQUESTION                := $20;
+	MB_ICONEXCLAMATION             := $30;
+	MB_ICONERROR                   :=  MB_ICONHAND;
+	MB_ICONWARNING                 :=  MB_ICONEXCLAMATION;
+	COLOR_WINDOW                   := 5;
+	COLOR_WINDOWTEXT               := 8;
+	COLOR_HIGHLIGHT                := 13;
+	COLOR_HIGHLIGHTTEXT            := 14;
+	COLOR_BTNFACE                  := 15;
+	COLOR_3DFACE                   :=  COLOR_BTNFACE;
+	MF_BYCOMMAND                   := $0;
+	MF_BYPOSITION                  := $400;
+	MF_ENABLED                     := $0;
+	MF_GRAYED                      := $1;
+	MF_UNCHECKED                   := $0;
+	MF_CHECKED                     := $8;
+	MF_STRING                      := $0;
+	MF_POPUP                       := $10;
+	IDC_ARROW                      := 32512;
+	IDC_WAIT                       := 32514;
+	IDI_APPLICATION                := 32512;
+	IDOK                           := 1;
+	IDCANCEL                       := 2;
+	IDYES                          := 6;
+	IDNO                           := 7;
+	ES_MULTILINE                   := $4;
+	ES_READONLY                    := $800;
+	EN_CHANGE                      := $300;
+	EM_GETSEL                      := $0B0;
+	EM_SETSEL                      := $0B1;
+	EM_SCROLLCARET                 := $0B7;
+	EM_GETMODIFY                   := $0B8;
+	EM_SETMODIFY                   := $0B9;
+	EM_GETLINECOUNT                := $0BA;
+	EM_LINEINDEX                   := $0BB;
+	EM_REPLACESEL                  := $0C2;
+	EM_GETLINE                     := $0C4;
+	EM_LIMITTEXT                   := $0C5;
+	EM_CANUNDO                     := $0C6;
+	EM_UNDO                        := $0C7;
+	EM_POSFROMCHAR                 := $0D6;
+	BS_FLAT                        := $8000;
+	BN_CLICKED                     := 0;
+	BST_UNCHECKED                  := $00;
+	BST_CHECKED                    := 1;
+	BM_GETCHECK                    := $0F0;
+	BM_SETCHECK                    := $0F1;
+	DS_CENTER                      := $0800;
+	NM_FIRST                       :=  0- 0;
+	LVM_FIRST                      := $1000;
+	TV_FIRST                       := $1100;
+	NM_DBLCLK                      :=  NM_FIRST-3;
+	NM_RCLICK                      :=  NM_FIRST-5;
+	LVN_FIRST                      :=  0-100;
+	TVN_FIRST                      :=  0-400;
+	TTN_FIRST                      :=  0-520;
+	TCN_FIRST                      :=  0-550;
+	UDN_FIRST                      :=  0-721;
+	LB_ERR                         := -1;
+	LBN_SELCHANGE                  := 1;
+	LBN_DBLCLK                     := 2;
+	LB_ADDSTRING                   := $180;
+	LB_DELETESTRING                := $182;
+	LB_RESETCONTENT                := $184;
+	LB_SETCURSEL                   := $186;
+	LB_GETSEL                      := $187;
+	LB_GETCURSEL                   := $188;
+	LB_GETTEXT                     := $189;
+	LB_GETTEXTLEN                  := $18A;
+	LB_GETCOUNT                    := $18B;
+	LB_FINDSTRING                  := $18F;
+	LB_GETSELCOUNT                 := $190;
+	LB_GETITEMDATA                 := $199;
+	LB_SETITEMDATA                 := $19A;
+	LB_FINDSTRINGEXACT             := $1A2;
+	LBS_NOTIFY                     := $1;
+	LBS_SORT                       := $2;
+	LBS_HASSTRINGS                 := $40;
+	LBS_NOINTEGRALHEIGHT           := $100;
+	CB_ERR                         := -1;
+	CBN_SELCHANGE                  := 1;
+	CBN_EDITCHANGE                 := 5;
+	CBN_SELENDOK                   := 9;
+	CB_ADDSTRING                   := $143;
+	CB_DELETESTRING                := $144;
+	CB_GETCURSEL                   := $147;
+	CB_GETLBTEXT                   := $148;
+	CB_RESETCONTENT                := $14B;
+	CB_SETCURSEL                   := $14E;
+	CB_GETITEMDATA                 := $150;
+	CB_SETITEMDATA                 := $151;
+	CB_FINDSTRINGEXACT             := $158;
+	HELP_INDEX                     := $3;
+	HELP_KEY                       := $101;
+	PSD_MARGINS                    := $2;
+	PSD_INTHOUSANDTHSOFINCHES      := $4;
+	PSD_INHUNDREDTHSOFMILLIMETERS  := $8;
+	IMAGE_BITMAP                   := 0;
+	ILC_MASK                       := $0001;
+	ILC_COLORDDB                   := $00FE;
+	ILC_COLOR8                     := $0008;
+	TBSTATE_ENABLED                := $04;
+	TBSTYLE_BUTTON                 := $00;
+	TBSTYLE_SEP                    := $01;
+	TBSTYLE_TOOLTIPS               := $0100;
+	TBSTYLE_FLAT                   := $0800;
+	TB_ENABLEBUTTON                :=  WM_USER + 1;
+	TB_ADDBITMAP                   :=  WM_USER + 19;
+	TB_SETIMAGELIST		:= WM_USER + 48;
+	TB_SETHOTIMAGELIST		:= WM_USER + 52;
+	TB_SETDISABLEDIMAGELIST	:= WM_USER + 54;
+	TB_ADDBUTTONS                  :=  WM_USER + 20;
+	TB_BUTTONSTRUCTSIZE            :=  WM_USER + 30;
+	TB_AUTOSIZE                    :=  WM_USER + 33;
+	TTS_ALWAYSTIP                  := $01;
+	TTS_NOPREFIX                   := $02;
+	TTF_SUBCLASS                   := $10;
+	TTM_ADDTOOL                    :=  WM_USER + 4;
+	TTM_DELTOOL                    :=  WM_USER + 5;
+	TTM_POP                        :=  WM_USER +28;
+	TTN_NEEDTEXT                   :=  TTN_FIRST - 0;
+	SB_SETTEXT                     :=  WM_USER+1;
+	SB_SETPARTS                    :=  WM_USER+4;
+	UDM_SETRANGE                   :=  WM_USER+101;
+	UDM_SETPOS                     :=  WM_USER+103;
+	UDN_DELTAPOS                   :=  UDN_FIRST - 1;
+	LVM_GETITEMCOUNT               :=  LVM_FIRST + 4;
+	LVIF_TEXT                      := $0001;
+	LVIF_PARAM                     := $0004;
+	LVIS_SELECTED                  := $0002;
+	LVM_GETITEM                    :=  LVM_FIRST + 5;
+	LVM_SETITEM                    :=  LVM_FIRST + 6;
+	LVM_INSERTITEM                 :=  LVM_FIRST + 7;
+	LVM_DELETEALLITEMS             :=  LVM_FIRST + 9;
+	LVM_INSERTCOLUMN                := LVM_FIRST + 27;
+	LVM_SETITEMSTATE                := LVM_FIRST + 43;
+	LVM_GETITEMSTATE                := LVM_FIRST + 44;
+	LVCF_FMT                       := $0001;
+	LVCF_WIDTH                     := $0002;
+	LVCF_TEXT                      := $0004;
+	LVCF_SUBITEM                   := $0008;
+	LVCFMT_LEFT                    := $0000;
+	LVN_ITEMCHANGED                :=  LVN_FIRST-1;
+	LVN_ENDLABELEDIT               :=  LVN_FIRST-6;
+	TVIF_TEXT                      := $0001;
+	TVIF_IMAGE                     := $0002;
+	TVIF_PARAM                     := $0004;
+	TVIF_HANDLE                    := $0010;
+	TVIF_SELECTEDIMAGE             := $0020;
+	TVI_ROOT                       := $0FFFF0000;
+	TVM_INSERTITEM                 :=  TV_FIRST + 0;
+	TVM_DELETEITEM                 :=  TV_FIRST + 1;
+	TVM_SETIMAGELIST               :=  TV_FIRST + 9;
+	TVGN_CARET                     := $0009;
+	TVM_SELECTITEM                 :=  TV_FIRST + 11;
+	TVM_GETITEM                    :=  TV_FIRST + 12;
+	TVM_SETITEM                    :=  TV_FIRST + 13;
+	TVM_HITTEST                    :=  TV_FIRST + 17;
+	TVHT_ONITEMICON                := $0002;
+	TVHT_ONITEMLABEL               := $0004;
+	TVHT_ONITEMSTATEICON           := $0040;
+	TVHT_ONITEM                    :=  TVHT_ONITEMICON | TVHT_ONITEMLABEL | TVHT_ONITEMSTATEICON;
+	TVM_SORTCHILDREN               :=  TV_FIRST + 19;
+	TVN_SELCHANGEDA                :=  TVN_FIRST-2;
+	TCS_BOTTOM			:= $0002;
+	TCS_VERTICAL            	:= $0080;
+	TCS_TABS                       := $0000;
+	TCS_SINGLELINE                 := $0000;
+	TCS_RIGHTJUSTIFY               := $0000;
+	TCS_TOOLTIPS                   := $4000;
+	TCS_FOCUSNEVER                 := $8000;
+	TCM_FIRST                      := $1300;
+	TCM_GETITEMCOUNT               :=  TCM_FIRST + 4;
+	TCIF_TEXT                      := $0001;
+	TCIF_PARAM                     := $0008;
+	TCM_GETITEM                    :=  TCM_FIRST + 5;
+	TCM_SETITEM                    :=  TCM_FIRST + 6;
+	TCM_INSERTITEM                 :=  TCM_FIRST + 7;
+	TCM_DELETEITEM                 :=  TCM_FIRST + 8;
+	TCM_GETCURSEL                  :=  TCM_FIRST + 11;
+	TCM_SETCURSEL                  :=  TCM_FIRST + 12;
+	TCN_SELCHANGE                  :=  TCN_FIRST - 1;
+	TCN_SELCHANGING                :=  TCN_FIRST - 2;
+	CC_RGBINIT                     := $00000001;
+	CC_FULLOPEN                    := $00000002;
+	FR_DOWN                        := $00000001;
+	FR_WHOLEWORD                   := $00000002;
+	FR_MATCHCASE                   := $00000004;
+	CF_SCREENFONTS                 := $00000001;
+	CF_INITTOLOGFONTSTRUCT         := $00000040;
+	CF_EFFECTS                     := $00000100;
+	PD_NOSELECTION                 := $00000004;
+	PD_NOPAGENUMS                  := $00000008;
+	PD_RETURNDC                    := $00000100;
+	OFN_FILEMUSTEXIST              := $00001000;
+	OFN_HIDEREADONLY               := $00000004;
+	OFN_NOCHANGEDIR                := $00000008;
+	OFN_OVERWRITEPROMPT            := $00000002;
+	OFN_PATHMUSTEXIST              := $00000800;
+	EM_CANPASTE                    :=  WM_USER + 50;
+	EM_EXGETSEL                    :=  WM_USER + 52;
+	EM_EXLINEFROMCHAR              :=  WM_USER + 54;
+	EM_EXSETSEL                    :=  WM_USER + 55;
+	EM_GETSELTEXT                  :=  WM_USER + 62;
+	EM_HIDESELECTION               :=  WM_USER + 63;
+	EM_STREAMIN                    :=  WM_USER + 73;
+	EM_STREAMOUT                   :=  WM_USER + 74;
+	EM_FINDWORDBREAK               :=  WM_USER + 76;
+	EM_FINDTEXTEX                  :=  WM_USER + 79;
+	EM_REDO                     	 :=  WM_USER + 84;
+	EM_CANREDO                  	 :=  WM_USER + 85;
+	EN_SELCHANGE                   := $0702;
+	WB_MOVEWORDLEFT                := 4;
+	SF_TEXT                        := $0001;
+	SEL_OBJECT                     := $0002;
+	WM_MOUSEWHEEL                  := $20A;
+	WM_MOVING                      := $216;
+	SS_BITMAP                      := $0E;
+	STM_SETIMAGE                   := $172;
+static
+AllocConsole: procedure;
+		@stdcall;
+		@returns( "eax" ); // Zero if failure
+		@external( "__imp__AllocConsole@0" );
+
+CloseHandle: procedure
+	( 
+		handle:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__CloseHandle@4" );
+
+CreateEvent: procedure
+	( 
+		lpEventAttributes:	dword;   // Should be NULL 
+		bManualReset:		dword; 
+		bInitialState:		dword; 
+		lpName:				string
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__CreateEventA@16" );
+
+CreatePipe: procedure
+	( 
+		var	hReadPipe:			dword; 
+		var	hWritePipe:			dword; 
+		var	lpPipeAttributes:	SECURITY_ATTRIBUTES;
+		nSize:					dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__CreatePipe@16" );
+
+CreateProcess: procedure
+	( 
+			lpApplicationName:		string; 
+			lpCommandLine:			string; 
+		var	lpProcessAttributes:	SECURITY_ATTRIBUTES;
+		var	lpThreadAttributes:		SECURITY_ATTRIBUTES;
+			InheritHandles:			dword; 
+			dwCreationFlags:		dword; 
+		var	lpEnvironment:			var; 
+			lpCurrentyDirectory:	string; 
+		var	lpStartupInfo:			STARTUPINFO; 
+		var	lpProcessInformation:	PROCESS_INFORMATION
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__CreateProcessA@40" );
+
+CreateThread: procedure
+	( 
+		var	lpThreadAttributes:	SECURITY_ATTRIBUTES; 
+			dwStackSize:		dword; 
+			lpStartAddress:		THREAD_START_ROUTINE; 
+			lpParameter:		dword; 
+			dwCreationFlags:	dword; 
+		var	lpThreadID:			dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__CreateThread@24" );
+
+FindClose: procedure
+	( 
+		hFindFile:	dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__FindClose@4" );
+
+FindFirstFile: procedure
+	( 
+			lpFileName:		string; 
+		var	lpFindFileData:	WIN32_FIND_DATA
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__FindFirstFileA@8" );
+
+FindNextFile: procedure
+	( 
+			hFindFile:		dword; 
+		var	lpFindFileData:	WIN32_FIND_DATA
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__FindNextFileA@8" );
+
+FormatMessage: procedure
+	( 
+			dwFlags:		dword; 
+		var	lpSource:		var; 
+			dwMessageId:	dword; 
+			dwLanguageId:	dword; 
+		var	lpBuffer:		var; 
+			nSize:			uns32; 
+		var	Arguments:		var
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__FormatMessageA@28" );
+
+FreeLibrary: procedure
+	( 
+		hModule:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__FreeLibrary@4" );
+
+GetExitCodeProcess: procedure
+	( 
+			hProcess:	dword; 
+		var	lpExitCode:	dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__GetExitCodeProcess@8" );
+
+GetFileTime: procedure
+	( 
+			hFile:				dword; 
+		var	lpCreationTime:		FILETIME; 
+		var	lpLastAccessTime:	FILETIME; 
+		var	lpLastWriteTime:	FILETIME
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__GetFileTime@16" );
+
+GetFullPathName: procedure
+	( 
+			lpFileName:		string; 
+			nBufferLength:	dword; 
+		var	lpBuffer:		var; 
+		var	lpFilePart:		var
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__GetFullPathNameA@16" );
+
+GetLastError: procedure;
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__GetLastError@0" );
+
+GetLocaleInfo: procedure
+	( 
+			Locale:		LCID; 
+			LCType:		LCTYPE; 
+		var	lpLCData:	var; 
+			cchData:	dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__GetLocaleInfoA@16" );
+
+GetModuleHandle: procedure
+	( 
+		lpModuleName:	string
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__GetModuleHandleA@4" );
+
+GetProcAddress: procedure
+	( 
+		hModule:	dword; 
+		lpProcName:	string
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__GetProcAddress@8" );
+
+GetUserDefaultLCID: procedure;
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__GetUserDefaultLCID@0" );
+
+LoadLibrary: procedure
+	( 
+		lpFileName:	string
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__LoadLibraryA@4" );
+
+lstrcpy: procedure
+	( 
+		var	lpString1:	var; 
+		var	lpString2:	var
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__lstrcpyA@8" );
+
+lstrlen: procedure
+	( 
+		var	lpString:	var
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__lstrlenA@4" );
+
+MulDiv: procedure
+	( 
+		nNumber:		dword; 
+		nNumerator:		dword; 
+		nDenominator:	dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__MulDiv@12" );
+
+ReadFile: procedure
+	( 
+			hFile:					dword; 
+		var	lpBuffer:				var; 
+			nNumberOfBytesToRead:	dword; 
+		var	lpNumberOfBytesRead:	dword; 
+		var	lpOverlapped:			OVERLAPPED
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__ReadFile@20" );
+
+RemoveDirectory: procedure
+	( 
+		lpPathName:	string
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__RemoveDirectoryA@4" );
+
+ResetEvent: procedure
+	( 
+		hEvent:	dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__ResetEvent@4" );
+
+RtlZeroMemory: procedure
+	( 
+		p0:dword; 
+		p1:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__RtlZeroMemory@8" );
+
+SetThreadPriority: procedure
+	( 
+		hThread:	dword; 
+		nPriority:	dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__SetThreadPriority@8" );
+
+Sleep: procedure
+	( 
+		dwMilliseconds:	dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__Sleep@4" );
+
+WaitForSingleObject: procedure
+	( 
+		hHandle:		dword; 
+		dwMilliseconds:	dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__WaitForSingleObject@8" );
+
+WriteFile: procedure
+	( 
+			hFile:					dword; 
+		var	lpBuffer:				var; 
+			nNumberOfBytesToWrite:	dword; 
+		var	lpNumberOfBytesWritten:	dword; 
+		var	lpOverlapped:			OVERLAPPED
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__WriteFile@20" );
+
+BitBlt: procedure
+	( 
+		hdcDest		:dword; 
+		nXDest		:dword; 
+		nYDest		:dword; 
+		nWidth		:dword; 
+		nHeight		:dword; 
+		hdcSrc		:dword; 
+		nXSrc		:dword; 
+		nYSrc		:dword; 
+		dwRop		:dword
+	);
+		@stdcall;
+
+		@returns( "eax" );
+		@external( "__imp__BitBlt@36" );
+
+CombineRgn: procedure
+	( 
+		hrgnDest		:dword; 
+		hrgnSrc1		:dword; 
+		hrgnSrc2		:dword; 
+		fnCombineMode	:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__CombineRgn@16" );
+
+CreateCompatibleBitmap: procedure
+	( 
+		hdc		:dword; 
+		nWidth	:dword; 
+		nHeight	:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__CreateCompatibleBitmap@12" );
+
+CreateCompatibleDC: procedure
+	( 
+		hdc	:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__CreateCompatibleDC@4" );
+
+CreateFontIndirect: procedure
+	( 
+		var	lplf:LOGFONT
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__CreateFontIndirectA@4" );
+
+CreatePen: procedure
+	( 
+		fnPenStyle	:dword; 
+		nWidth		:dword; 
+		crColor		:COLORREF
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__CreatePen@12" );
+
+CreateRectRgnIndirect: procedure
+	( 
+		VAR	lprc	:RECT
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__CreateRectRgnIndirect@4" );
+
+CreateSolidBrush: procedure
+	( 
+		crColor		:COLORREF
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__CreateSolidBrush@4" );
+
+DeleteDC: procedure
+	( 
+		hdc	:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__DeleteDC@4" );
+
+DeleteObject: procedure
+	( 
+		hObject	:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__DeleteObject@4" );
+
+EndDoc: procedure
+	( 
+		hdc	:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__EndDoc@4" );
+
+EndPage: procedure
+	( 
+		hdc	:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__EndPage@4" );
+
+ExtTextOut: procedure
+	( 
+			hdc			:dword; 
+			x			:dword; 
+			y			:dword; 
+			fuOptions	:dword; 
+		var	lprc		:RECT; 
+			lpString	:string; 
+			cbCount		:dword; 
+		var	lpDx		:var
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__ExtTextOutA@32" );
+
+GetDeviceCaps: procedure
+	( 
+		hdc				:dword; 
+		nIndex			:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__GetDeviceCaps@8" );
+
+GetObject: procedure
+	( 
+			hgdiobj			:dword; 
+			cbBuffer		:dword; 
+		var	lpvObject		:var
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__GetObjectA@12" );
+
+GetStockObject: procedure
+	( 
+		fnObject			:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__GetStockObject@4" );
+
+GetTextExtentPoint32: procedure
+	( 
+			hdc				:dword; 
+			lpString		:string; 
+			cbString		:dword; 
+		var	lpSize			:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__GetTextExtentPoint32A@16" );
+
+GetTextMetrics: procedure
+	( 
+			hdc				:dword; 
+		var	lptm			:TEXTMETRIC
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__GetTextMetricsA@8" );
+
+Rectangle: procedure
+	( 
+			hdc				:dword; 
+			nLeftRect		:dword; 
+			nTopRect		:dword; 
+			nRightRect		:dword; 
+			nBottomRect		:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__Rectangle@20" );
+
+SelectObject: procedure
+	( 
+		hdc					:dword; 
+		hgdiobj				:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__SelectObject@8" );
+
+SetBkColor: procedure
+	( 
+		hdc					:dword; 
+		crColor				:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__SetBkColor@8" );
+
+SetBkMode: procedure
+	( 
+		hdc					:dword; 
+		iBkMode				:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__SetBkMode@8" );
+
+SetMapMode: procedure
+	( 
+		hdc					:dword; 
+		fnMapMode			:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__SetMapMode@8" );
+
+SetTextColor: procedure
+	( 
+		hdc					:dword; 
+		crColor				:COLORREF
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__SetTextColor@8" );
+
+SetViewportOrgEx: procedure
+	( 
+			hdc				:dword; 
+			X				:dword; 
+			Y				:dword; 
+		var	lpPoint			:POINT
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__SetViewportOrgEx@16" );
+
+StartDoc: procedure
+	( 
+			hdc				:dword; 
+		var	lpdi			:DOCINFO
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__StartDocA@8" );
+
+StartPage: procedure
+	( 
+		hdc					:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__StartPage@4" );
+
+TextOut: procedure
+	( 
+		hdc					:dword; 
+		nXStart				:dword; 
+		nYStart				:dword; 
+		lpString			:string; 
+		cbString			:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__TextOutA@20" );
+
+AppendMenu: procedure
+	( 
+		hMenu			:dword; 
+		uFlags			:dword; 
+		uIDNewItem		:dword; 
+		lpNewItem		:string
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__AppendMenuA@16" );
+
+CallWindowProc: procedure
+	( 
+		lpPrevWndFunc	:WNDPROC; 
+		hWnd			:dword; 
+		Msg				:dword; 
+		_wParam			:dword; 
+		_lParam			:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__CallWindowProcA@20" );
+
+CheckDlgButton: procedure
+	( 
+		hDlg			:dword; 
+		nIDButton		:dword; 
+		uCheck			:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__CheckDlgButton@12" );
+
+CheckMenuItem: procedure
+	( 
+		hmenu			:dword; 
+		uIDCheckItem	:dword; 
+		uCheck			:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__CheckMenuItem@12" );
+
+CheckRadioButton: procedure
+	( 
+		hDlg			:dword; 
+		nIDFirstButton	:dword; 
+		nIDLastButton	:dword; 
+		nIDCheckButton	:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__CheckRadioButton@16" );
+
+ClientToScreen: procedure
+	( 
+			hWnd		:dword; 
+		var	lpPoint		:POINT
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__ClientToScreen@8" );
+
+CreateDialogParam: procedure
+	( 
+		hInstance			:dword; 
+		lpTemplateName		:string; 
+		hWndParent			:dword; 
+		lpDialogFunc		:DLGPROC; 
+		dwInitParam			:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__CreateDialogParamA@20" );
+
+CreatePopupMenu: procedure;
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__CreatePopupMenu@0" );
+
+CreateWindowEx: procedure
+	( 
+			dwExStyle		:dword; 
+			lpClassName		:string; 
+			lpWindowName	:string; 
+			dwStyle			:dword; 
+			x				:dword; 
+			y				:dword; 
+			nWidth			:dword; 
+			nHeight			:dword; 
+			hWndParent		:dword; 
+			hMenu			:dword; 
+			hInstance		:dword; 
+		var	lpParam			:var
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__CreateWindowExA@48" );
+
+DefWindowProc: procedure
+	( 
+		hWnd		:dword; 
+		_Msg		:dword; 
+		_wParam		:dword; 
+		_lParam		:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__DefWindowProcA@16" );
+
+DestroyCursor: procedure
+	( 
+		hCursor			:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__DestroyCursor@4" );
+
+DestroyMenu: procedure
+	( 
+		hMenu			:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__DestroyMenu@4" );
+
+DestroyWindow: procedure
+	( 
+		hWnd			:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__DestroyWindow@4" );
+
+DialogBoxParam: procedure
+	( 
+		hInstance		:dword; 
+		lpTemplateName	:string; 
+		hWndParent		:dword; 
+		lpDialogFunc	:DLGPROC; 
+		dwInitParam		:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__DialogBoxParamA@20" );
+
+DispatchMessage: procedure
+	( 
+		var	lpmsg		:MSG
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__DispatchMessageA@4" );
+
+DrawFrameControl: procedure
+	( 
+			hdc		:dword; 
+		var	lprc	:RECT; 
+			uType	:dword; 
+			uState	:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__DrawFrameControl@16" );
+
+DrawMenuBar: procedure
+	( 
+		hWnd		:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__DrawMenuBar@4" );
+
+EnableMenuItem: procedure
+	( 
+		hMenu			:dword; 
+		uIDEnableItem	:dword; 
+		uEnable			:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__EnableMenuItem@12" );
+
+EnableWindow: procedure
+	( 
+		hWnd			:dword; 
+		bEnable		:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__EnableWindow@8" );
+
+EndDialog: procedure
+	( 
+		hDlg			:dword; 
+		nResult			:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__EndDialog@8" );
+
+FillRect: procedure
+	( 
+			hDC			:dword; 
+		var	lprc		:RECT; 
+			hbr			:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__FillRect@12" );
+
+FrameRect: procedure
+	( 
+			hDC			:dword; 
+		var	lprc		:RECT; 
+			hbr			:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__FrameRect@12" );
+
+GetCaretPos: procedure
+	( 
+		var	lpPoint		:POINT
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__GetCaretPos@4" );
+
+GetClientRect: procedure
+	( 
+			hWnd		:dword; 
+		var	lpRect		:RECT
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__GetClientRect@8" );
+
+GetCursorPos: procedure
+	( 
+		var	lpPoint		:POINT
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__GetCursorPos@4" );
+
+GetDC: procedure
+	( 
+		hWnd			:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__GetDC@4" );
+
+GetDlgItem: procedure
+	( 
+		hDlg			:dword; 
+		nIDDlgItem		:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__GetDlgItem@8" );
+
+GetDlgItemInt: procedure
+	( 
+			hDlg			:dword; 
+			nIDDlgItem		:dword; 
+		var	lpTranslated	:dword; 
+			bSigned			:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__GetDlgItemInt@16" );
+
+GetDlgItemTextA: procedure
+	( 
+			hDlg			:dword; 
+			nIDDlgItem		:dword; 
+		var	lpString		:var; 
+			nMaxCount		:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__GetDlgItemTextA@16" );
+
+GetFocus: procedure;
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__GetFocus@0" );
+
+GetKeyboardState: procedure
+	( 
+		var	lpKeyState	:var
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__GetKeyboardState@4" );
+
+GetMenu: procedure
+	( 
+		hWnd			:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__GetMenu@4" );
+
+GetMessage: procedure
+	( 
+		var	lpMsg			:MSG; 
+			hWnd			:dword; 
+			wMsgFilterMin	:dword; 
+			wMsgFilterMax	:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__GetMessageA@16" );
+
+GetProp: procedure
+	( 
+		hWnd			:dword; 
+		lpString		:string
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__GetPropA@8" );
+
+GetSubMenu: procedure
+	( 
+		hMenu			:dword; 
+		nPos			:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__GetSubMenu@8" );
+
+GetSysColor: procedure
+	( 
+		nIndex			:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__GetSysColor@4" );
+
+GetSystemMetrics: procedure
+	( 
+		nIndex			:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__GetSystemMetrics@4" );
+
+GetWindowDC: procedure
+	( 
+		hWnd		:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__GetWindowDC@4" );
+
+GetWindowLong: procedure
+	( 
+		hWnd		:dword; 
+		nIndex		:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__GetWindowLongA@8" );
+
+GetWindowRect: procedure
+	( 
+			hWnd		:dword; 
+		var	lpRect		:RECT
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__GetWindowRect@8" );
+
+InflateRect: procedure
+	( 
+		var	lprc	:RECT; 
+			_dx		:dword; 
+			_dy		:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__InflateRect@12" );
+
+InsertMenu: procedure
+	( 
+			hMenu		:dword; 
+			uPosition	:dword; 
+			uFlags		:dword; 
+			uIDNewItem	:dword; 
+			lpNewItem	:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__InsertMenuA@20" );
+
+InvalidateRect: procedure
+	( 
+			hWnd		:dword; 
+		var	lpRect		:RECT; 
+			bErase		:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__InvalidateRect@12" );
+
+IsDialogMessage: procedure
+	( 
+			hDlg		:dword; 
+		var	lpMsg		:MSG
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__IsDialogMessageA@8" );
+
+IsDlgButtonChecked: procedure
+	( 
+		hDlg			:dword; 
+		nIDButton		:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__IsDlgButtonChecked@8" );
+
+IsWindowEnabled: procedure
+	( 
+		hWnd		:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__IsWindowEnabled@4" );
+
+IsWindowVisible: procedure
+	( 
+		hWnd		:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__IsWindowVisible@4" );
+
+KillTimer: procedure
+	( 
+		hWnd		:dword; 
+		uIDEvent	:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__KillTimer@8" );
+
+LoadAccelerators: procedure
+	( 
+		hInstance	:dword; 
+		lpTableName	:string
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__LoadAcceleratorsA@8" );
+
+LoadBitmap: procedure
+	( 
+		hInstance		:dword; 
+		lpBitmapName	:string
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__LoadBitmapA@8" );
+
+LoadCursor: procedure
+	( 
+		hInstance		:dword; 
+		lpCursorName	:string
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__LoadCursorA@8" );
+
+LoadIcon: procedure
+	( 
+		hInstance		:dword; 
+		lpIconName		:string
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__LoadIconA@8" );
+
+LoadStringA: procedure
+	( 
+			hInstance	:dword; 
+			uID			:dword; 
+		var	lpBuffer	:var; 
+			nBuffermax	:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__LoadStringA@16" );
+
+MessageBox: procedure
+	( 
+		hWnd			:dword; 
+		lpText		:string; 
+		lpCaption		:string; 
+		uType			:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__MessageBoxA@16" );
+
+ModifyMenu: procedure
+	( 
+		hMnu			:dword; 
+		uPosition		:dword; 
+		uFlags			:dword; 
+		uIDNewItem		:dword; 
+		lpNewItem		:string
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__ModifyMenuA@20" );
+
+MoveWindow: procedure
+	( 
+		hWnd			:dword; 
+		X				:dword; 
+		Y				:dword; 
+		nWidth			:dword; 
+		nHeight			:dword; 
+		bRepaint		:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__MoveWindow@24" );
+
+MsgWaitForMultipleObjects: procedure
+	( 
+			nCount			:dword; 
+		var	pHandles		:var; 
+			fWaitAll		:dword; 
+			dwMilliseconds	:dword; 
+			dwWakeMask		:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__MsgWaitForMultipleObjects@20" );
+
+OffsetRect: procedure
+	( 
+		var	lprc		:RECT; 
+			_dx			:dword; 
+			_dy			:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__OffsetRect@12" );
+
+PostMessage: procedure
+	( 
+		hWnd			:dword; 
+		_Msg			:dword; 
+		wParam			:dword; 
+		lParam			:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__PostMessageA@16" );
+
+PostQuitMessage: procedure
+	( 
+		nExitCode		:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__PostQuitMessage@4" );
+
+PtInRect: procedure
+	( 
+		var	lprc		:RECT; 
+			pt			:POINT 
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__PtInRect@12" );
+
+RegisterClassEx: procedure
+	( 
+		var	lpwcx		:WNDCLASSEX
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__RegisterClassExA@4" );
+
+ReleaseCapture: procedure;
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__ReleaseCapture@0" );
+
+ReleaseDC: procedure
+	( 
+		hWnd			:dword; 
+		hDC				:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__ReleaseDC@8" );
+
+ScreenToClient: procedure
+	( 
+			hWnd	:dword; 
+		var	lpPoint	:POINT
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__ScreenToClient@8" );
+
+SendDlgItemMessage: procedure
+	( 
+		hDlg			:dword; 
+		nIDLdgItem		:dword; 
+		_Msg			:dword; 
+		_wParam			:dword; 
+		_lParam			:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__SendDlgItemMessageA@20" );
+
+SendMessage: procedure
+	( 
+		hWnd			:dword; 
+		_Msg			:dword; 
+		_wParam			:dword; 
+		_lParam			:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__SendMessageA@16" );
+
+SetCapture: procedure
+	( 
+		hWnd			:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__SetCapture@4" );
+
+SetCursor: procedure
+	( 
+		hCursor		:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__SetCursor@4" );
+
+SetDlgItemInt: procedure
+	( 
+		hDlg		:dword; 
+		nIDDlgItem	:dword; 
+		uValue		:dword; 
+		bSigned		:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__SetDlgItemInt@16" );
+
+SetDlgItemText: procedure
+	( 
+		hDlg		:dword; 
+		nIDDlgItem	:dword; 
+		lpString	:string
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__SetDlgItemTextA@12" );
+
+SetFocus: procedure
+	( 
+		hWnd		:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__SetFocus@4" );
+
+SetForegroundWindow: procedure
+	( 
+		hWnd		:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__SetForegroundWindow@4" );
+
+SetParent: procedure
+	( 
+		hWndChild		:dword; 
+		hWndNewParent	:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__SetParent@8" );
+
+SetProp: procedure
+	( 
+		hWnd			:dword; 
+		lpString		:string; 
+		hData			:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__SetPropA@12" );
+
+SetRect: procedure
+	( 
+		var	lprc		:RECT; 
+			xLeft		:dword; 
+			yTop		:dword; 
+			xRight		:dword; 
+			yBottom		:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__SetRect@20" );
+
+SetTimer: procedure
+	( 
+		hWnd		:dword; 
+		uIDEvent	:dword; 
+		uElapse		:dword; 
+		lpTimerFunc	:TIMERPROC
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__SetTimer@16" );
+
+SetWindowLong: procedure
+	( 
+		hWnd			:dword; 
+		nIndex			:dword; 
+		dwNewLong		:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__SetWindowLongA@12" );
+
+SetWindowPos: procedure
+	( 
+		hWnd			:dword; 
+		hWndInsertAfter	:dword; 
+		X				:dword; 
+		Y				:dword; 
+		_cx				:dword; 
+		_cy				:dword; 
+		uFlags			:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__SetWindowPos@28" );
+
+SetWindowText: procedure
+	( 
+		hWnd		:dword; 
+		lpString	:string
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__SetWindowTextA@8" );
+
+ShowWindow: procedure
+	( 
+		hWnd		:dword; 
+		nCmdShow	:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__ShowWindow@8" );
+
+TabbedTextOut: procedure
+	( 
+			hDC					:dword; 
+			X					:dword; 
+			Y					:dword; 
+			lpString			:string; 
+			nCount				:dword; 
+			nTabPositions		:dword; 
+		var	lpnTabStopPositions	:dword; 
+			nTabOrigin			:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__TabbedTextOutA@32" );
+
+ToAscii: procedure
+	( 
+			uVirtKey	:dword; 
+			uScanCode	:dword; 
+		var	kpKeyState	:var; 
+		var	lpChar		:var; 
+			uFlags		:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__ToAscii@20" );
+
+TrackPopupMenu: procedure
+	( 
+			hMenu		:dword; 
+			uFlags		:dword; 
+			x			:dword; 
+			y			:dword; 
+			nReserved	:dword; 
+			hWnd		:dword; 
+		var	prcRect		:RECT
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__TrackPopupMenu@28" );
+
+TranslateAccelerator: procedure
+	( 
+			hWnd		:dword; 
+			hAccTable	:dword; 
+		var	lpMsg		:MSG
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__TranslateAcceleratorA@12" );
+
+TranslateMessage: procedure
+	( 
+		var	lpMsg	:MSG
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__TranslateMessage@4" );
+
+UpdateWindow: procedure
+	( 
+		hWnd	:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__UpdateWindow@4" );
+
+WinHelp: procedure
+	( 
+		hWndMain	:dword; 
+		lpszHelp	:string; 
+		uCommand	:dword; 
+		dwData		:dword
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__WinHelpA@16" );
+
+_ChooseColor: procedure
+	( 
+		var	lpcc	:CHOOSECOLOR
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__ChooseColorA@4" );
+
+_ChooseFont: procedure
+	( 
+		var	lpcf	:CHOOSEFONT
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__ChooseFontA@4" );
+
+GetOpenFileName: procedure
+	( 
+		var	lpofn	:OPENFILENAME
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__GetOpenFileNameA@4" );
+
+GetSaveFileName: procedure
+	( 
+		var	lpofn	:OPENFILENAME
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__GetSaveFileNameA@4" );
+
+_PageSetupDlg: procedure
+	( 
+		var	lppsd	:PAGESETUPDLG
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__PageSetupDlgA@4" );
+
+_PrintDlg: procedure
+	( 
+		var	lppd	:PRINTDLG
+	);
+		@stdcall;
+		@returns( "eax" );
+		@external( "__imp__PrintDlgA@4" );
+
+CreateStatusWindow: procedure
+	( 
+		style		:dword; 
+		lpszText	:string; 
+		hwndParent	:dword; 
+		wID			:dword
+	);	
+		@stdcall;	
+		@returns( "eax" );	
+		@external( "__imp__CreateStatusWindowA@16" );
+
+CreateToolbarEx: procedure
+	( 
+			hwnd		:dword; 
+			ws			:dword; 
+			wID			:dword; 
+			nBitmaps	:dword; 
+			hBMInst		:dword; 
+			wBMID		:dword; 
+		var	lpButtons	:TBBUTTON; 
+			iNumButtons	:dword; 
+			dxButton	:dword; 
+			dyButton	:dword; 
+			dxBitmap	:dword; 
+			dyBitmap	:dword; 
+			uStructSize	:dword
+	);	
+		@stdcall;	
+		@returns( "eax" );	
+		@external( "__imp__CreateToolbarEx@52" );
+
+ImageList_Add: procedure
+	( 
+		himl		:dword; 
+		hbmImage	:dword; 
+		hbmMask		:dword
+	);	
+		@stdcall;	
+		@returns( "eax" );	
+		@external( "__imp__ImageList_Add@12" );
+
+ImageList_AddMasked: procedure
+	( 
+		himl		:dword; 
+		hbmImage	:dword; 
+		crMask		:COLORREF
+	);	
+		@stdcall;	
+		@returns( "eax" );	
+		@external( "__imp__ImageList_AddMasked@12" );
+
+ImageList_Create: procedure
+	( 
+		_cx			:dword; 
+		cy			:dword; 
+		flags		:dword; 
+		cInitial	:dword; 
+		cGrow		:dword
+	);	
+		@stdcall;	
+		@returns( "eax" );	
+		@external( "__imp__ImageList_Create@20" );
+
+ImageList_Destroy: procedure
+	( 
+		himl 		:dword
+	);	
+		@stdcall;	
+		@returns( "eax" );	
+		@external( "__imp__ImageList_Destroy@4" );
+
+InitCommonControls: procedure;
+		@stdcall;	
+		@returns( "eax" );	
+		@external( "__imp__InitCommonControls@0" );
+
+
+
+end w;

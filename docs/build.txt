@@ -1,0 +1,33 @@
+latest updates
+	1.37.xx
+		redesign
+	
+GOALS:
+
+	any version
+		design tool menu dialog
+		data\hide_menu.ini should contain the config
+		file for building the tools menu.
+		
+		design help menu dialog
+		data\hide_menu.ini should contain the config
+		file for building the help menu.
+		
+		
+	v1.50.00 [revised] 
+		begin design 
+		HIDE internal script language and interpreter
+		will need menu option and script manager
+		
+	any
+		import and export job
+			import job - project menu
+			export currentjob - project menu
+
+	[discontinued]
+		compile HIDE in Linux with commandline-only mode to build HIDE projects
+		in linux [partial hooks built into source]
+		
+		This segment delayed indefinitely since I've lost almost total
+		interest in Linux.
+	

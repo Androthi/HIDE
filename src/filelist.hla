@@ -1,0 +1,247 @@
+unit filelist_unit;
+
+	#includeonce ("HIDE.hhf")
+	#includeonce ("memory.hhf")
+
+	?@nodisplay := true;
+	?@noalignstack := true;
+
+
+	readonly
+		//tBaseListVMT	:dword; @external;
+		fListVMT	:VMT(fList);
+		jListVMT	:VMT(jList);
+		
+
+	procedure fList.create; @noframe;
+	begin create;
+	USE (EAX);
+		if (! esi) then
+			mem.zalloc (@size (fList));
+			mov (eax, esi);
+		else
+			mem2.fillMem ([esi], @size(fList), 0);
+		endif;
+		
+		(type tBaseList[esi]).create();	// call subclass
+		move (&fList._VMT_, this._pVMT_);
+	ENDUSE;
+	ret();
+	end create;
+	
+	method fList.destroy; @noframe;
+	begin destroy;
+	USE (EAX, EBX);
+		mov (this.head, ebx);
+		while (ebx) do
+			str.free (listebx.id);
+			prop_freeMem([ebx]);
+			
+			USE (ESI, EDI);
+				mov (listebx.deps, esi);
+				//> may need to free string here?
+				(type tList[esi]).destroy();
+			ENDUSE;
+			mov (listebx.next, ebx);
+		endwhile;
+		// frees the actual list memory
+		//call( tBaseListVMT[ @offset( tBaseList.destroy ) ] );
+		super.destroy();
+	ENDUSE;
+	ret();
+	end destroy;
+
+
+	method fList.newNode; @noframe;
+	begin newNode;
+		mem.zalloc (@size (fList.fnode));
+		mov (fnode_id, listeax.nodeID);
+		USE (ESI, EDI);
+			tList.create();
+			mov (esi, listeax.deps);
+		ENDUSE;
+		ret();
+	end newNode;
+
+
+	method fList.appendFile (id:string);
+	begin appendFile;
+	dbg.put ("appendFile");
+	USE (EDX);
+		this.newNode();
+		mov (eax, edx);
+		str.a_cpy (id);
+		mov (eax, listedx.id);
+		this.append ([edx]);
+
+		//return added item
+		mov (edx, eax);		
+	ENDUSE;
+	dbg.put ("/appendFile");
+	end appendFile;
+	
+	method fList.dumpList; @noframe;
+	begin dumpList;
+	USE (EAX, EBX);
+		toOutput (nl);
+		this.getHead();
+		mov (eax, ebx);
+		while (ebx) do
+			mov (listebx.job, eax);
+			if (eax) then
+				mov ( (type tList.listNode[eax]).value, eax);
+				toOutput ( (type string eax), " :", listebx.fullname, nl);
+			else
+				toOutput ( listebx.fullname, nl);
+			endif;
+			mov (listebx.next, ebx);
+		endwhile;
+		toOutput (nl);
+	ENDUSE;
+	ret();
+	end dumpList;
+
+	method fList.remove (var lNode:tBaseList.baseNode);
+	begin remove;
+	USE (EAX, EBX);
+//		dbg.put ("fList.remove");
+		mov (lNode, ebx);
+		str.free (listebx.id);
+		str.free (listebx.fullname);
+		//push (lNode);
+		//call ( tBaseListVMT [@offset ( tBaseList.remove)]);
+		super.remove( lNode );
+	ENDUSE;
+//	dbg.put ("/fList.remove");
+	end remove;
+
+	method fList.findFullname (id:string);
+	begin findFullname;
+	USE (EBX);
+		mov (this.head, ebx);
+		while (ebx) do
+			breakif (str.ieq (id, listebx.fullname));
+			mov (listebx.next, ebx);
+		endwhile;
+		mov (ebx, eax);
+	ENDUSE;
+	end findFullname;
+
+	method fList.findID (id:string);
+	begin findID;
+	USE (EBX);
+		mov (this.head, ebx);
+		while (ebx) do
+			breakif (str.ieq (id, listebx.id));
+			mov (listebx.next, ebx);
+		endwhile;
+		mov (ebx, eax);
+	ENDUSE;
+	end findID;
+
+	method fList.findJobID (var job:jList.jnode; id:string);
+	begin findJobID;
+	USE (EBX);
+		mov (this.head, ebx);
+		while (ebx) do
+			mov (listebx.job, eax);
+			if (eax = job) then
+				breakif (str.ieq (id, listebx.id));
+			endif;
+			mov (listebx.next, ebx);
+		endwhile;
+		mov (ebx, eax);
+	ENDUSE;
+	end findJobID;
+
+	method fList.findJobRelative (var job:jList.jnode; id:string);
+	begin findJobRelative;
+	USE (ebx);
+		mov (this.head, ebx);
+		while (ebx) do
+			mov (listebx.job, eax);
+			if (eax = job) then
+				breakif (str.ieq (id, listebx.relative));
+			endif;
+			mov (listebx.next, ebx);
+		endwhile;
+		mov (ebx, eax);
+	ENDUSE;
+	end findJobRelative;
+
+
+	procedure jList.create; @noframe;
+	begin create;
+	USE (EAX);
+		if (! esi) then
+			mem.zalloc (@size (jList));
+			mov (eax, esi);
+		else
+			mem2.fillMem ([esi], @size(jList), 0);
+		endif;
+		
+		(type tBaseList[esi]).create();	// call subclass
+		move (&jList._VMT_, this._pVMT_);
+	ENDUSE;
+	ret();
+	end create;
+
+	method jList.destroy; @noframe;
+	begin destroy;
+	USE (EAX, EBX);
+		mov (this.head, ebx);
+		while (ebx) do
+			str.free (jobebx.id);
+			mov (jobebx.next, ebx);
+		endwhile;
+		// frees the actual list memory
+		//call( tBaseListVMT[ @offset( tBaseList.destroy ) ] );
+		super.destroy();
+	ENDUSE;
+	ret();
+	end destroy;
+
+	method jList.remove (var lNode:tBaseList.baseNode);
+	begin remove;
+	USE (EAX, EBX);
+		mov (lNode, ebx);
+		str.free (jobebx.id);
+		//push (lNode);
+		//call ( tBaseListVMT [@offset ( tBaseList.remove)]);
+		super.remove( lNode );
+	ENDUSE;
+	end remove;
+	
+	method jList.newNode; @noframe;
+	begin newNode;
+		mem.zalloc (@size (jList.jnode));
+		mov (jnode_id, jobeax.nodeID);
+		ret();
+	end newNode;
+
+	
+	method jList.appendJob (id:string);
+	begin appendJob;
+	USE (EDX);
+		this.newNode();
+		mov (eax, edx);
+		str.a_cpy (id);
+		mov (eax, jobedx.id);
+		this.append ([edx]);
+		mov (edx, eax);
+	ENDUSE;
+	end appendJob;
+
+	method jList.findID (id:string);
+	begin findID;
+	USE (EBX);
+		mov (this.head, ebx);
+		while (ebx) do
+			breakif (str.ieq (id, jobebx.id));
+			mov (jobebx.next, ebx);
+		endwhile;
+		mov (ebx, eax);
+	ENDUSE;
+	end findID;
+	
+end filelist_unit;

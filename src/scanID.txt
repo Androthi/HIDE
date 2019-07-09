@@ -1,0 +1,241 @@
+; updated automatically whenever scanID.txt is changed.
+; creates:
+; src\genLexer.hla - main lexer unit with procedures/macros
+; src\genLexer.hhf - main include file containing the constants and external declarations
+; You may notice asterisc next to the filenames in the Project View, this indicates that
+; the files have changed externally since HIDE loaded them.  You may go ahead and reopen them
+; (right click on filename, select "Reopen File") to update your listing.
+
+; for the HIDE scanner, we need a different character set than the default
+.goodid {'0'..'9', 'A'..'Z', 'a'..'z', '_', '.' }, {}
+
+; we want the output to go in the src folder
+.output src/
+
+; 1024 is a bit too big for HLA source tokens, reduce this to 512
+.reserveid 512
+
+;	keywords for the lexer
+.keywords
+{
+	.typeclass hla
+		unit
+		program
+		procedure
+		proc
+		iterator
+		method
+		begin
+		end
+		static
+		const
+		storage
+		readonly
+		macro
+		type
+		var
+		val
+		label
+		endmacro
+		record
+		endrecord
+		union
+		endunion
+		class
+		endclass
+		forward
+		external
+		include
+		includeonce
+
+}
+
+;	binary search tree for auto-complete HLA structures
+.binsearch
+{
+	; set token prefixes to kw_
+	.prefix kw
+	
+	; define a procedure to call to check for these keywords
+	.checkfunc checkKW
+	
+	; we want this to be included in the main genLexer.hla unit
+	.asunit
+	
+	; the words
+	if elseif else
+	while
+	repeat
+	forever foreach for
+	record union
+	static
+	storage
+	readonly
+	const
+	val
+	var
+	type
+	class	
+	proc
+	
+	macro
+	unit
+	begin
+	program	
+	end 
+	method procedure
+	try exception anyexception
+}
+
+;	binary search tree for project format (hpr files)
+.binsearch
+{
+	; set token prefixes to sa_
+	.prefix sa
+	
+	; define a function to call to check these keywords
+	.checkfunc checkSA
+	
+	; we want this in the main genLexer.hla unit
+	.asunit
+	
+	; job type word list - associated with jobtype_xxx constants
+	program modular target
+	dll library miscjob
+
+	; file type word list - associated with action_xxx constants
+	misc
+	hlaprogram
+	hlaunit
+	resource
+	extlinked
+	include
+	def
+	khelp
+	kmake
+	executable
+	binary
+}
+
+
+; rewrite some lexer code
+.code {
+	
+	.gentoken gen_bookmark
+	
+	; replace '/' to look for comments
+	.replace gen_slash
+	<code>
+	inc (esi);
+	if ( esi < genEOF) then
+		if ((type byte[esi]) = '/') then
+
+			// check for sourcemark
+			if( esi < genEOF && (type byte [esi+1]) = 'b') then
+				if( (type byte[esi+2]) = 'm') then
+					if( (type byte[esi+3]) = '=') then
+						add( 4, esi );
+						mov( gen_bookmark, eax );
+						ret();
+					endif;
+				endif;
+			endif;
+
+			// skip line comment
+			while ( esi < genEOF && (type byte[esi]) <> $a) do
+				inc (esi);
+			endwhile;
+			inc (esi);
+			inc (genLine);
+
+		elseif ((type byte[esi]) = '*') then
+
+			// skip block comment
+			inc (esi);
+			while (esi < genEOF) do
+				mov ([esi], al);
+				if (al = $a) then
+					inc (esi);
+					inc (genLine);
+				elseif (al = '*') then
+					inc (esi);
+					if ( (type byte[esi]) = '/') then
+						inc (esi);
+						break;
+					endif;
+				else
+					inc (esi);
+				endif;
+			endwhile;
+		endif;
+	endif;
+	jmp LexAgain;
+
+	</code>
+	
+	; replace ' (character literal) to just skip it
+	.replace gen_apost
+	<code>
+		inc (esi);
+		if ( esi < genEOF && (type byte[esi+1]) = '''') then
+			add (2, esi);
+		endif;
+		jmp LexAgain;
+
+	</code>
+	
+	; replace " (string literal) to get entire string
+	.replace gen_quote
+	<code>
+	inc (esi);
+	mov (esi, edi);
+	// scan to find next quote
+	// compensate for double-quote internal quotes
+	ScanQuoteChars:
+		cmp (esi, genEOF);
+		jae _donequotescan;
+		mov( [esi], al );
+		if (al = '"') then
+			if ( (type byte [esi+1]) = '"') then
+				// double quote = internal quote.  skip
+				add (2, esi);
+				jmp ScanQuoteChars;
+			else
+				// we're good
+				// edi = start of quote, esi = end of quote
+				mov (esi, eax);
+				sub (edi, eax);
+				if (eax > 80) then
+					// don't grab quotes that are too large or
+					// it may cause buffer overflow
+					push (esi);
+					mov (edi, esi);
+					add (80, esi);
+					genExtract();
+					pop (esi);
+				else
+					genExtract();
+				endif;
+				inc (esi);
+				mov (gen_id, eax);
+			endif;
+		else
+			inc (esi);
+			jmp ScanQuoteChars;
+		endif;
+		_donequotescan:
+		ret();
+
+	</code>
+
+
+	; gen_underscore is a valid ID symbol
+	; if it happens as first character of symbol, lexer will ignore it
+	; don't let it happen!
+	.replace gen_underscore
+	<code>
+		jmp Alpha;
+	</code>
+	
+}
+

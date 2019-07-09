@@ -1,0 +1,325 @@
+
+proc
+	//hide.hla
+	Proc_SubclassedEdit		:procedure( lparam:dword; wparam:dword; umsg:uns32; hwin:dword ); @external;
+	expandPathMacs			:procedure( source:string; dest:string ); @external;
+	UpdateMenu				:procedure; @external;
+	Menu_CloseFile			:procedure; @external;
+	Menu_ProjectMan			:procedure; @external;
+	hide_openNode			:procedure( var node:fList.fnode ); @external;
+	hide_closeNode			:procedure( var node:fList.fnode ); @external;
+	hide_selectNode			:procedure( var node:fList.fnode ); @external;
+	updateDisplay			:procedure( toupdate:dword ); @external;
+
+	Proc_HIDEManager		:procedure( lparam:dword; wparam:dword; umsg:uns32; hwin:dword ); external;
+	keywordsUpdate	:procedure( hwin:dword ); external;
+	writeMessage :procedure( message:zstring ); external;
+	launchProgram :procedure( 
+					path:string;
+					useoutput:boolean;
+					clear:boolean ); external;
+
+	runNode :procedure( var node: var; clear:boolean ); external;
+	runDebugNode :procedure( var node: var ); external;
+	makeSource :procedure( ftype:dword ); external;
+	make_init :procedure; external;
+
+
+procedure hide_openFile( fname:string ); @returns ("EAX"); @external;
+
+// project
+//procedure Proc_OpenTemplate (lparam:dword; wparam:dword; umsg:uns32; hwin:dword); @external;
+procedure Proc_JobsManager (lparam:dword; wparam:dword; umsg:uns32; hwin:dword);	@external;
+procedure writeStdTpl ( fileName:string; ftype:uns32); @external;
+procedure Proc_NewProject  (lparam:dword; wparam:dword; umsg:uns32; hwin:dword); @external;
+
+// keywords
+procedure Proc_KeyWords (lparam:dword; wparam:dword; umsg:uns32; hwin:dword);	@external;
+
+
+// editfunctions
+procedure SetKeyWords (hwin:dword);	@external;
+procedure saveAll; @external;
+procedure closeAll; @external;
+procedure querySave (var node:fList.fnode); @returns ("EAX"); @external;
+procedure SetWindowCaption;			@external;
+procedure SetupToolBar( create_status:boolean ); @external;
+procedure GetSelText (var lpBuff:dword);@external;
+procedure StreamInProc (var pBytesRead:dword ; NumBytes:dword ; var pBuffer:dword ; hFile:dword);	@external;
+procedure StreamOutProc (var pBytesRead:dword ; NumBytes:dword ; var pBuffer:dword ; hFile:dword);	@external;
+procedure RAEdit_SaveFile (var node:fList.fnode); @external;
+procedure RAEdit_loadFileLight( var node: fList.fnode ); @external;
+procedure RAHexed_new (var node:fList.fnode); @external;
+procedure IndentComment (nChr:dword; fN:dword);		@external;
+procedure InitOF (title:string; defext:string; filtertype:dword);	@external;
+procedure GetOpenName;	@returns ("eax"); @external;
+procedure GetSaveName;	@returns ("eax"); @external;
+procedure GetOpenProjectName;	@returns ("eax");	@external;
+procedure GetOpenTemplateName;	@returns ("eax");	@external;
+procedure GetSaveTemplateName; @returns ("EAX"); @external;
+procedure WriteToFile (hwin:dword; FileName: string); @external;
+procedure RAEdit_new (var node:fList.fnode); @external;
+procedure RAEdit_setFormat(var node:fList.fnode); @external;
+procedure setFormatAll; @external;
+procedure RAEdit_openNew (fname:string); @returns ("EAX"); @external;
+
+procedure selectOpen (id:string); @returns ("EAX"); @external;
+procedure selectOpenMem (var node:fList.fnode); @returns ("EAX"); @external;
+procedure repaintAll; @external;
+procedure RAEdit_open (fname:string); @returns ("EAX"); @external;
+procedure Menu_SaveAs; @external;
+procedure updateAction (var fnode:fList.fnode); @external;
+procedure RAEdit_loadFile (var fnode:fList.fnode; fname:string); @external;
+procedure RAHexed_open (fname:string); @returns ("EAX"); @external;
+procedure RAHexed_openNew (fname:string); @external;
+procedure Recent_Insert(source: string); @external;
+
+// find.hhf
+procedure Find;		@external;
+procedure Proc_FindDlg (lParam:dword; wParam:dword; uMsg:uns32; hWin:dword);	@external;
+procedure find_next; @external;
+procedure find_prev; @external;
+procedure setupFind; @external;
+
+// treetool
+procedure Proc_ProjectView (lparam:dword; wparam:dword; umsg:uns32; hwin:dword);	@external;
+procedure TreeToolSetup;				@external;
+procedure ResetTreeView;				@external;
+procedure UpdateTree;				@external;
+procedure Project_View ( message:dword);	@external;
+procedure projectview_checkUpdate (var fnode:fList.fnode); @returns ("EAX"); @external;
+procedure projectview_checkUpdates; @external;
+
+// tabtool
+procedure tabtool_activate; @external;
+procedure tabtool_add (var node:fList.fnode); @external;
+//procedure tabtool_getmem (var node:fList.fnode); @returns ("EAX"); @external;
+procedure tabtool_getindex (var node:fList.fnode); @returns ("EAX"); @external;
+procedure tabtool_update (var node:fList.fnode); @returns ("EAX"); @external;
+procedure tabtool_close (var node:fList.fnode); @returns ("EAX"); @external;
+procedure tabtool_isOpen( var node:fList.fnode ); @returns("EAX"); @external;
+procedure Proc_TabToolSubclass(lparam:dword; wparam:dword; umsg:uns32; hwin:dword);	@external;
+procedure PanelSetup (hwin:dword); @external;
+procedure PanelFold; @external;
+procedure PanelProject; @external;
+procedure PanelProperty; @external;
+procedure PanelViewWin; @external;
+procedure PanelViewActive; @external;
+procedure PanelActivate; @external;
+procedure Panel_HideDocked; @external;
+procedure panel_setfrom; @external;
+
+// notes
+procedure Notes_Save; @external;
+procedure Notes_Open; @external;
+procedure Proc_Notes(lparam:dword; wparam:dword; umsg:uns32; hwin:dword); @external;
+procedure Notes_View (message:dword); @external;
+procedure Notes_Clear; @external;
+
+// output
+procedure Proc_Output (lparam:dword; wparam:dword; umsg:uns32; hwin:dword);	@external;
+procedure CloseOutputDelay(ntime:dword);	@external;
+procedure Output_View (message:dword);	@external;
+procedure WriteOutput ( _msg_:string);	@external;
+procedure CancelTimerCloseOutput; @external;
+
+// properties
+procedure Proc_Properties(lparam:dword; wparam:dword; umsg:uns32; hwin:dword);			@external;
+procedure ScanProject;			@external;
+procedure Property_View (message:dword); @external;
+procedure FindDeclare (src:dword; key:dword);	@external;
+procedure JumpProgramBegin; @external;
+procedure prop_updateMem (var node:fList.fnode); @external;
+procedure prop_searchJob (src:dword); @returns ("EAX"); @external;
+procedure prop_updateView; @external;
+procedure prop_scanFile (var node:fList.fnode); @external;
+procedure prop_reset; @external;
+procedure prop_update; @external;
+procedure prop_freeMem( var node:fList.fnode ); @external;
+
+// make
+procedure MakeProc (command:dword; dparam:dword; wparam:dword);	@external;
+procedure make_build; @external;
+procedure GetFileTime ( file:string; var dest:qword); @external;
+procedure checkFileTimes (src:string; dest:string); @returns ("EAX"); @external;
+procedure checkVarTimes (srcTime:qword; destTime:qword); @returns ("EAX"); @external;
+
+// error namespace/unit
+namespace error;
+	procedure fatal(error_string:string);	@external;
+	procedure fileopenfailure(error_string:string);	@external;
+	procedure warning(error_string:string);	@external;
+	procedure syserror ( mid:dword);	@external;
+end error;
+procedure testalloc(amount:dword);	@external;
+
+// print
+procedure PageSetup; 	@external;
+procedure PrintDoc;		@external;
+procedure initPrinter; @external;
+
+// HIDE_procs
+procedure Proc_HSplit(lparam:dword; wparam:dword; umsg:uns32; hwin:dword); @external;
+procedure Proc_VSplit(lparam:dword; wparam:dword; umsg:uns32; hwin:dword); @external;
+
+procedure Proc_ManagerSettings(lparam:dword; wparam:dword; umsg:uns32; hwin:dword); @external;
+
+procedure Proc_Goto(lparam:dword; wparam:dword; umsg:uns32; hwin:dword); @external;
+procedure Proc_BuildTarget(lparam:dword; wparam:dword; umsg:uns32; hwin:dword); @external;
+procedure getStringInput2 (title:string; dest:string); @returns ("EAX"); @external;
+procedure getStringInput3 (title:string; initial:string; dest:string); @returns ("EAX"); @external;
+procedure Proc_AdvancedLink(lparam:dword; wparam:dword; umsg:uns32; hwin:dword); @external;
+
+procedure showAboutWin; @external;
+
+namespace caption;
+	procedure InsertButton(hwnd:dword; uCmd:dword; nBorder:dword; hBmp_normal:dword; hBmp_pushed:dword; hBmp_hover:dword; 
+								hBmp_checked:dword; hBmp_disabled:dword; hInst:dword;lptstr:dword); @external("CAPTION_INSERTBUTTION");
+	procedure RemoveButton(hwnd :dword); @external("CAPTION_REMOVEBUTTON");
+	procedure CheckButton(hwnd:dword; uCmd:dword; bCheck:boolean); @external("CAPTION_CHECKBUTTON");
+end caption;
+
+namespace project;
+
+	storage
+		folder		:string;	@external;
+		id			:string;	@external;
+		hpr			:@global:tConfig;	@external;
+		flags		:dword;		@external;
+		options		:dword;		@external;
+		ptype		:uns8;		@external;
+		tab			:uns8;		@external;
+		backups		:uns8;		@external;
+		isOpen		:boolean;	@external;
+		findflags	:dword;		@external;
+		findscope	:dword;		@external;
+	
+	procedure new (projname:string); @returns ("EAX"); @external;
+	procedure open (fname:string); @external;
+	procedure addFileNode (fname:string; ftype:string); @returns ("EAX"); @external;
+	procedure switchType (ftype:string); @returns ("EAX"); @external;
+	procedure init; @external;
+	procedure close; @external;
+	procedure importLib (src:string); @external;
+	procedure removeLib ( lib:string ); @external;
+	procedure addMain (folder:string; fname:string; import:boolean); @external;
+	procedure addInc (folder:string; fname:string; import:boolean); @external;
+	procedure addUnit (folder:string; fname:string; import:boolean); @external;
+	procedure addResource (folder:string; fname:string; import:boolean); @external;
+	procedure addKhelp (folder:string; fname:string; import:boolean); @external;
+	procedure addMisc (folder:string; fname:string; import:boolean); @external;
+	procedure addDef (folder:string; fname:string; import:boolean); @external;
+	procedure addKmake (folder:string; fname:string; import:boolean); @external;
+	procedure addBinary (folder:string; fname:string; import:boolean); @external;
+	procedure deleteFile (var bnode:@global:fList.fnode); @external;
+	procedure convertToTpl (fname:string); @external;
+end project;
+
+static	// externals
+	align(4);
+	
+		SendStr: procedure ( hwnd:dword; msg:dword; replace:dword; str:string );
+			@stdcall; @external( "__imp__SendMessageA@16" ); 
+	
+		autountitled		:boolean;				@external;		// if true, Untitled is saved and built into temp folder (non-project only)
+		settings			:EDITOPTS;				@external;	// general settings				
+		rect				:hide.rect_t;			@external;		// generic rect struct
+		tci					:w.TC_ITEM;				@external;	// tabtool for main dialog
+		col					:RACOLOR;				@external;	// color structure
+		usrcol				:dword[nUserColors];	@external;
+		rafnt				:RAFONT;				@external;
+		linefont			:w.LOGFONT;				@external;
+		mainfont			:w.LOGFONT;				@external;
+		dialogfont			:w.LOGFONT;				@external;
+
+		buffer				:byte[300];				@external ("hide_private_buffer");		// general buffer	
+		findbuff			:byte[300];				@external;		// buffer for find dialog
+		replacebuf			:byte[300];				@external;		// buffer for replace dialog
+		CustColors			:dword[16];				@external;		// storage for custom colors
+		pathbuf				:byte[300];				@external;		// keeps track of last directory visited
+		configmain			:string;				@external;	// holds initialization file for session
+		
+		homepath			:string;				@external;	// current directory
+		workpath			:string;				@external;	// a string buffer for working paths
+		tplpath				:string;				@external;	// a path holding templates directory
+		tempStr				:string;				@external;	// temporary holding string
+		//filebuffer			:string;				@external;	// holds the current filename
+		projectpath			:string;				@external;	// holds current path for project folder
+		strbuf				:string;				@external;	// scratch static string
+
+		hwnd				:dword;					@external;	// window handle
+		hinst				:dword;					@external;	// instance handle
+		hcrtproj			:dword;					@external;	// handle for create project dialog
+		htreeview			:dword;					@external;	// handle for treeview control
+		htree				:dword;					@external;	// handle for treeview window
+		hprop				:dword;					@external;	// handle for properties window
+		hmenu				:dword;					@external;	// menu handle
+		htab				:dword;					@external;	// tab window handle
+		hpaneltab			:dword;					@external;
+		htaboldproc			:dword;					@external;	// tab window Window Proc address
+		hout				:dword;					@external;	// handle for output dialog
+		houtedt				:dword;					@external;	// handle for output dialog edit window
+		htbr				:dword;					@external;		// toolbar handle
+		hlinefont			:dword;					@external;	// line font
+		hmainfont			:dword;					@external;	// main font
+		hdialogfont			:dword;					@external;
+		hitalic				:dword;					@external;	// italic font (for comments)
+		hfind				:dword;					@external;	// find dialog handle
+		hVSplitBar			:dword;					@external;
+		hHSplitBar			:dword;					@external;
+		hnotes				:dword;					@external;	// notes window handle
+		hnotesedt			:dword;					@external;
+		htimer				:dword; @external;  // 0 = output timer off,  >0 = output timer on
+	
+
+		//notes_win		:WINPOS;	@external; // depricated, change to scripts window in future
+		mode				:byte;	@external;
+
+		// shared c-string constants
+		
+		szCmntStart			:byte;					@external;
+		szCmntEnd			:byte;					@external;
+
+		
+	hHsplitcursor	:dword;	@external;// for split procs
+	hVsplitcursor	:dword; @external;
+	hsbr		:dword;		@external;		// status bar handle
+	Proc_OldVSplit	:dword; @external;
+	Proc_OldHSplit	:dword; @external;
+
+	hideini		:tConfig; @external;
+	hidesysini	:tConfig; @external;
+	
+	nbitmapimg	:dword; @external;
+	blocks		:dword; @external;
+	
+	fileList	:fList; @external;
+	curnode		:pointer to fList.fnode; @external;
+	jobList		:jList; @external;
+	pview_curSel	:dword; @external;
+	RAEditClassName		:string; @external;
+	RAHexedClassName	:string; @external;
+	RAHexedChildClassName	:string; @external;
+
+	commaDelimcst	:cset; @external;
+	
+	
+	//========================================
+	zDebug		:zstring; @external;
+	zProject	:zstring; @external;
+	zJobs		:zstring; @external;
+	zFiles		:zstring; @external;
+	zFolder		:zstring; @external;
+	zType		:zstring; @external;
+	zGeneral	:zstring; @external;
+	zEnvironment:zstring; @external;
+	zSettings	:zstring; @external;
+	zThemes		:zstring; @external;
+	zSeperator	:zstring; @external;
+	zRelease	:zstring; @external;
+	zStandard	:zstring; @external;
+	zNotes		:zstring; @external;
+	zOutput		:zstring; @external;
+	
+	propertyList :dword[12]; @external;
+	id_strings :zstring[ 20 ]; @external;

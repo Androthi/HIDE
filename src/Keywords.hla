@@ -1,0 +1,915 @@
+unit Keywords;
+
+#includeonce ("HIDE.hhf")
+#includeonce ("memory.hhf")
+
+?@nodisplay:=true;
+?@align:=4;
+
+
+const	// local constants
+	
+		drawesi	:text:= "(type w.DRAWITEMSTRUCT [esi])";
+		
+		GROUPSIZE				:= 	16384;		// memory used during saving... increase as necessary
+
+		// theme settings
+		Theme_System_c		:= 0;
+		Theme_User_c		:= 1;
+		
+		nRAcolors	:= 14;
+		nColorGroups	:=  nUserColors;
+		HoldGroup	:= nColorGroups;
+
+	static 	//local
+		align(4);
+		// RAcolors = nRAcolors
+		RAcolors	:string[ nRAcolors ] :=
+			[
+				"Background",
+				"Text Color",
+				"Selected Back",
+				"Selected Text",
+				"Comments",
+				"Strings",
+				"Operators",
+				"Hilited Line #1",
+				"Hilited Line #2",
+				"Hilited Line #3",
+				"Selection Bar",
+				"Selection Bar Pen",
+				"Line Numbers",
+				"Numbers & Hex"
+			];
+		
+		ColorGroups	:string[ nColorGroups ] :=
+			[
+				"x86 Registers",
+				"x86 Instructions",
+				"x86 Extended",
+				"Resource",
+				"HLA Keywords",
+				"HLA Types",
+				"HLA Namespace",
+				"HLA Stdlib",
+				"HLA CTL",
+				"API Constants",
+				"API Functions",
+				"User 01",
+				"User 02",
+				"User 03",
+				"User 04",
+				"User 05"
+			];
+			
+		GroupFiles	:string[ nColorGroups ] :=
+			[
+				"Data\x86regs.ini",
+				"Data\x86instr.ini",
+				"Data\x86xtend.ini",
+				"Data\resource.ini",
+				"Data\hla_keywords.ini",
+				"Data\hla_types.ini",
+				"Data\hla_namespace.ini",
+				"Data\hla_stdlib.ini",
+				"Data\hla_ctl.ini",
+				"Data\api_constants.ini",
+				"Data\api_functions.ini",
+				"Data\user01.ini",
+				"Data\user02.ini",
+				"Data\user03.ini",
+				"Data\user04.ini",
+				"Data\user05.ini"
+			];
+
+storage
+	nKWInx		:dword;
+	minibuf		:byte[100];
+	hcbthemes	:dword;	// handle of themes combo box
+	listChanged	:boolean;
+
+proc
+	SetKeyWords	:procedure( hwin:dword );
+	
+		var
+			index		:uns32;
+			configini	:pointer to tConfig;
+			s			:string;
+			temp_s		:string;
+			buf			:tBuffer;
+			
+	begin SetKeyWords;
+		pushad();
+		//dbg.enters( "SetKeyWords" );
+		
+		w.SendMessage(hwin,REM_SETHILITEWORDS,0,0);
+		mov( 0, index );
+		mov( &usrcol, ebx );
+		
+		while( index < nColorGroups ) do
+			
+			mov( index, eax );
+			str.put( strbuf, homepath, dirsep_c, GroupFiles[eax*4] );
+			if( filesys.exists( strbuf )) then
+				//dbg.put("got ", strbuf );
+				buf.create( strbuf );
+				mov( index, edi );
+				mov( [ebx+edi*4], edi );
+				mov( buf.cursor, eax );
+				w.SendMessage( hwin, REM_SETHILITEWORDS, edi, eax );
+				buf.destroy();
+			endif;
+			
+			inc( index );
+			
+		endwhile;	
+
+		//dbg.exits( "SetKeyWords" );
+		popad();
+	end SetKeyWords;
+
+
+	SetKeyWordList	:procedure(hwin:dword; idLst:dword; index:dword);
+	
+		var		
+			buf			:tBuffer;
+	
+	begin SetKeyWordList;
+		
+		pushabi;
+		
+		dbg.put("keywordlist, index = ",index);
+		
+		// setup default keys
+	
+		w.SendDlgItemMessage( hwin, idLst, w.LB_RESETCONTENT, 0, 0 );
+		
+		if( index < nColorGroups ) then
+			
+			mov( index, ecx );
+			str.put( strbuf, homepath, dirsep_c, GroupFiles[ecx*4] );
+			
+			if( filesys.exists( strbuf )) then
+
+				buf.create( strbuf );
+			
+			else
+				
+				jmp done;
+				
+			endif;
+			
+		else
+			
+			str.put( strbuf, homepath, dirsep_c, "Data\holdgroup.ini" );
+			if( filesys.exists( strbuf ) ) then
+				
+				buf.create( strbuf );
+			
+			else
+				
+				jmp done;
+				
+			endif;
+			
+		endif;
+		
+		buf.eof();
+		mov( 0, (type byte[eax]) );
+		buf.bof();
+		buf.setDelimiters( hide.whiteSpaceCset );
+		buf.setDelimSkipMode( true );
+		move( index, nKWInx );
+	
+		scan_buffer: 
+			buf.getToken( strbuf );
+			jnc check_marks;
+			w.SendDlgItemMessage( hwin, idLst, w.LB_ADDSTRING, 0, strbuf );
+			jmp scan_buffer;
+			
+		check_marks:
+			buf.destroy();
+			w.SendDlgItemMessage( hwin, IDC_LSTKWCOLORS, w.LB_GETITEMDATA, index, 0 );
+			cmp( eax,w.LB_ERR );
+			je done;
+			shr( 24, eax );
+			mov( eax, esi );
+			mov( w.BST_UNCHECKED, eax );
+			test( 1, esi );
+			jz check_bold;
+			mov( w.BST_CHECKED, eax );
+			
+		check_bold:
+			w.CheckDlgButton( hwin, IDC_CHKBOLD, eax );
+			mov( w.BST_UNCHECKED, eax );
+			test( 2, esi );
+			jz check_italic;
+			mov( w.BST_CHECKED, eax );
+			
+		check_italic:
+			w.CheckDlgButton( hwin, IDC_CHKITALIC, eax );
+			mov( w.BST_UNCHECKED, eax );
+			test( $10, esi );
+			jz check_rc;
+			mov( w.BST_CHECKED, eax );
+		
+		check_rc:
+			w.CheckDlgButton( hwin, IDC_CHKRCFILE, eax );
+	
+		done:
+		popabi;
+		
+	end SetKeyWordList;
+
+	SaveKeyWordList		:procedure(hwin:dword; idlst:dword; index:dword);
+	
+		var		
+			buf			:tBuffer;
+			
+	begin	SaveKeyWordList;
+		dbg.cls;
+		dbg.enters( "SaveKeyWordList" );
+		pushad();
+		
+		buf.create( GROUPSIZE );
+		xor( ebx, ebx );
+		forever
+			w.SendDlgItemMessage( hwin, idlst, w.LB_GETTEXT, ebx, strbuf );
+			breakif( eax = w.LB_ERR );
+			mov( strbuf, edx );
+			mov( eax, ( type str.strRec[edx]).length );
+			buf.puts( strbuf );
+			buf.putByte( ' ' );
+			inc( ebx );
+		endfor;
+		buf.left( 1 );
+		buf.delete( 1 );
+		
+		mov( index, eax );
+		if( eax < nColorGroups ) then
+			
+			
+			str.put( strbuf, homepath, dirsep_c, GroupFiles[eax*4] );
+			
+		else
+			
+			str.put( strbuf, homepath, dirsep_c, "Data\holdgroup.ini" );
+			
+		endif;
+		
+		buf.writeFileName( strbuf );
+		buf.destroy();
+		
+		popad();
+		dbg.exits( "SaveKeyWordList" );
+	end SaveKeyWordList;
+
+	DeleteKeyWords	:procedure( hwin:dword; idfrom:dword );
+		
+		var
+			index	:dword;
+			count	:dword;
+		
+	begin DeleteKeyWords;
+		pushad();
+			
+		w.SendDlgItemMessage( hwin, idfrom, w.LB_GETSELCOUNT, 0, 0 );
+		mov( eax, count );
+		if( eax ) then
+			mov( true, listChanged );
+		endif;
+		
+		mov( 0, index );
+		while( count ) do
+			
+			w.SendDlgItemMessage( hwin, idfrom, w.LB_GETSEL, index, 0 );
+			if( eax ) then
+				
+				w.SendDlgItemMessage( hwin, idfrom, w.LB_DELETESTRING, index, 0 );
+				dec( count );
+				mov( 1, eax );
+				
+			endif;
+			
+			xor( 1,eax );
+			add( eax, index );
+			
+		endwhile;
+		
+		popad();
+	end DeleteKeyWords;
+
+	MoveKeyWords	:procedure( hwin:dword; idfrom:dword; idto:dword );
+		
+		var
+			index	:dword;
+			count	:dword;
+		
+	begin MoveKeyWords;
+		pushad();		
+		dbg.put("MoveKeyWords");
+		
+		w.SendDlgItemMessage( hwin, idfrom, w.LB_GETSELCOUNT, 0, 0 );
+		mov( eax, count );
+		if( eax ) then
+			mov( true, listChanged );
+		endif;
+		
+		mov(0,index);
+		while(count) do;	
+		
+			w.SendDlgItemMessage( hwin, idfrom, w.LB_GETSEL, index, 0 );
+			if( eax ) then
+				
+				w.SendDlgItemMessage( hwin, idfrom, w.LB_GETTEXT, index, &buffer);
+				w.SendDlgItemMessage( hwin, idfrom, w.LB_DELETESTRING,index, 0 );
+				w.SendDlgItemMessage( hwin, idto, w.LB_ADDSTRING, 0, &buffer );
+				dec( count );
+				mov( 1, eax );
+
+			endif;
+
+			xor( 1, eax );
+			add( eax, index );
+
+		endwhile;
+		
+		popad();
+	end MoveKeyWords;
+
+
+
+	loadThemes	:procedure;
+		
+		var
+			count	:uns32;
+			
+	begin loadThemes;
+		pushad();
+		
+		// reset and load themes into combo box.
+		w.SendMessage( hcbthemes, w.CB_RESETCONTENT, 0 , 0 );
+		
+		// load user-defined themes from hide.ini
+		if( hideini.isSectionDefined( "Themes" )) then
+			
+			hideini.getItemCount( "Themes" );
+			mov( eax, count );
+			xor( ebx, ebx );
+			while( ebx < count ) do
+			
+				hideini.readItem( "Themes", ebx, strbuf );
+				w.SendMessage( hcbthemes, w.CB_ADDSTRING, 0, strbuf );
+				w.SendMessage( hcbthemes, w.CB_SETITEMDATA, EAX, Theme_User_c );
+				inc( ebx );
+			
+			endwhile;
+				
+		endif;
+		
+		// also load HIDE themes from hide_system.ini
+		hidesysini.getItemCount( "Themes" );
+		mov( eax, count );
+		xor( ebx, ebx );
+		while( ebx < count ) do
+			
+			hidesysini.readItem( "Themes", ebx, strbuf );
+			w.SendMessage( hcbthemes, w.CB_ADDSTRING, 0, strbuf );
+			w.SendMessage( hcbthemes, w.CB_SETITEMDATA, EAX, Theme_System_c );
+			inc( ebx );
+			
+		endwhile;
+		
+		popad();
+	end loadThemes;
+
+	setupLists	:procedure( hwin:dword );
+	
+		var
+			hbr	:dword;
+			
+	begin setupLists;
+		
+		w.SendDlgItemMessage( hwin, IDC_LSTCOLORS, w.LB_RESETCONTENT, 0, 0 );
+		w.SendDlgItemMessage( hwin, IDC_LSTKWCOLORS, w.LB_RESETCONTENT, 0, 0 );
+		
+		mov( &col, edi );
+		for( xor( esi, esi ); esi < nRAcolors*4; add( 4, esi ) ) do
+			
+			w.SendDlgItemMessage( hwin, IDC_LSTCOLORS, w.LB_ADDSTRING, 0, RAcolors[esi] );
+			w.SendDlgItemMessage( hwin, IDC_LSTCOLORS, w.LB_SETITEMDATA, eax, [edi+esi] );
+			
+		endfor;
+		
+		w.SendDlgItemMessage( hwin, IDC_LSTCOLORS, w.LB_SETCURSEL, 0, 0 );
+		
+		mov( &usrcol, edi );
+		for( xor( esi, esi ); esi < nColorGroups*4; add( 4, esi ) )do
+			
+			w.SendDlgItemMessage( hwin, IDC_LSTKWCOLORS, w.LB_ADDSTRING, 0, ColorGroups[esi] );
+			w.SendDlgItemMessage( hwin, IDC_LSTKWCOLORS, w.LB_SETITEMDATA,eax, [edi+esi] );
+			
+		endfor;		
+			
+		w.SendDlgItemMessage( hwin, IDC_LSTKWCOLORS, w.LB_SETCURSEL, 0, 0 );
+		
+		SetKeyWordList( hwin, IDC_LSTKWHOLD, HoldGroup );			// grab the reserved words.
+		SetKeyWordList( hwin, IDC_LSTKWACTIVE, 0 );
+		w.SendDlgItemMessage( hwin, IDC_EDTKW, w.EM_LIMITTEXT, 63 ,0 );
+		
+		w.GetDlgItem( hwin, IDC_BTNKWAPPLY );
+		w.EnableWindow( eax, false );
+		
+	end setupLists;
+
+	keywordsUpdate	:procedure( hwin:dword );
+	begin keywordsUpdate;
+		pushad();
+		
+		if( listChanged ) then
+			SaveKeyWordList( hwin, IDC_LSTKWACTIVE, nKWInx );
+			SaveKeyWordList( hwin, IDC_LSTKWHOLD, HoldGroup );
+			mov( false, listChanged );
+		endif;
+		
+		
+		mov( &usrcol, edi );
+		for( xor( esi, esi ); esi < nColorGroups; inc( esi )) do
+			
+			w.SendDlgItemMessage( hwin, IDC_LSTKWCOLORS, w.LB_GETITEMDATA, esi, 0 );
+			mov( eax, [edi+esi*4] );
+			
+		endfor;	
+
+		hideini.writeBin( "Colors", "usrcol", &usrcol, @size(usrcol) );
+		mov( curnode, eax );
+		if( eax ) then
+			SetKeyWords( listeax.hwnd );
+			repaintAll();
+		endif;
+		
+		push( edi );
+		mov( &col,edi );
+		sub( eax, eax );
+	
+		_uploop:
+			push(eax);
+			w.SendDlgItemMessage( hwin, IDC_LSTCOLORS, w.LB_GETITEMDATA, eax, 0 );
+			mov( eax,[edi] );
+			pop( eax );
+			inc( eax );
+			add( 4,edi );
+			cmp( edi, &col+@size(col) );
+			jc _uploop;
+			setFormatAll();
+			hideini.writeBin( "Colors", "col", &col, @size(col) );
+			hideini.writeBin( "Colors", "user", &CustColors, @size(CustColors) );
+			pop(edi);
+
+		popad();
+	end keywordsUpdate;
+
+proc
+	Proc_KeyWords :procedure( lparam:dword; wparam:dword; umsg:uns32; hwin:dword );
+
+		var
+			hbr	:dword;
+			cc	:w.CHOOSECOLOR;
+			ini	:pointer to tConfig;
+	
+	begin Proc_KeyWords;
+		pushabi;
+		
+		mov( umsg, eax );
+		switch( eax );
+		
+		case( w.WM_COMMAND )
+		
+			mov( wparam, eax );
+			mov( eax, edx );
+			shr( 16, edx );
+			and( $0ffff, eax );
+			
+			if (edx = w.BN_CLICKED) then
+				
+				if (eax = IDC_BTNKWAPPLY) then
+					keywordsUpdate( hwin );
+					mov(IDC_BTNKWAPPLY,eax);
+					xor(edx,edx);
+					call EnButton;
+	
+				elseif (eax = IDC_BTNHOLD) then
+	
+					MoveKeyWords(hwin,IDC_LSTKWACTIVE,IDC_LSTKWHOLD);
+					mov(IDC_BTNHOLD,eax);
+					xor(edx,edx);
+					call EnButton;
+					mov(IDC_BTNDEL,eax);
+					xor(edx,edx);
+					call EnButton;
+					mov(IDC_BTNKWAPPLY,eax);
+					mov(true,edx);
+					call EnButton;
+	
+				elseif (eax = IDC_BTNACTIVE) then
+	
+					MoveKeyWords(hwin,IDC_LSTKWHOLD,IDC_LSTKWACTIVE);
+					mov(IDC_BTNHOLD,eax);
+					xor(edx,edx);
+					call EnButton;
+					mov(IDC_BTNDEL,eax);
+					xor(edx,edx);
+					call EnButton;
+					mov(IDC_BTNKWAPPLY,eax);
+					mov(true,edx);
+					call EnButton;
+	
+				elseif (eax = IDC_BTNADD) then
+	
+					w.GetDlgItemTextA(hwin,IDC_EDTKW,&minibuf,@size(minibuf));
+					w.SendDlgItemMessage(hwin,IDC_LSTKWACTIVE,w.LB_ADDSTRING,0,&minibuf);
+					mov(0,minibuf[0]);
+					w.SetDlgItemText(hwin,IDC_EDTKW,&minibuf);
+					mov(IDC_BTNKWAPPLY,eax);
+					mov(true,edx);
+					call EnButton;
+					
+				elseif (eax = IDC_BTNDEL) then
+					DeleteKeyWords(hwin,IDC_LSTKWACTIVE);
+					mov(IDC_BTNHOLD,eax);
+					xor(edx,edx);
+					call EnButton;
+					mov(IDC_BTNDEL,eax);
+					xor(edx,edx);
+					call EnButton;
+					mov(IDC_BTNKWAPPLY,eax);
+					mov(true,edx);
+					call EnButton;
+	
+				elseif (eax = IDC_CHKBOLD) then
+					w.SendDlgItemMessage(hwin,IDC_LSTKWCOLORS,w.LB_GETCURSEL,0,0);
+					push(eax);
+					w.SendDlgItemMessage(hwin,IDC_LSTKWCOLORS,w.LB_GETITEMDATA,eax,0);
+					pop(edx);
+					xor($01000000,eax);
+					w.SendDlgItemMessage(hwin,IDC_LSTKWCOLORS,w.LB_SETITEMDATA,edx,eax);
+					mov(IDC_BTNKWAPPLY,eax);
+					mov(true,edx);
+					call EnButton;
+	
+				elseif (eax = IDC_CHKITALIC) then
+					w.SendDlgItemMessage(hwin,IDC_LSTKWCOLORS,w.LB_GETCURSEL,0,0);
+					push(eax);
+					w.SendDlgItemMessage(hwin,IDC_LSTKWCOLORS,w.LB_GETITEMDATA,eax,0);
+					pop(edx);
+					xor($02000000,eax);
+					w.SendDlgItemMessage(hwin,IDC_LSTKWCOLORS,w.LB_SETITEMDATA,edx,eax);
+					mov(IDC_BTNKWAPPLY,eax);
+					mov(true,edx);
+					call EnButton;
+	
+				elseif (eax = IDC_CHKRCFILE) then
+					w.SendDlgItemMessage(hwin,IDC_LSTKWCOLORS,w.LB_GETCURSEL,0,0);
+					push(eax);
+					w.SendDlgItemMessage(hwin,IDC_LSTKWCOLORS,w.LB_GETITEMDATA,eax,0);
+					pop(edx);
+					xor($10000000,eax);
+					w.SendDlgItemMessage(hwin,IDC_LSTKWCOLORS,w.LB_SETITEMDATA,edx,eax);
+					mov(IDC_BTNKWAPPLY,eax);
+					mov(true,edx);
+					call EnButton;
+					
+				elseif (eax = IDC_CB_LOAD) then
+	
+					dbg.put ("Load theme");	
+					w.SendMessage (hcbthemes, w.CB_GETCURSEL, 0, 0);
+					push (eax);
+					w.SendMessage (hcbthemes, w.CB_GETITEMDATA, eax, 0);
+					if (eax = Theme_System_c) then
+						mov (&hidesysini, eax);
+						mov (eax, ini);
+					else
+						mov (&hideini, eax);
+						mov (eax, ini);
+					endif;
+					
+					pop (eax);
+					w.SendMessage (hcbthemes, w.CB_GETLBTEXT, eax, &buffer);
+					str.cpyz (&buffer, strbuf);
+					str.put2 (strbuf, ".theme");
+					//dbg.put ("loading :", strbuf);
+					ini.readBin (strbuf, "col", &col, @size(col));
+					ini.readBin (strbuf, "usrcol", &usrcol, @size(usrcol));
+					setupLists (hwin);
+	
+					keywordsUpdate( hwin );
+	
+					mov(IDC_BTNKWAPPLY,eax);
+					mov(true,edx);
+					call EnButton;
+	
+				elseif (eax = IDC_CB_DELETE) then
+	
+					//dbg.put ("delete theme");
+					w.SendMessage (hcbthemes, w.CB_GETCURSEL, 0, 0);
+					push (eax);
+					w.SendMessage (hcbthemes, w.CB_GETLBTEXT, eax, &buffer);
+					pop (eax);
+					w.SendMessage (hcbthemes, w.CB_DELETESTRING, eax, 0); 
+					
+					str.cpyz (&buffer, strbuf);
+					hideini.findItem ("Themes", strbuf);
+					hideini.deleteItem ("Themes", eax);
+					str.put2 (strbuf, ".theme");
+					hideini.deleteSection (strbuf);
+					
+				elseif (eax = IDC_CB_SAVE) then
+					
+					//dbg.put ("save theme");
+					keywordsUpdate( hwin );
+					w.SendMessage (hcbthemes, w.WM_GETTEXT, @elements (buffer)-1, &buffer);
+					w.SendMessage (hcbthemes, w.CB_FINDSTRINGEXACT, -1, &buffer);
+					if (eax = w.CB_ERR) then
+						w.SendMessage (hcbthemes, w.CB_ADDSTRING, 0, &buffer);
+					endif;
+					if (eax <> w.CB_ERR) then
+						w.SendMessage (hcbthemes, w.CB_SETITEMDATA, eax, Theme_User_c);
+						str.cpyz (&buffer, strbuf);
+						hideini.findItem ("Themes", strbuf);
+						hideini.writeItem ("Themes", eax, strbuf); // replace or append new
+						str.put2 (strbuf, ".theme");
+						hideini.writeBin (strbuf, "col", &col, @size(col));
+						hideini.writeBin (strbuf, "usrcol", &usrcol, @size(usrcol));
+	
+					endif;				
+					
+				endif;
+				
+			elseif (edx = w.EN_CHANGE) then
+				
+				if (eax = IDC_EDTKW) then
+					w.SendDlgItemMessage(hwin,IDC_EDTKW,w.WM_GETTEXTLENGTH,0,0);
+					mov(eax,edx);
+					mov(IDC_BTNADD,eax);
+					call EnButton;
+				endif;
+	
+			elseif (edx = w.LBN_SELCHANGE) then
+				
+				dbg.put("LBN_SELCHANGE");
+				if (eax = IDC_LSTKWCOLORS) then
+					dbg.put("IDC_LSTKWCOLORS");
+					
+					if( listChanged ) then
+						SaveKeyWordList( hwin,IDC_LSTKWACTIVE, nKWInx );
+						mov( false, listChanged );
+					endif;
+					
+					w.SendDlgItemMessage( hwin, IDC_LSTKWCOLORS, w.LB_GETCURSEL, 0, 0 );
+					SetKeyWordList( hwin, IDC_LSTKWACTIVE, eax );
+					w.GetDlgItem( hwin, IDC_BTNHOLD );
+					w.EnableWindow( eax, false );
+					w.GetDlgItem( hwin, IDC_BTNDEL );
+					w.EnableWindow( eax, false );
+					
+					//dbg.put ("/selchange");
+					
+				elseif (eax = IDC_LSTKWACTIVE) then
+					dbg.put("IDC_LSTKWACTIVE");
+					w.SendDlgItemMessage(hwin,IDC_LSTKWACTIVE,w.LB_GETSELCOUNT,0,0);
+					push(eax);
+					mov(eax,edx);
+					mov(IDC_BTNHOLD,eax);
+					call EnButton;
+					pop(edx);
+					mov(IDC_BTNDEL,eax);
+					call EnButton;
+		
+				elseif (eax = IDC_LSTKWHOLD) then
+		
+					w.SendDlgItemMessage(hwin,IDC_LSTKWHOLD,w.LB_GETSELCOUNT,0,0);
+					mov(eax,edx);
+					mov(IDC_BTNACTIVE,eax);
+					call EnButton;
+		
+				endif;
+				dbg.put("/LBN_SELCHANGE");
+				
+			elseif (edx = w.LBN_DBLCLK) then
+	
+				if (eax = IDC_LSTKWCOLORS) then
+					
+					mov(@size(w.CHOOSECOLOR),cc.lStructSize);
+					mov(hwin,eax);
+					mov(eax,cc.hwndOwner);
+					mov(&CustColors,cc.lpCustColors);
+					mov(w.CC_FULLOPEN | w.CC_RGBINIT,cc.Flags);
+					w.SendDlgItemMessage(hwin,IDC_LSTKWCOLORS,w.LB_GETCURSEL,0,0);
+					w.SendDlgItemMessage(hwin,IDC_LSTKWCOLORS,w.LB_GETITEMDATA,eax,0);
+					push(eax);
+					//Mask off group/font
+					and($0FFFFFF,eax);
+					mov(eax,cc.rgbResult);
+					w._ChooseColor(cc);
+					pop(ecx);
+					if (testnz (eax, eax)) then
+						push(ecx);
+						w.SendDlgItemMessage(hwin,IDC_LSTKWCOLORS,w.LB_GETCURSEL,0,0);
+						pop(ecx);
+						mov(cc.rgbResult,edx);
+						//Group/Font
+						and($0FF000000,ecx);
+						or(ecx,edx);
+						w.SendDlgItemMessage(hwin,IDC_LSTKWCOLORS,w.LB_SETITEMDATA,eax,edx);
+						w.GetDlgItem(hwin,IDC_LSTKWCOLORS);
+						w.InvalidateRect(eax,NULL,false);
+						mov(IDC_BTNKWAPPLY,eax);
+						mov(true,edx);
+						call EnButton;
+	
+					endif;
+	
+				elseif (eax = IDC_LSTKWACTIVE) then
+	
+					w.SendDlgItemMessage(hwin,IDC_LSTKWACTIVE,w.LB_GETCURSEL,0,0);
+					if (eax <> w.LB_ERR) then
+						mov(eax,edx);
+						w.SendDlgItemMessage(hwin,IDC_LSTKWACTIVE,w.LB_GETTEXT,edx,&minibuf);
+						w.SetDlgItemText(hwin,IDC_EDTKW,&minibuf);
+					endif;
+						
+				elseif (eax = IDC_LSTKWHOLD) then
+					w.SendDlgItemMessage(hwin,IDC_LSTKWHOLD,w.LB_GETCURSEL,0,0);
+					if (eax <> w.LB_ERR) then
+						mov(eax,edx);
+						w.SendDlgItemMessage(hwin,IDC_LSTKWHOLD,w.LB_GETTEXT,edx,&minibuf);
+						w.SetDlgItemText(hwin,IDC_EDTKW,&minibuf);					
+					endif;
+	
+				elseif (eax = IDC_LSTCOLORS) then
+					mov(@size(w.CHOOSECOLOR),cc.lStructSize);
+					mov(hwin,eax);
+					mov(eax,cc.hwndOwner);
+					mov(&CustColors,cc.lpCustColors);
+					mov(w.CC_FULLOPEN | w.CC_RGBINIT,cc.Flags);
+					w.SendDlgItemMessage(hwin,IDC_LSTCOLORS,w.LB_GETCURSEL,0,0);
+					w.SendDlgItemMessage(hwin,IDC_LSTCOLORS,w.LB_GETITEMDATA,eax,0);
+					push(eax);
+					//Mask off font
+					and($0FFFFFF,eax);
+					mov(eax,cc.rgbResult);
+					w._ChooseColor(cc);
+					pop(ecx);
+					if (testnz (eax,eax)) then
+						push(ecx);
+						w.SendDlgItemMessage(hwin,IDC_LSTCOLORS,w.LB_GETCURSEL,0,0);
+						pop(ecx);
+						mov(cc.rgbResult,edx);
+						//Font
+						and($0FF000000,ecx);
+						or(ecx,edx);
+						w.SendDlgItemMessage(hwin,IDC_LSTCOLORS,w.LB_SETITEMDATA,eax,edx);
+						w.GetDlgItem(hwin,IDC_LSTCOLORS);
+						w.InvalidateRect(eax,null,false);
+						mov(IDC_BTNKWAPPLY,eax);
+						mov(true,edx);
+						call EnButton;
+					endif;
+				endif;
+	
+			elseif (edx = w.CBN_EDITCHANGE) then
+				 
+				 //dbg.put ("EDITCHANGE");
+				
+				 w.SendMessage (hcbthemes, w.WM_GETTEXT, @elements(buffer)-1, &buffer );
+				 if (eax) then
+				 	mov (true, edx);
+				 else
+				 	mov (false, edx);
+				 endif;
+				 
+				 mov( IDC_CB_SAVE, eax );
+				 call EnButton;
+				 
+				 // disable load
+				 mov( false, edx );
+				 mov( IDC_CB_LOAD, eax );
+				 call EnButton;
+				 			 
+			elseif (edx = w.CBN_SELENDOK) then
+				dbg.put ("selok");
+				mov (false, edx);
+				mov (IDC_CB_SAVE, eax);
+				call EnButton;
+				w.SendMessage (hcbthemes, w.CB_GETCURSEL, 0, 0);
+				w.SendMessage (hcbthemes, w.CB_GETITEMDATA, eax, 0);
+				if (eax = Theme_System_c) then
+					// disable delete
+					mov (false, edx);
+					mov (IDC_CB_DELETE, eax);
+					call EnButton;
+				else
+					// user can delete own themes
+					mov (true, edx);
+					mov (IDC_CB_DELETE, eax);
+					call EnButton;
+				endif;
+				
+				// enable load button
+				mov (true, edx);
+				mov (IDC_CB_LOAD, eax);
+				call EnButton;
+				
+				
+			else
+				xor (eax, eax);
+				popabi;
+				exit Proc_KeyWords;
+			endif;
+			
+			or( 1, eax );
+		
+		case( w.WM_DRAWITEM )
+		
+			mov( lparam, esi );
+			
+			if( bitSet( w.ODS_SELECTED,drawesi.itemState) ) then
+				
+				pushd( w.COLOR_HIGHLIGHT );
+				mov( w.COLOR_HIGHLIGHTTEXT, eax );
+				
+			else
+				
+				pushd( w.COLOR_WINDOW );
+				mov( w.COLOR_WINDOWTEXT, eax );
+				
+			endif;
+			
+			w.GetSysColor(eax);
+			w.SetTextColor(drawesi.hdc,eax);
+			pop(eax);
+			w.GetSysColor(eax);
+			w.SetBkColor(drawesi.hdc,eax);
+			w.ExtTextOut(drawesi.hdc,0,0,w.ETO_OPAQUE,drawesi.rcItem,NULL,0,NULL);
+			mov(drawesi.rcItem.left,eax);
+			inc(eax);
+			mov(eax,rect.left);
+			add(25,eax);
+			mov(eax,rect.right);
+			mov(drawesi.rcItem.top,eax);
+			inc(eax);
+			mov(eax,rect.top);
+			mov(drawesi.rcItem.bottom,eax);
+			dec(eax);
+			mov(eax,rect.bottom);
+			mov(drawesi.itemData,eax);
+			and($0FFFFFF,eax);
+			w.CreateSolidBrush(eax);
+			mov(eax,hbr);
+			w.FillRect(drawesi.hdc,&rect,hbr);
+			w.DeleteObject(hbr);
+			w.GetStockObject(w.BLACK_BRUSH);
+			w.FrameRect(drawesi.hdc,&rect,eax);
+			w.SendMessage(drawesi.hwndItem,w.LB_GETTEXT,drawesi.itemID,&minibuf);
+			mov(drawesi.rcItem.left,edx);
+			add(30,edx);
+			w.TextOut(drawesi.hdc,edx,drawesi.rcItem.top,&minibuf,eax);
+
+			or( 1, eax );
+		
+		case( w.WM_CLOSE )
+		
+			w.EndDialog( hwin, NULL );
+			or( 1, eax );
+			
+		case( w.WM_INITDIALOG )
+			
+			w.GetDlgItem( hwin, IDC_CB_THEMES );
+			mov( eax, hcbthemes );
+			mov( false, listChanged );
+			setupLists( hwin );
+			loadThemes();
+			
+			or( 1, eax );
+		
+		default
+		
+			xor( eax, eax );
+		
+		endswitch;
+		
+		popabi;
+		exit Proc_KeyWords;
+		
+		// internal procedures
+		EnButton::
+			push(edx);
+			w.GetDlgItem(hwin,eax);
+			pop(edx);
+			w.EnableWindow(eax,edx);
+			ret();
+	
+	
+	end Proc_KeyWords;
+
+end	Keywords;

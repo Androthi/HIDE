@@ -1,0 +1,3214 @@
+Unit Project_unit;
+	
+#includeonce ("HIDE.hhf")
+	#includeonce	("conv.hhf")
+	#includeonce	("fileio.hhf")
+	#includeonce	("memory.hhf")
+	#includeonce	("genLexer.hhf")
+	
+	?@nodisplay:=true;
+	?@noalignstack := true;
+	?@align:=4;
+
+
+const	// local	
+
+	PROJ_VERSION	:=10;		// current .hpr version, used for compatibility checks between updates
+	delims			:cset := {',',#0};
+
+	state_deselectall	:= 0;
+	state_selectjob		:= 1;
+	state_deselectfile	:= 2;
+	state_selectfile	:= 3;
+	state_selectlibrary	:= 4;
+	state_selecttarget	:= 5;
+	state_selectprogram	:= 6;
+	state_selectdll		:= 7;
+	
+	storage
+	
+		align(4);
+		hmanager		:dword;
+		count			:uns32;
+		curjob			:pointer to jList.jnode;
+		jobproc			:procedure (src:string);
+		
+		usestdtemp		:boolean;
+		holdjobmode		:boolean;
+		
+		align(4);
+		
+		lvi		:w.LV_ITEM;
+		lvCols	:w.LV_COLUMN;
+		hJobs	:dword;
+		hFiles	:dword;
+		
+		// work strings
+		infile_storage		:char[pathsize_c];
+		inwork_storage		:char[pathsize_c];
+		infolder_storage	:char[pathsize_c];
+		infile				:string;
+		inwork				:string;
+		infolder			:string;
+		
+		align(4);
+		
+namespace project;
+	storage	// imports from namespace project
+		align(4);
+		folder		:string;
+		id			:string;
+		hpr			:@global:tConfig;
+		flags		:dword;
+		options		:dword;
+		ptype		:uns8; // unused, free space
+		tab			:uns8;
+		backups		:uns8;
+		isOpen		:boolean;
+		findscope	:dword;
+		findflags	:dword;
+		align(4);
+end project;
+
+
+readonly
+	align (4);
+
+	jobTypes	:zstring[ nJobTypes ] := 
+	[
+		"Program",
+		"kMake Script",
+		"DLL",
+		"Library",
+		"Misc"
+	];
+		
+	fileTypes	:zstring[ nFileTypes ] :=
+	[
+		"HLA Main",
+		"HLA Unit",
+		"HLA Header",
+		"Resource",
+		"kHelp Doc",
+		"DLL Definition",
+		"Binary",
+		"Misc.",
+		"kMake Script"
+	];
+	
+	hlaLevels	:zstring[4] :=
+	[
+		"High",
+		"Medium",
+		"Low",
+		"Machine"
+	];
+	
+	actionStrings	:string[ nFileTypes ] :=
+	[
+		"hlaprogram",
+		"hlaunit",
+		"include",
+		"resource",
+		"khelp",
+		"misc",
+		"binary",
+		"misc",
+		"kmake"
+	];
+
+	
+	programTypes	:dword[7] := [ 0, 1, 2, 3, 4, 6, 7 ];
+	kmakeTypes		:dword[1] := [ 8 ];
+	dllTypes		:dword[8] := [ 0, 1, 2, 3, 4, 5, 6, 7 ];
+	libraryTypes	:dword[5] := [ 1, 2, 4, 6, 7 ];
+	miscTypes		:dword[3] := [ 4, 6, 7 ];
+			
+	align(4);
+		
+	
+procedure project.init; @noframe;
+begin init;
+	mov (str.init (&infile_storage, pathsize_c), infile);
+	mov (str.init (&infolder_storage, pathsize_c), infolder);
+	mov (str.init (&inwork_storage, pathsize_c), inwork);
+	ret();
+end init;
+
+procedure project.switchType (ftype:string);
+begin switchType;
+	//dbg.put ("switchType :", ftype);
+	if ( checkSA (ftype)) then
+		switch (eax);
+
+		case( sa_def )
+			
+			mov( type_def, eax );
+			
+		case( sa_hlaprogram )
+			
+			mov( type_hla, eax );
+
+		case( sa_hlaunit )
+			
+			mov( type_unit, eax );
+			
+		case( sa_include )
+			
+			mov( type_hhf, eax );
+			
+		case( sa_misc )
+			
+			mov( type_misc, eax );
+			
+		case( sa_resource )
+			
+			mov( type_rc, eax );
+			
+		case( sa_kmake )
+			
+			mov( type_kmake, eax );
+			
+		case( sa_khelp )
+			
+			mov( type_khelp, eax );
+			
+		case( sa_binary )
+			
+			mov( type_bin, eax );
+
+		case( sa_dll )
+			
+			mov( jobtype_dll, eax );
+			
+		case( sa_library )
+
+			mov( jobtype_library, eax );
+			
+		case( sa_program, sa_modular )
+			
+			mov( jobtype_program, eax );
+
+		case( sa_target )
+			
+			mov( jobtype_target, eax );
+			
+		case( sa_miscjob )
+		
+			mov( jobtype_misc, eax );
+			
+		default
+			
+			mov( type_all, eax );
+
+			
+		endswitch;
+	endif;
+	//dbg.put ("/switchType :", eax );
+end switchType;
+
+procedure openNonText (fname:string); @returns ("EAX");
+	var
+		s	:string;
+		
+begin openNonText;
+//	dbg.put ("openNonText :", fname);
+	mov (str.talloc (pathsize_c), s);
+USE (ESI, EDI, EBX);
+	fileList.newNode();
+	mov (eax, ebx);
+	str.cpy (fname, s);
+	
+	filesys.a_extractFilename( s );
+	mov( eax, listebx.id );
+	str.a_cpy (s);
+	mov (eax, listebx.fullname);
+	fileList.append ([ebx]);
+	mov (ebx, eax);
+//	dbg.put ("/openNonText");
+ENDUSE;
+end openNonText;
+
+
+procedure project.new (projname:string);
+	var
+		pname	:string;
+		pdir	:string;
+		hpr		:tConfig;
+		
+begin new;
+
+	mov (str.talloc (pathsize_c), pname);
+	mov (str.talloc (pathsize_c), pdir);
+	
+USE (ESI, EDI, EBX);
+	str.cpy (projname, pname);
+	project.close();	// close existing project, if any
+	
+	str.put (strbuf, projectpath, dirsep_c, pname);
+	dbg.put ("New project at: ", strbuf);
+	try
+		filesys.mkdir( strbuf );
+		filesys.cd (strbuf);
+		hpr.create();
+		str.put2 (pname, ".hpr");
+		iniesi.writeUns ("HPR Settings", "Project Version", PROJ_VERSION);
+		iniesi.writeHex ("HPR Settings", "options", project.options);
+		movzx (project.tab, eax);
+		iniesi.writeUns ("HPR Settings", "tab", eax);
+		movzx (project.backups, eax);
+		iniesi.writeUns ("HPR Settings", "backups", eax);
+		iniesi.writeBool ("HPR Settings", "usetemp", false);
+		iniesi.writeBool ("HPR Settings", "useunits", false);
+		iniesi.writeBool ("HPR Settings", "useback", false);
+		iniesi.write (pname);
+		iniesi.destroy();
+		
+		filesys.cd (projectpath);
+		project.open (pname);
+		or (1, eax);
+
+	anyexception
+		error.warning ("A project by that name already exists");
+		xor (eax, eax);
+
+	endtry;
+
+ENDUSE;
+end new;
+
+proc
+	project.addFileNode :procedure( fname:string; ftype:string );
+	
+		var
+			s	:string;
+			
+	
+	begin addFileNode;
+	
+		mov (str.talloc (pathsize_c), s);
+	
+		USE( EBX, ECX, ESI, EDI );
+		
+		fileList.newNode();
+		mov( eax, ebx );
+		str.cpy( fname, s );
+		
+		filesys.a_extractFilename( s );
+		mov( eax, listebx.id );
+		
+		str.a_cpy( s );
+		mov( eax, listebx.fullname );
+		fileList.append( [ebx] );
+		mov( 0, listebx.hwnd );
+		
+		mov( ftype, eax );
+		mov( eax, listebx.ftype );
+		project.switchType( eax );
+		mov( eax, listebx.ftype );
+		mov( ebx, eax );
+		// return filenode
+	ENDUSE;
+	end addFileNode;
+
+
+procedure addFile (folder:string; fname:string; extension:string);
+	// this procedure used by procedure.addxxx procedures
+begin addFile;
+	dbg.put ("addFile");
+	str.cpy (folder, infolder);
+	str.cpy (fname, infile);
+	str.cpy (project.id, inwork);
+	if (! filesys.hasExtension( infile )) then
+		str.put2 (infile, extension);
+	endif;
+	
+	filesys.extractFilename( infile, infile );
+	
+	filesys.deleteExt( inwork, inwork );
+	if (! str.eq (inwork, infolder)) then
+		str.put (inwork, infolder, dirsep_c);
+		mov (true, eax);
+	else
+		str.cpy ("", inwork);
+		mov (false, eax);
+	endif;
+	dbg.put ("/addFile");
+end addFile;
+
+procedure project.addMain (folder:string; fname:string; import:boolean);
+	var
+		hasfolder	:BOOL;
+		buf			:tBuffer;
+		
+begin addMain;
+
+USE (EAX, ESI, EDI);
+	dbg.put ("addMain");
+	mov (false, hasfolder);
+	addFile (folder, fname, ".hla");
+	mov (eax, hasfolder);
+
+	str.put2 (inwork, infile);
+	if (import) then
+		buf.create_file (fname);
+		buf.toFile (inwork);
+		buf.destroy();
+	else
+		hideini.readInt( "HIDE Settings", "Standard Templates" );
+		if( eax ) then
+	
+			mov( curjob, eax );
+			if( jobeax.ftype = jobtype_dll ) then
+				
+				writeStdTpl( inwork, type_def );
+				
+			else
+	
+				writeStdTpl (inwork, type_hla );
+			
+			endif; 
+	
+		else
+			fileio.openNew (inwork);
+			fileio.close (eax);
+		endif;
+	endif;
+	
+	project.addFileNode (inwork, "hlaprogram");
+	if (eax) then
+		move (curjob, listeax.job);
+	
+		mov (&project.hpr, esi);
+		str.put (inwork, infile, ',');
+		if (hasfolder) then
+			str.put2 (inwork, infolder);
+		endif;
+		
+		str.put2 (inwork, ",hlaprogram");
+
+		mov (curjob, eax);
+		str.put (strbuf, jobeax.id, ".files");
+		iniesi.writeItem (strbuf, -1, inwork);
+		iniesi.writeString (jobeax.id, "main", infile);
+	endif;	
+	dbg.put ("/addMain");
+ENDUSE;
+end addMain;
+
+procedure project.addUnit (folder:string; fname:string; import:boolean);
+	var
+		hasfolder	:BOOL;
+		buf			:tBuffer;
+		
+begin addUnit;
+USE (EAX, ESI, EDI);
+	mov (false, hasfolder);
+	addFile (folder, fname, ".hla");
+	mov (eax, hasfolder);
+
+	str.put2 (inwork, infile);
+	if (import) then
+		
+		buf.create_file( fname );
+		buf.writeFileName( inwork );
+		buf.destroy();
+
+	else
+
+		hideini.readInt( "HIDE Settings", "Standard Templates" );
+		if( eax ) then
+			
+			writeStdTpl (inwork, type_unit );
+				
+		else
+
+			fileio.openNew (inwork);
+			fileio.close (eax);
+
+		endif;
+	endif;
+	
+	project.addFileNode (inwork, "hlaunit");
+	if (eax) then
+		move (curjob, listeax.job);
+	
+		mov (&project.hpr, esi);
+		str.put (inwork, infile, ',');
+		if (hasfolder) then
+			str.put2 (inwork, infolder);
+		endif;
+		
+		str.put2 (inwork, ",hlaunit");
+		mov (curjob, eax);
+		str.put (strbuf, jobeax.id, ".files");
+		iniesi.writeItem (strbuf, -1, inwork);
+	endif;
+ENDUSE;
+end addUnit;
+
+
+procedure project.addResource (folder:string; fname:string; import:boolean);
+	var
+		hasfolder	:BOOL;
+		buf			:tBuffer;
+		
+begin addResource;
+USE (EAX, ESI, EDI);
+	mov (false, hasfolder);
+	addFile (folder, fname, ".rc");
+	mov (eax, hasfolder);
+
+	str.put2 (inwork, infile);
+	if (import) then
+		buf.create_file (fname);
+		buf.toFile (inwork);
+		buf.destroy();
+	else
+		fileio.openNew (inwork);
+		fileio.close (eax);
+	endif;
+	
+	project.addFileNode (inwork, "resource");
+	if (eax) then
+		move (curjob, listeax.job);
+	
+		mov (&project.hpr, esi);
+		str.put (inwork, infile, ',');
+		if (hasfolder) then
+			str.put2 (inwork, infolder);
+		endif;
+		
+		str.put2 (inwork, ",resource");
+		mov (curjob, eax);
+		str.put (strbuf, jobeax.id, ".files");
+		iniesi.writeItem (strbuf, -1, inwork);
+	endif;
+ENDUSE;
+end addResource;
+
+
+procedure project.addKhelp (folder:string; fname:string; import:boolean);
+	var
+		hasfolder	:BOOL;
+		buf			:tBuffer;
+		
+begin addKhelp;
+USE (EAX, ESI, EDI);
+	mov (false, hasfolder);
+	addFile (folder, fname, ".khelp");
+	mov (eax, hasfolder);
+	
+	str.put2 (inwork, infile);
+	if (import) then
+		buf.create_file (fname);
+		buf.toFile (inwork);
+		buf.destroy();
+	else
+		fileio.openNew (inwork);
+		fileio.close (eax);
+	endif;
+	
+	project.addFileNode (inwork, "khelp");
+	if (eax) then
+		move (curjob, listeax.job);
+		mov (&project.hpr, esi);
+		str.put (inwork, infile, ',');
+		if (hasfolder) then
+			str.put2 (inwork, infolder);
+		endif;
+		str.put2 (inwork, ',', "khelp");
+		mov (curjob, eax);
+		str.put (strbuf, jobeax.id, ".files");
+		iniesi.writeItem (strbuf, -1, inwork);
+	endif;
+ENDUSE;
+end addKhelp;
+
+procedure project.addBinary(folder:string; fname:string; import:boolean);
+	var
+		hasfolder	:BOOL;
+		buf			:tBuffer;
+		
+begin addBinary;
+USE (EAX, ESI, EDI);
+	mov (false, hasfolder);
+	addFile (folder, fname, "");
+	mov (eax, hasfolder);
+	
+	str.put2 (inwork, infile);
+	if (import) then
+		buf.create_file (fname);
+		buf.toFile (inwork);
+		buf.destroy();
+	else
+		fileio.openNew (inwork);
+		fileio.close (eax);
+	endif;
+	
+	project.addFileNode (inwork, "binary");
+	if (eax) then
+		move (curjob, listeax.job);
+		mov (&project.hpr, esi);
+		str.put (inwork, infile, ',');
+		if (hasfolder) then
+			str.put2 (inwork, infolder);
+		endif;
+		str.put2 (inwork, ',', "binary");
+		mov (curjob, eax);
+		str.put (strbuf, jobeax.id, ".files");
+		iniesi.writeItem (strbuf, -1, inwork);
+	endif;	
+ENDUSE;
+
+end addBinary;
+
+
+procedure project.addMisc (folder:string; fname:string; import:boolean);
+	var
+		hasfolder	:BOOL;
+		buf			:tBuffer;
+		
+begin addMisc;
+USE (EAX, ESI, EDI);
+	mov (false, hasfolder);
+	addFile (folder, fname, "");
+	mov (eax, hasfolder);
+	
+	str.put2 (inwork, infile);
+	if (import) then
+		buf.create_file (fname);
+		buf.toFile (inwork);
+		buf.destroy();
+	else
+		fileio.openNew (inwork);
+		fileio.close (eax);
+	endif;
+	
+	project.addFileNode (inwork, "misc");
+	if (eax) then
+		move (curjob, listeax.job);
+		mov (&project.hpr, esi);
+		str.put (inwork, infile, ',');
+		if (hasfolder) then
+			str.put2 (inwork, infolder);
+		endif;
+		str.put2 (inwork, ',', "misc");
+		mov (curjob, eax);
+		str.put (strbuf, jobeax.id, ".files");
+		iniesi.writeItem (strbuf, -1, inwork);
+	endif;	
+ENDUSE;
+end addMisc;
+
+procedure project.addKmake (folder:string; fname:string; import:boolean);
+	var
+		hasfolder	:BOOL;
+		buf			:tBuffer;
+
+begin addKmake;
+USE (EAX, ESI, EDI);
+	mov (false, hasfolder);
+	addFile (folder, fname, ".kmk");
+	mov (eax, hasfolder);
+		
+	str.put2 (inwork, infile);
+	
+	if (import) then
+		buf.create_file (fname);
+		buf.toFile (inwork);
+		buf.destroy();
+	else
+		fileio.openNew (inwork);
+		fileio.close (eax);
+	endif;
+	
+	project.addFileNode (inwork, "kmake");
+	if (eax) then
+		mov (curjob, ebx);
+		mov (ebx, listeax.job);
+		mov (&project.hpr, esi);
+		iniesi.writeString (jobebx.id, "target", inwork);
+		
+		
+		mov (&project.hpr, esi);
+		str.put (inwork, infile, ',');
+		if (hasfolder) then
+			str.put2 (inwork, infolder);
+		endif;
+		str.put2 (inwork, ',', "kmake");
+	
+		str.put (strbuf, jobebx.id, ".files");
+		iniesi.writeItem (strbuf, -1, inwork);
+	endif;
+ENDUSE;
+end addKmake;
+
+
+procedure project.addDef (folder:string; fname:string; import:boolean);
+	var
+		hasfolder	:BOOL;
+		buf			:tBuffer;
+		
+begin addDef;
+USE (EAX, ESI, EDI);
+	mov (false, hasfolder);
+	addFile (folder, fname, ".def");
+	mov (eax, hasfolder);
+	
+	str.put2 (inwork, infile);
+	if (import) then
+		buf.create_file (fname);
+		buf.toFile (inwork);
+		buf.destroy();
+	else
+		fileio.openNew (inwork);
+		fileio.close (eax);
+	endif;
+	
+	project.addFileNode (inwork, "def");
+	if (eax) then
+		move (curjob, listeax.job);
+		mov (&project.hpr, esi);
+		str.put (inwork, infile, ',');
+		if (hasfolder) then
+			str.put2 (inwork, infolder);
+		endif;
+		str.put2 (inwork, ',', "def");
+		mov (curjob, eax);
+		str.put (strbuf, jobeax.id, ".files");
+		iniesi.writeItem (strbuf, -1, inwork);	
+		
+		// add this definition file to the linker response.
+		mov (curjob, ebx);
+		iniesi.writeItem (strbuf, -1, workpath);
+		iniesi.writeString (jobebx.id, "def", infile);
+	endif;
+ENDUSE;
+end addDef;
+
+procedure project.addInc (folder:string; fname:string; import:boolean);
+	var
+		hasfolder	:BOOL;
+		buf			:tBuffer;
+		
+begin addInc;
+USE (EAX, ESI, EDI);
+
+	mov (false, hasfolder);
+	addFile (folder, fname, ".hhf");
+	mov (eax, hasfolder);
+	
+	str.put2 (inwork, infile);
+	if (import) then
+		buf.create_file (fname);
+		buf.toFile (inwork);
+		buf.destroy();
+	else
+		fileio.openNew (inwork);
+		fileio.close (eax);
+	endif;
+	
+	project.addFileNode (inwork, "include");
+	if (eax) then
+		move (curjob, listeax.job);
+		mov (&project.hpr, esi);
+		str.put (inwork, infile, ',');
+		if (hasfolder) then
+			str.put2 (inwork, infolder);
+		endif;
+		str.put2 (inwork, ',', "include");
+		mov (curjob, eax);
+		str.put (strbuf, jobeax.id, ".files");
+		iniesi.writeItem (strbuf, -1, inwork);
+	endif;	
+ENDUSE;	
+end addInc;
+
+
+procedure project.convertToTpl (fname:string);
+	var
+		dest	:string;
+		tmp		:string;
+		buf		:tBuffer;
+		fbuf	:tBuffer;
+		bbuf	:tBuffer;
+		hpr		:tConfig;
+		count	:uns32;
+		fcount	:uns32;
+		
+begin convertToTpl;
+	mov (str.talloc (pathsize_c), dest);
+	mov( str.talloc( pathsize_c ), tmp );
+
+	dbg.enters("convertTotpl");
+USE (ESI, EDI, EBX);
+	saveAll();
+	str.cpy (fname, dest);
+	if (! filesys.hasExtension( dest )) then
+		str.put2 (dest, ".kmk");
+	endif;
+	try
+		filesys.cd (project.folder);
+		lea (esi, project.hpr);
+		iniesi.write (project.id);	// save any changes first
+		hpr.create (project.id);
+		hpr.deleteSection ("Notes");
+		fbuf.create();
+		buf.create();
+		buf.append (
+		"; Template generated by ", version, nl
+		"; This is a kMake script for generating a HIDE project" nl
+		"; To activate, use HIDE menu Project > New Project From Template" nl
+		"; Or use kMake, syntax:" nl
+		"; kMake filename=<filename> <templatename>[.kmk]" nl nl );
+	
+		// header section
+		buf.append (
+		"[Template]" nl
+		"author= HIDE" nl
+		"version= 0" nl
+		"date= unknown" nl nl
+		"[Description]" nl
+		"<text>" nl
+		"Template generated by HIDE" nl
+		"<replace with your template description>" nl
+		"</text>" nl nl);
+	
+		// build macros
+		buf.append (
+		"[MACROS]" nl
+		"folders=" );
+		
+		hpr.getItemCount ("HPR Folders");
+		mov (eax, count);
+		for (xor (ebx, ebx); ebx < count; inc (ebx) ) do
+			hpr.readItem ("HPR Folders", ebx, strbuf);
+			buf.append (strbuf, ',');
+		endfor;
+		if (count > 0) then
+			buf.cursorLeft (1);
+			buf.deleteCursor (1);	// get rid of last comma
+		endif;
+		
+		buf.append (nl "files=");
+		
+		fileList.getHead();
+		mov (eax, ebx);
+		while (ebx) do
+			if (listebx.isproject) then
+
+				buf.append ('"', listebx.relative, """,");
+				call readInFile;
+
+			endif;
+			mov (listebx.next, ebx);
+		welse
+			buf.left( 1 );
+			buf.delete( 1 );
+		endwhile;
+		
+		buf.append (nl nl "[BUILD]" nl nl
+		"<< if ! filename >>" nl
+		"	<< error: Usage: kMake filename=<project_name> <templatename>[.kmk] >>" nl
+		"<< endif >>" nl nl 
+		"#BUILD_FOLDERS" nl
+		"#BUILD_HPR" nl
+		"#BUILD_SOURCES" nl nl
+		"[BUILD_FOLDERS]" nl nl
+		"	mkdir $(filename)" nl
+		"	cd $(filename)" nl
+		"	<< foreach: folders >>" nl
+		"		mkdir $(%)" nl
+		"	<< endfor >>" nl nl
+		"[BUILD_HPR]" nl nl
+		"<< CreateFile: hpr_file, keep >>" nl
+		"rename hpr_file $(filename).hpr" nl nl
+		"[hpr_file]" nl
+		"<text>" nl);
+		
+		//mov( hpr.data, eax );
+		//lea( eax, hpr.data );
+		
+		//dbg.put("ins buf");
+		buf.insertBuffer( hpr );
+		buf.append (nl nl "</text>" nl nl
+		"[BUILD_SOURCES]" nl 
+		"<< foreach: files >>" nl
+		"	<< CreateFile: $(%),keep >>" nl
+		"<< endfor >>" nl nl);
+		buf.insertBuffer (fbuf);
+		buf.append (nl);
+		buf.bof();
+		
+		while (buf.searchf ("output=") ) do
+			buf.cursorRight (7);
+			mov (eax, ecx);
+			buf.cursorToEOL();
+			buf.setBlock (ecx, eax);
+			buf.getBlockText (strbuf);
+			if ( filesys.hasExtension( strbuf )) then
+				filesys.extractExt( strbuf, tmp );
+				str.put (strbuf, "$(filename).", tmp );
+				buf.replaceBlock (strbuf);
+			else
+				buf.replaceBlock ("$(filename)");
+			endif;
+		endwhile;
+		
+		dbg.put("writing :", dest );
+		
+		buf.writeFileName( dest );
+		buf.destroy();
+		fbuf.destroy();
+		hide_openFile (dest);
+		toOutput ("Template created" nl "Any Notes in the Notes Panel has been lost." nl
+		"Finish up by editing the [Template] and [Description] sections" nl
+		"to personalize the template" nl);
+
+	anyexception
+		error.warning( "Project folder no longer exists, please fix project path");
+	endtry;
+ENDUSE;
+
+dbg.exits("convertTotpl");
+exit convertToTpl;
+
+	readInFile:
+		// append file in ebx to fbuf
+		fbuf.append (
+		'[', listebx.relative, ']', nl);
+		if (listebx.ftype = type_bin) then
+			fbuf.append ("<bin>" nl);
+			bbuf.create_file (listebx.relative);
+			forever
+				bbuf.readByte();
+				breakif (@c);
+				//  each byte is stored in the form of
+				// two ascii digits, process the value in al
+				if (! al) then
+					fbuf.insertb (al);	// write '00' for each 0 (zero)				
+				elseif (al < $10) then
+					fbuf.insertb (0);		// write '0x'for single digit numbers
+				endif;
+				fbuf.insertb (al);
+			endfor;
+			fbuf.append (nl "</bin>" nl nl);
+		else
+			fbuf.append ("<text>" nl);
+			fbuf.insertFile (listebx.relative);
+			fbuf.append (nl "</text>" nl nl);
+		endif;
+		
+	ret();
+	
+
+end convertToTpl;
+
+
+procedure project.open (fname:string);
+	var
+		hprname_s	:string;
+		jobname		:string;
+		jfname		:string;
+		folder		:string;
+		ftype		:string;
+		s			:string;
+		buf			:tBuffer;
+		jobcount	:uns32;
+		filecount	:uns32;
+	
+begin open;
+	
+	
+	mov (str.talloc (pathsize_c), hprname_s);	// absolute name of .hpr
+	mov (str.talloc (pathsize_c), s);			// scratch string
+	mov (str.talloc (pathsize_c), jobname);		// current jobname without extension
+	mov (str.talloc (pathsize_c), jfname);
+	mov (str.talloc (pathsize_c), folder);
+	mov (str.talloc (pathsize_c), ftype);
+
+	dbg.enters("project.open");
+	pushabi;
+	
+	str.cpy (fname, hprname_s);
+	dbg.put ("open :", hprname_s);
+	
+	project.close();
+
+	// see if we have a full path, or look in the project folder
+	if (filesys.exists (hprname_s)) then
+		filesys.a_extractPath( hprname_s );
+		mov (eax, project.folder);
+		filesys.cd (project.folder);
+
+	else
+
+		str.put (strbuf, projectpath, dirsep_c, hprname_s);
+		filesys.deleteExt( strbuf, strbuf );
+		
+		if( filesys.exists( strbuf ) ) then
+		
+			str.a_cpy (strbuf);
+			mov (eax, project.folder);
+			//dbg.put ("cd to :", project.folder);
+			filesys.cd (project.folder);
+			
+		else
+			
+			str.put( strbuf, "Unable to open project: ", fname );
+			hideini.deleteKey ("HIDE Settings", "LastProject" );
+			error.warning (strbuf);
+			jmp exitopen;
+			
+		endif;
+	endif;
+
+	filesys.a_extractFilename( hprname_s );
+	mov( eax, project.id );
+	
+
+	filesys.gwd (workpath);
+	if (filesys.exists (project.id)) then
+		buf.create();
+		bufesi.setDelimiters (delims);
+		
+		mov (&project.hpr, esi);
+		iniesi.create_file (project.id);
+		
+		// check version
+		iniesi.readInt ("HPR Settings", "Project Version");
+		if ( eax < PROJ_VERSION) then
+			error.warning( "Older project versions not supported.");
+			str.free( project.id );
+			jmp exitopen;
+		endif;
+	else
+		
+		str.put (strbuf, "Project file not found :", project.id, nl,
+					"Note: Project folder must match hpr name for detection");
+		hideini.deleteKey ("HIDE Settings", "LastProject" );
+		str.free( project.id );
+		error.warning (strbuf);
+		jmp exitopen;
+		
+	endif;
+	
+	// 		setup project
+	
+	mov (&project.hpr, esi);
+	if (iniesi.readUns ("HPR Settings", "tab")) then
+		if( ! al ) then
+			inc( al );
+		endif;
+		mov (al, project.tab);
+	endif;
+	
+	if (iniesi.readHex ("HPR Settings", "options")) then
+		mov (eax, project.options);
+	endif;
+	
+	if ( iniesi.readInt ("HPR Settings", "backups")) then
+		mov (al, project.backups);
+	endif;
+	
+	if (iniesi.readHex ("HPR Settings", "findscope")) then
+		mov (eax, project.findscope);
+	endif;
+	
+	if (iniesi.readHex ("HPR Settings", "findflags")) then
+		mov (eax, project.findflags);
+	endif;
+
+	// read jobs
+	
+	USE (ESI);
+		jobList.create();
+	ENDUSE;
+
+	iniesi.getItemCount ("HPR Jobs");
+	mov (eax, jobcount);
+	xor (ecx, ecx);
+	while (ecx < jobcount) do
+		iniesi.readItem( "HPR Jobs", ecx, jobname );
+		push( esi );
+		jobList.appendJob( jobname );
+		pop( esi );
+		
+		mov( eax, curjob );
+		mov( eax, ebx );
+
+		mov( true, jobebx.inQueue );
+		iniesi._readString( jobname, "type", strbuf );
+
+		project.switchType( strbuf );
+		mov( eax, jobebx.ftype );
+		
+		// read job files into filelist
+		str.put( s, jobname, ".files" );
+		iniesi.getItemCount( s );
+		
+		mov (esi, ebx);
+		mov (eax, filecount);
+		xor (edx, edx);
+		call readFiles;
+		
+		inc (ecx);
+	endwhile;
+
+	iniesi.getItemCount( "Held Jobs" );
+	mov( eax, jobcount );
+	xor( ecx, ecx );
+	while( ecx < jobcount ) do
+		iniesi.readItem( "Held Jobs", ecx, jobname );
+		USE( ESI );
+			jobList.appendJob( jobname );
+		ENDUSE;
+		mov( eax, curjob );
+		mov( eax, ebx );
+		
+		mov( false, jobebx.inQueue );
+		iniesi._readString( jobname, "type", strbuf );
+		project.switchType( strbuf );
+		mov( eax, jobebx.ftype );
+		
+		// read job files into filelist
+		str.put( s, jobname, ".files" );
+		iniesi.getItemCount( s );
+		mov( eax, filecount );
+		mov( esi, ebx );
+		xor( edx, edx );
+		call readFiles;
+		
+		inc( ecx );
+	endwhile;
+	dbg.put("/read files" );
+	buf.destroy();
+	
+	hideini.readInt( "HIDE Settings", "Scan Properties" );
+	if( eax ) then
+		prop_reset();
+	endif;
+	
+	dbg.put("/prop" );
+//		
+//		fileList.getHead();
+//		mov (eax, ebx);
+//		while (ebx) do
+//			mov (listebx.ftype, eax);
+//			if (eax != type_bin) then
+//				prop_scanFile ([ebx]);
+//			endif;
+//			mov (listebx.next, ebx);
+//		endwhile;
+//	endif;
+	
+	mov (&project.hpr, esi);
+	if (iniesi.readBool ("HPR Settings", "usetemp")) then
+		// set temp folder for project
+		str.put (workpath, project.folder, dirsep_c, "temp");
+		dbg.put ("putting project temp:", workpath);
+		env2.put ("hlatmp", workpath);
+	endif;
+	
+	mov (true, project.isOpen);
+
+	if (mode = mode_gui) then
+
+		mov (&project.hpr, esi);
+		if (iniesi._readString ("HPR Settings", "mainfile", workpath)) then
+			if (fileList.findFullname (workpath)) then
+				hide_openNode( [eax] );
+			else
+				mov( &project.hpr, esi );
+				iniesi.deleteKey ("HPR Settings", "mainfile");
+				error.warning ("Project mainfile not found, please select a new file");
+			endif;
+		else
+			SetWindowCaption();
+		endif;
+
+		Notes_Open();
+		prop_updateView();
+		w.SendMessage(hwnd,HIDE_TOGGLEDEBUG,0,0);
+		TreeToolSetup();
+		repaintAll();
+		w.SendMessage( hwnd, HIDE_SETSTATUS, STATUS_PROJ, zProject );
+	endif;
+	
+	w.SendMessage( hwnd, w.WM_SETFOCUS, 0, 0);
+	str.put( strbuf, project.folder, dirsep_c, project.id );
+	Recent_Insert( strbuf );
+	
+	exitopen:
+	
+	dbg.exits( "project.open" );
+	popabi;
+	exit open;
+	
+	//===================================================
+	
+	readFiles:
+		while( edx < filecount ) do
+			
+			iniesi.readBufItem( s, edx, buf );
+			USE( ESI, ECX );
+			buf.bof();
+			bufesi.getToken( jfname );
+			bufesi.getToken( folder );
+			bufesi.getToken( ftype );
+			if( str.length( folder ) ) then
+				str.put( workpath, folder, dirsep_c, jfname );
+			else
+				str.put( workpath, jfname );
+			endif;
+			
+			//dbg.put(">", workpath);
+			// convert hpr version
+			//dbg.put(">", fname, "  :", ftype );
+			checkSA( ftype );
+			if( eax = sa_extlinked ) then
+				dbg.put("removed");
+				str.put( strbuf, jobname, ".extlinked" );
+				mov( ebx, esi );
+				iniesi.writeItem( strbuf, -1, workpath );
+				iniesi.deleteItem( s, edx );
+				dec( edx );	// since 1 item removed!
+				dec( filecount );
+				
+			else
+				
+				project.addFileNode( workpath, ftype );
+				if( eax ) then
+					move( curjob, listeax.job );
+				endif;
+				
+			endif;
+			ENDUSE;
+			
+			inc (edx);
+		endwhile;
+	ret();
+	
+end open;
+
+procedure project.close; @noframe;
+begin close;
+USE (EBX, ESI, EDI);
+	if (project.isOpen) then
+		filesys.cd( project.folder );		
+		closeAll();
+		if (eax) then
+			jmp _cancel;
+		endif;
+		
+		fileList.destroy();
+		fileList.create();
+
+		Notes_Save();
+		Notes_Clear();
+		
+
+		filesys.gwd( workpath );
+		str.put2( workpath, dirsep_c, project.id );
+		hideini.writeString ("HIDE Settings", "LastProject", workpath);
+		mov (&project.hpr, esi);
+		iniesi.writeHex ("HPR Settings", "options", project.options);
+		movzx (project.backups, eax);
+		iniesi.writeInt ("HPR Settings", "backups", eax);
+		movzx (project.tab, eax);
+		iniesi.writeUns ("HPR Settings", "tab", eax);
+		iniesi.writeHex ("HPR Settings", "findscope", project.findscope);
+		iniesi.writeHex ("HPR Settings", "findflags", project.findflags);
+		iniesi.write (project.id);
+		iniesi.destroy();
+		
+		// free joblist
+		jobList.destroy();
+		str.free (project.id);
+		str.free (project.folder);
+		// restore default settings
+		mov (settings.tab, al);
+		mov (al, project.tab);
+		mov (settings.backups, ah);
+		mov (ah, project.backups);
+		move (settings.options, project.options);
+		move (settings.findflags, project.findflags);
+		move (settings.findscope, project.findscope);
+
+		// reset environment for temp
+		str.put (workpath, homepath, dirsep_c, "temp");
+		env2.put ("hlatmp", workpath);
+			
+		mov (false, project.isOpen);
+		TreeToolSetup();
+		prop_updateView();
+		mov (&project.hpr, eax);
+		mov (0, (type dword [eax]));
+		updateDisplay (update_general);
+		dbg.put ("changing to path:", projectpath);
+		try
+			filesys.cd (projectpath);
+		anyexception
+			error.warning("Project folder no longer exists, please fix project path");
+		endtry;
+		w.SendMessage(hwnd,HIDE_SETSTATUS,STATUS_PROJ, zStandard );
+		SetWindowCaption();
+		xor (eax, eax);
+	endif;
+	_cancel:
+ENDUSE;
+ret();
+end close;
+
+procedure project.removeLib( lib:string );
+	var
+		s	:string;
+		
+begin removeLib;
+	move( str.talloc( pathsize_c ), s );
+	
+	pushabi;
+	mov( curjob, eax );
+	str.put(s, jobeax.id, ".extlinked");
+	mov( &project.hpr, esi );
+	if( iniesi.findItem( s, lib ) != -1) then
+		iniesi.deleteItem( s, eax );
+	endif;
+	
+	popabi;
+	dbg.put ("/removelib");
+end removeLib;
+
+
+procedure project.importLib (src:string);
+	var
+		s	:string;
+		
+begin importLib;
+	dbg.put("importLib");
+	move( str.talloc( $300 ), s );
+
+	USE (ESI, EDI, EBX);
+
+	filesys.cd (project.folder);
+	filesys.extractFilename( src, s );
+	
+	dbg.put ("importLib :", s);
+	
+	mov( curjob, eax );
+	str.put( strbuf, jobeax.id, ".extlinked" );
+	mov( &project.hpr, esi );
+	iniesi.writeItem( strbuf, -1, s );
+	
+	ENDUSE;
+	dbg.put("/importLib");
+end importLib;
+
+procedure project.deleteFile (var bnode:fList.fnode);
+	// delete a file and remove it from the project
+	@alignstack;
+	var
+		hasfolder	:boolean;
+		
+	procedure delFile_checkMain; @noframe;
+	begin delFile_checkMain;
+		mov (listebx.job, eax);
+		mov (&project.hpr, esi);
+		if (iniesi._readString (jobeax.id, "main", workpath)) then
+			if (str.eq (workpath, listebx.id)) then
+				mov (listebx.job, eax);
+				iniesi.deleteKey ( jobeax.id, "main");
+			endif;
+		endif;
+		ret();
+	end delFile_checkMain;
+
+begin deleteFile;
+	USE (ESI, EDI, EBX, ECX);
+	dbg.enters( "deleteFile" );
+	mov( bnode, ebx );
+	str.cpy( listebx.relative, strbuf );
+	
+	str.cpy( "", infolder );
+	mov( false, hasfolder );
+	
+	if( filesys.hasPath( strbuf ) ) then
+		
+		filesys.extractPath( strbuf, infolder );
+		mov( true, hasfolder );
+		
+	endif;
+	
+	filesys.extractFilename( strbuf, infile );
+	
+	str.put (strbuf, infile, ',');
+	if (hasfolder) then
+		str.put2 (strbuf, infolder, ',');
+	else
+		str.put2 (strbuf, ',');
+	endif;
+	
+	mov (listebx.ftype, eax);
+	switch (eax);
+	case (type_misc)
+		str.put2 (strbuf, "misc");
+		
+	case (type_khelp)
+		str.put2 (strbuf,"khelp");
+	
+	case (type_hla)
+		str.put2 (strbuf, "hlaprogram");
+		delFile_checkMain();
+		
+	case (type_unit)
+		str.put2 (strbuf, "hlaunit");
+		
+	case (type_rc)
+		str.put2 (strbuf, "resource");
+		
+	case (type_hhf)
+		str.put2 (strbuf, "include");
+		
+	case (type_def)
+		mov (listebx.job, eax);
+		mov (&project.hpr, esi);
+		iniesi.deleteKey (jobeax.id, "def");
+		str.put2 (strbuf, "def");
+	
+	case (type_kmake)
+		mov (listebx.job, eax);
+		mov (&project.hpr, esi);
+		iniesi.deleteKey (jobeax.id, "target");
+		str.put2 (strbuf, "kmake");
+	
+	endswitch;
+
+
+	mov (&project.hpr, esi);
+	mov (listebx.job, eax);
+	str.put (workpath, jobeax.id, ".files");
+	if (iniesi.findItem (workpath, strbuf) != -1) then
+		iniesi.deleteItem (workpath, eax);
+	endif;
+	
+	filesys.delete (listebx.relative);
+	fileList.remove ([ebx]);
+	
+	ENDUSE;
+dbg.exits("deleteFile");
+end deleteFile;
+
+procedure getCurJobType; @returns ("EAX"); @noframe;
+begin getCurJobType;
+	mov (curjob, eax);
+	mov (jobeax.ftype, eax);
+	ret();
+end getCurJobType;
+
+procedure manager_updateDisplay (state:dword);
+
+	procedure all( state: dword in ebx ); @noframe;
+	begin all;
+		w.GetDlgItem( hmanager, IDC_MANAGERJOBS_LINK );
+		w.EnableWindow( eax, ebx );
+		w.GetDlgItem( hmanager, IDC_MANAGERJOBS_NEWLIB );
+		w.EnableWindow (eax, ebx);
+		w.GetDlgItem( hmanager, IDC_MANAGERJOBS_REMOVELIB );
+		w.EnableWindow( eax, ebx );
+		w.GetDlgItem( hmanager, IDC_MANAGERJOBS_LEVEL );
+		w.EnableWindow( eax, ebx );
+		w.GetDlgItem( hmanager, IDC_MANAGERJOBS_CON2OUT );
+		w.EnableWindow( eax, ebx );
+		w.GetDlgItem( hmanager, IDC_MANAGERJOBS_THREADSAFE );
+		w.EnableWindow( eax, ebx );
+		w.GetDlgItem( hmanager, IDC_MANAGERJOBS_DEBUG );
+		w.EnableWindow( eax, ebx );
+		w.GetDlgItem( hmanager, IDC_MANAGERJOBS_PEGUI );
+		w.EnableWindow( eax, ebx );
+		ret();
+		
+	end all;
+
+
+	procedure activate( state:dword in ebx ); @noframe;
+	begin activate;
+
+		w.GetDlgItem( hmanager, IDC_MANAGERJOBS_QUESEL );
+		w.EnableWindow( eax, ebx );
+		w.GetDlgItem( hmanager, IDC_MANAGERJOBS_REMOVEJOB );
+		w.EnableWindow (eax, ebx);
+		w.GetDlgItem( hmanager, IDC_MANAGERJOBS_RENAMEJOB );
+		w.EnableWindow( eax, ebx );
+		w.GetDlgItem( hmanager, IDC_MANAGERJOBS_NEWFILE );
+		w.EnableWindow( eax, ebx );
+		ret();
+		
+	end activate;
+
+begin manager_updateDisplay;
+	USE (EBX);
+	mov (state, eax);
+	
+	switch (eax);
+	case (state_deselectall)
+
+		w.SendMessage( hJobs, w.LVM_DELETEALLITEMS, 0, 0 );
+		w.SendMessage( hFiles, w.LVM_DELETEALLITEMS, 0, 0 );
+		w.SendDlgItemMessage( hmanager, IDC_MANAGERJOBS_LINKLIST, w.LB_RESETCONTENT, 0, 0 );
+
+		mov( false, ebx );
+		mov(ebx, curjob );
+		activate( ebx );
+		all( ebx );
+		
+	case( state_selectjob )
+		dbg.put("selectjob");
+		mov( true, ebx );
+		activate( ebx );
+		w.GetDlgItem( hmanager, IDC_MANAGERJOBS_RENAMEFILE );
+		w.EnableWindow( eax, false );
+		w.GetDlgItem( hmanager, IDC_MANAGERJOBS_REMOVEFILE );
+		w.EnableWindow( eax, false );
+		
+	case( state_deselectfile )
+	
+		w.GetDlgItem( hmanager, IDC_MANAGERJOBS_RENAMEFILE );
+		w.EnableWindow( eax, false );
+		w.GetDlgItem( hmanager, IDC_MANAGERJOBS_REMOVEFILE );
+		w.EnableWindow( eax, false );
+
+		
+	case (state_selectfile)
+
+		w.GetDlgItem( hmanager, IDC_MANAGERJOBS_RENAMEFILE );
+		w.EnableWindow( eax, true );
+		w.GetDlgItem( hmanager, IDC_MANAGERJOBS_REMOVEFILE );
+		w.EnableWindow( eax, true );
+
+	case( state_selecttarget )
+
+		xor( ebx, ebx );
+		all( ebx );
+		
+	case( state_selectlibrary )
+
+		xor( ebx, ebx );
+		all( ebx );
+		w.GetDlgItem( hmanager, IDC_MANAGERJOBS_LEVEL );
+		w.EnableWindow( eax, true );
+		w.GetDlgItem( hmanager, IDC_MANAGERJOBS_THREADSAFE );
+		w.EnableWindow( eax, true );
+	
+	case( state_selectprogram )
+
+		or( 1, ebx );
+		all( ebx );
+		
+	case( state_selectdll )
+		
+		xor( ebx, ebx );
+		all( ebx );
+		w.GetDlgItem( hmanager, IDC_MANAGERJOBS_LINK );
+		w.EnableWindow( eax, true );
+
+	endswitch;
+	
+ENDUSE;
+end manager_updateDisplay;
+
+
+proc
+	updateFiles :procedure( var job:jList.jnode );
+	
+		var
+			count	:uns32;
+			
+	
+	begin updateFiles;
+		pushabi;
+		dbg.enters( "updateFiles" );
+		
+		w.SendMessage( hFiles, w.LVM_DELETEALLITEMS, 0, 0 );
+		fileList.getHead();
+		mov( eax, ebx );
+		mov( job, esi );
+		mov( 0, count );
+		while( ebx ) do
+
+			if( listebx.job = esi ) then
+
+				move( listebx.id, lvi.pszText );
+				mov( 0, lvi.iSubItem );
+				move( count, lvi.iItem );
+				mov( ebx, lvi.lParam );
+				mov( w.LVIF_TEXT | w.LVIF_PARAM, lvi.imask );
+				w.SendMessage( hFiles, w.LVM_INSERTITEM, 0, &lvi );
+				
+				//dbg.put( "item = ", count);
+				mov( w.LVIF_TEXT, lvi.imask );
+				mov( 1, lvi.iSubItem );
+				str.put( strbuf, listebx.relative );
+				filesys.extractPath( strbuf, strbuf );
+				if( str.length( strbuf ) = 0 ) then 
+					str.put( strbuf, project.id );
+					filesys.deleteExt( strbuf, strbuf );
+				endif;
+				mov( strbuf, eax );
+				mov( eax, lvi.pszText );
+				w.SendMessage( hFiles, w.LVM_SETITEM, 0, &lvi );
+				
+				
+				mov( listebx.ftype, eax );
+				mov( 2, lvi.iSubItem );
+				mov( fileTypes[eax*4], eax );
+				
+				mov( eax, lvi.pszText );
+				w.SendMessage( hFiles, w.LVM_SETITEM, 0, &lvi );
+				
+		
+				inc( count );		
+			endif;
+			
+			mov (listebx.next, ebx);
+		endwhile;
+		
+		dbg.exits( "updateFiles" );
+		popabi;
+	end updateFiles;
+
+	updateJobs :procedure { @noframe };
+	begin updateJobs;
+		dbg.enters("updateJobs");
+		
+		manager_updateDisplay( state_deselectall );
+		mov(&project.hpr, esi );
+		if( holdjobmode ) then
+			str.cpy( "Held Jobs", workpath );
+		else
+			str.cpy( "HPR Jobs", workpath );
+		endif;
+		
+		iniesi.getItemCount( workpath );
+		mov( eax, count );
+		xor( ebx, ebx );
+		while( ebx < count ) do
+			mov( &project.hpr, esi );
+			iniesi.readItem( workpath, ebx, strbuf );
+			jobList.findID( strbuf );
+			mov( eax, edi );
+			move( jobedi.id, lvi.pszText );
+			mov( 0, lvi.iSubItem );
+			mov( ebx, lvi.iItem );
+			mov( edi, lvi.lParam );
+			mov( w.LVIF_TEXT | w.LVIF_PARAM, lvi.imask );
+			w.SendMessage( hJobs, w.LVM_INSERTITEM, 0, &lvi );
+			
+			mov( w.LVIF_TEXT, lvi.imask );
+			mov( jobedi.ftype, eax ); //dbg.put("job type = ", eax );
+			mov( jobTypes[eax*4], eax );
+			mov( eax, lvi.pszText );
+			mov( 1, lvi.iSubItem ); 
+			w.SendMessage( hJobs, w.LVM_SETITEM, 0, &lvi );
+			
+			inc (ebx);
+		endwhile;
+		
+		dbg.exits("updateJobs");
+		ret();
+	end updateJobs;
+
+
+	updateLinkedObjects :procedure { @noframe };
+	begin updateLinkedObjects;
+		pushabi;
+	
+		w.SendDlgItemMessage( hmanager, IDC_MANAGERJOBS_LINKLIST, w.LB_RESETCONTENT, 0, 0 );
+		mov( curjob, eax );
+		str.put( workpath, jobeax.id, ".extlinked" );
+		mov( &project.hpr, esi );
+		iniesi.getItemCount( workpath );
+		mov( eax, count );
+		xor( ebx, ebx );
+		while( ebx < count ) do
+			
+			iniesi.readItem( workpath, ebx, strbuf );
+			w.SendDlgItemMessage( hmanager, IDC_MANAGERJOBS_LINKLIST, w.LB_ADDSTRING, 0, strbuf );
+			
+			w.GetDlgItem( hmanager, IDC_MANAGERJOBS_THREADSAFE );
+			mov( eax, edi );
+			
+			if( str.ieq( strbuf, "hlalib.lib" )) then
+
+				w.EnableWindow( edi, true );
+				w.CheckDlgButton( hmanager, IDC_MANAGERJOBS_THREADSAFE, w.BST_UNCHECKED );
+
+			elseif( str.ieq( strbuf, "hlalib_safe.lib" )) then
+
+				w.EnableWindow( edi, true );
+				w.CheckDlgButton( hmanager, IDC_MANAGERJOBS_THREADSAFE, w.BST_CHECKED );
+
+			endif;
+			
+			inc( ebx );
+		endwhile;
+		
+		popabi;
+		ret();
+	end updateLinkedObjects;
+	
+	job_defaultlibs :procedure { @noframe };
+	begin job_defaultlibs;
+
+		str.put( inwork, infile, ".extlinked" );
+		hideini.readSection( "default libs", strbuf );
+		mov (&project.hpr, esi);
+		iniesi._writeSection( inwork, strbuf );
+		
+		ret();
+	end job_defaultlibs;
+
+	
+	job_add :procedure( src:string );
+		
+		// support procedure for job_addxxx procedures
+		// returns in EBX = job list node pointer
+		
+	begin job_add;
+
+		str.cpy (src, infile);
+		if ( filesys.hasExtension( infile ) ) then
+			filesys.deleteExt( infile, infile );
+		endif;
+		mov (&project.hpr, esi);
+		if (holdjobmode) then
+			iniesi.writeItem ("Held Jobs", -1, infile);
+		else
+			iniesi.writeItem ("HPR Jobs", -1, infile);
+		endif;
+		dbg.put ("appending job: ", infile);
+		jobList.appendJob (infile);
+		if (! holdjobmode) then
+			mov (true, jobeax.inQueue);
+		endif;
+		mov (eax, ebx);
+
+		job_defaultlibs();
+		
+		if (testnz (opt_windows, settings.options)) then
+			mov (false, eax);
+		else
+			mov (true, eax);
+		endif;
+
+		mov( &project.hpr, esi );
+		iniesi.writeBool( infile, "console", al );
+
+		// add linker info
+		str.put( inwork, infile, ".link" );
+		hideini.readSection( "default link", strbuf );
+		mov (&project.hpr, esi);
+		iniesi._writeSection( inwork, strbuf );
+		
+	end job_add;
+
+
+	job_addprogram :procedure( src:string );
+
+	begin job_addprogram;
+		
+		job_add( src );
+		// job in ebx
+		mov( jobtype_program, jobebx.ftype );
+
+		// create job section
+		mov( &project.hpr, esi );
+		str.put( strbuf, infile, exe_c );
+		iniesi.writeString( infile, "output", strbuf );
+		iniesi.writeString (infile, "type", "program" );
+
+	end job_addprogram;
+	
+	job_addtarget :procedure( src:string );
+	begin job_addtarget;
+
+		str.cpy (src, infile);
+		if ( filesys.hasExtension( infile ) ) then
+			filesys.deleteExt( infile, infile );
+		endif;
+		mov (&project.hpr, esi);
+		if (holdjobmode) then
+			iniesi.writeItem ("Held Jobs", -1, infile);
+		else
+			iniesi.writeItem ("HPR Jobs", -1, infile);
+		endif;
+		dbg.put ("appending job: ", infile);
+		jobList.appendJob (infile);
+		if (! holdjobmode) then
+			mov (true, jobeax.inQueue);
+		endif;
+		mov (jobtype_target, jobeax.ftype);
+		mov (eax, ebx);
+		mov (&project.hpr, esi);
+		iniesi.writeString (jobebx.id, "type", "target");
+		
+	end job_addtarget;
+	
+	job_addlibrary :procedure( src:string ); 
+	begin job_addlibrary;
+
+		str.cpy (src, infile);
+		if ( filesys.hasExtension( infile )) then
+			filesys.deleteExt( infile, infile );
+		endif;
+		mov (&project.hpr, esi);
+		if (holdjobmode) then
+			iniesi.writeItem ("Held Jobs", -1, infile);
+		else
+			iniesi.writeItem ("HPR Jobs", -1, infile);
+		endif;
+		dbg.put ("appending job: ", infile);
+		jobList.appendJob (infile);
+		mov (eax, ebx);
+		if (! holdjobmode) then
+			mov (true, jobebx.inQueue);
+		endif;
+		mov (jobtype_library, jobebx.ftype);
+
+		// create job section
+		mov (&project.hpr, esi);
+		iniesi.writeString (infile, "type", "library");
+		str.put (strbuf, infile, lib_c); 
+		iniesi.writeString (infile, "output", strbuf);
+
+	end job_addlibrary;
+	
+	job_adddll :procedure( src:string ); 
+		
+		var
+			buf	:tBuffer;
+			
+	begin job_adddll;
+
+		str.cpy (src, infile);
+		if ( filesys.hasExtension( infile )) then
+			filesys.deleteExt( infile, infile );
+		endif;
+		mov (&project.hpr, esi);
+		if (holdjobmode) then
+			iniesi.writeItem ("Held Jobs", -1, infile);
+		else
+			iniesi.writeItem ("HPR Jobs", -1, infile);
+		endif;
+		dbg.put ("appending job: ", infile);
+		jobList.appendJob (infile);
+		mov (eax, ebx);
+		if (! holdjobmode) then
+			mov (true, jobebx.inQueue);
+		endif;
+		mov (jobtype_dll, jobebx.ftype);
+		
+		job_defaultlibs();
+
+		// create job section
+		mov (&project.hpr, esi);
+		iniesi.writeString (infile, "type", "dll");
+
+		buf.create();
+		buf.insert (	"-base:0x40000000" nl
+						"-entry:DLLEntry", nl
+						"-dll" nl);
+						
+		mov (&project.hpr, esi);
+		str.put (inwork, infile, ".link");
+		iniesi.writeBufSection (inwork, buf);
+
+		str.put (strbuf, infile, dll_c); 
+		iniesi.writeString (infile, "output", strbuf);
+
+		buf.destroy();
+		
+	end job_adddll;
+	
+	job_addmisc :procedure( src:string );
+	begin job_addmisc;
+
+		str.cpy (src, infile);
+		mov (&project.hpr, esi);
+		if (holdjobmode) then
+			iniesi.writeItem ("Held Jobs", -1, infile);
+		else
+			iniesi.writeItem ("HPR Jobs", -1, infile);
+		endif;
+		dbg.put ("appending job: ", infile);
+		jobList.appendJob (infile);
+		if (! holdjobmode) then
+			mov (true, jobeax.inQueue);
+		endif;
+		mov (jobtype_misc, jobeax.ftype);
+		mov (eax, ebx);
+		mov (&project.hpr, esi);
+		iniesi.writeString (jobebx.id, "type", "miscjob");
+		
+	end job_addmisc;
+	
+	project_rename :procedure( var fnode:dword; folder:string; filename:string );
+		var
+			isOpen	:dword;
+			thisfolder	:string;
+			thisfile	:string;
+			
+	begin project_rename;
+		
+		mov( str.talloc( 1024 ), thisfolder );
+		mov( str.talloc( 1024 ), thisfile );
+		
+		dbg.enters("project_rename");
+		
+		// backup folder and filename
+		str.cpy( folder, thisfolder );
+		str.cpy( filename, thisfile );
+		
+		// make sure node is closed when moving files.
+		mov( fnode, ebx );
+		
+		// if the tab is open, close it, but open it again later
+		if( tabtool_isOpen( [ebx] ) ) then
+			saveAll();
+			tabtool_close( [ebx] );
+			mov( true, isOpen );
+		else
+			mov( false, isOpen );
+		endif;
+		
+		str.cpy( listebx.relative, inwork );
+		str.cpy( project.id, infile );
+		filesys.deleteExt( infile, infile );
+		if( str.eq( infile, thisfolder ) ) then
+			
+			// root move
+			str.put( infolder, project.folder, dirsep_c, thisfile );
+			str.cpy( "", thisfolder );
+			
+		else
+			
+			// folder move
+			str.put( infolder, thisfolder, dirsep_c, thisfile );
+			
+		endif; 
+
+
+		dbg.put("rename: ", listebx.relative );
+		dbg.put("to    : ", infolder );
+		
+		filesys.rename( listebx.relative, infolder );
+		
+		// rename the file list
+		str.put( inwork, listebx.id );
+		if( str.eq( listebx.id, listebx.relative )) then
+			
+			str.put2( inwork, ",," );
+			
+		else
+			
+			filesys.extractPath( listebx.relative, infile );
+			str.put2( inwork, ',', infile, ',' );
+			
+		endif;
+		
+		mov( listebx.ftype, edx );
+		mov( actionStrings[edx*4], edx );
+		str.put2( inwork, (type string edx ) );
+		
+		dbg.put("deleting :", inwork );
+		mov( listebx.job, ecx );
+		str.put( infolder, jobecx.id, ".files" );
+		mov( &project.hpr, esi );
+		if( iniesi.findItem( infolder, inwork ) != -1 ) then
+			iniesi.deleteItem( infolder, eax );
+		endif;
+		
+		
+		str.put( inwork, thisfile, ',', thisfolder, ',', (type string edx ) );
+		dbg.put("inserting:", inwork );
+		
+		iniesi.insertItem( infolder, -1, inwork );
+		
+		if( str.length( thisfolder ) ) then
+			str.put2( thisfolder, dirsep_c );
+		endif;
+		
+		str.put( infolder, thisfolder, thisfile );
+		str.free( listebx.id );
+		str.a_cpy( thisfile );
+		mov( eax, listebx.id );
+		str.free( listebx.relative );
+		str.a_cpy( infolder );
+		mov( eax, listebx.relative );
+		
+		
+		if( jobecx.ftype = jobtype_target ) then
+			
+			iniesi.writeString( jobecx.id, "target", listebx.relative );
+			
+		elseif( jobecx.ftype = jobtype_dll ) then
+			
+			filesys.extractExt( listebx.id, inwork );
+			if( str.eq( inwork, "def" ) ) then
+				iniesi.writeString( jobecx.id, "def", listebx.relative );
+			endif;
+			
+		elseif( jobecx.ftype = jobtype_program ) then
+			
+			// change the main file
+			iniesi.writeString( jobecx.id, "main", listebx.relative );
+			
+		endif;
+		if( isOpen ) then
+			tabtool_add( [ebx] );
+		endif;
+		
+		dbg.exits("project_rename");
+	end project_rename;	
+	
+	lvGetSel :procedure( hlist:dword ) { @returns( "@c" ) };
+	
+		// returns index of selected item in a list view
+	
+	begin lvGetSel;
+		
+		w.SendMessage( hlist, w.LVM_GETITEMCOUNT, 0, 0 );
+		mov( eax, count );
+		for( xor( ebx, ebx ); ebx < count; inc( ebx ) )do
+			
+			w.SendMessage( hlist, w.LVM_GETITEMSTATE, ebx, w.LVIS_SELECTED );
+			if( bitSet( w.LVIS_SELECTED, eax ) ) then
+				mov( ebx, eax );
+				jmp retTrue;
+			endif;
+		
+		endfor;
+		
+		clc();
+		jmp done;
+		
+		retTrue:
+			stc();
+			
+		done:
+	end lvGetSel;
+
+	Proc_NewFile :procedure( lparam:dword; wparam:dword; umsg:uns32; hwin:dword );
+	begin Proc_NewFile;
+		mov( umsg, eax );
+		if( eax = w.WM_COMMAND ) then
+
+			mov( wparam,eax );
+			mov( eax, edx );
+			shr( 16, edx );
+			and( $0ffff, eax );
+
+			if( edx = w.BN_CLICKED ) then
+				
+				if( eax = w.IDOK ) then
+					
+					dbg.put("ok?");
+					
+					w.GetDlgItemTextA( hwin, IDC_NEWFILE_NAME, &buffer, @elements (buffer)-1 );
+					test( eax, eax );
+					jz cancel;
+					
+					str.cpyz( &buffer, strbuf );
+					dbg.put( "fname :", strbuf );					
+					w.SendDlgItemMessage( hwin, IDC_NEWFILE_TYPE, w.CB_GETCURSEL, 0, 0 );
+					cmp( eax, w.CB_ERR );
+					je cancel;
+					
+					w.SendDlgItemMessage( hwin, IDC_NEWFILE_TYPE, w.CB_GETITEMDATA, eax, 0 );
+					mov( eax, ebx );
+					dbg.put("got type :", ebx );
+					w.SendDlgItemMessage( hwin, IDC_NEWFILE_FOLDER, w.CB_GETCURSEL, 0, 0 );
+					w.SendDlgItemMessage( hwin, IDC_NEWFILE_FOLDER, w.CB_GETLBTEXT, eax, &buffer );
+					dbg.put("in folder:");
+					dbg.putz( &buffer );
+					str.cpyz( &buffer, workpath );
+					
+					w.IsDlgButtonChecked( hwin, IDC_NEWFILE_IMPORT );
+					dbg.put( "new type = ", ebx );
+					switch( ebx )
+					
+					case( type_hla )
+					
+						project.addMain( workpath, strbuf, al );
+						
+					case( type_unit )
+					
+						project.addUnit( workpath, strbuf, al );
+						
+					case( type_hhf )
+					
+						project.addInc( workpath, strbuf, al );
+						
+					case( type_rc )
+					
+						project.addResource( workpath, strbuf, al );
+						
+					case( type_khelp )
+					
+						project.addKhelp( workpath, strbuf, al );
+						
+					case( type_def )
+					
+						project.addDef( workpath, strbuf, al );
+						
+					case( type_bin )
+					
+						project.addBinary( workpath, strbuf, al );
+						
+					case( type_misc )
+					
+						project.addMisc( workpath, strbuf, al );
+						
+					case( type_kmake )
+					
+						project.addKmake( workpath, strbuf, al );
+			
+					endswitch;
+					
+					w.SendMessage( hwin, w.WM_CLOSE, true, 0 );
+					
+				elseif( eax = w.IDCANCEL ) then
+					
+					cancel:
+					w.SendMessage( hwin, w.WM_CLOSE, false, 0 );
+					
+				elseif( eax = IDC_NEWFILE_IMPORT ) then
+					
+					w.IsDlgButtonChecked( hwin, IDC_NEWFILE_IMPORT );
+					cmp( eax, false );
+					je clearit;
+					
+					InitOF( "Import File To Project", NULL, type_all );
+					if( GetOpenName() ) then
+
+						mov( eax, ebx );
+						w.SendDlgItemMessage( hwin, IDC_NEWFILE_NAME, w.WM_SETTEXT, 0, ebx );
+						str.free( ebx );
+
+						
+					else
+						
+						clearit:
+						w.CheckDlgButton( hwin, IDC_NEWFILE_IMPORT, false );
+						w.SendDlgItemMessage( hwin, IDC_NEWFILE_NAME, w.WM_SETTEXT, 0, 0 );
+	
+					endif;
+					
+				endif;
+
+			endif;
+				
+		elseif( eax = w.WM_INITDIALOG ) then
+			
+			// init folders
+			str.cpy( project.id, strbuf );
+			filesys.deleteExt( strbuf, strbuf );
+			w.SendDlgItemMessage( hwin, IDC_NEWFILE_FOLDER, w.CB_ADDSTRING, 0, strbuf );
+			mov( &project.hpr, esi );
+			iniesi.getItemCount( "HPR Folders" );
+			mov( eax, count );
+			
+			for( xor( ebx, ebx ); ebx < count; inc( ebx ) ) do
+				
+				iniesi.readItem( "HPR Folders", ebx, strbuf );
+				w.SendDlgItemMessage( hwin, IDC_NEWFILE_FOLDER, w.CB_ADDSTRING, 0, strbuf );
+				
+			endfor;
+			
+			w.SendDlgItemMessage( hwin, IDC_NEWFILE_FOLDER, w.CB_SETCURSEL, 0, 0 );
+			
+			// init filetypes
+			dbg.put("init fileTypes" );
+			mov( curjob, eax );
+			mov( jobeax.ftype, eax );
+			switch( eax )
+			case( jobtype_program )
+
+				mov( &project.hpr, esi );
+				mov( curjob, eax );
+				if( iniesi.isKeyDefined( jobeax.id, "main") ) then
+					
+					mov( 1, ebx );
+					
+				else
+					
+					xor( ebx, ebx );
+					
+				endif;
+				
+				while( ebx < @elements( programTypes ) ) do
+					
+					mov( programTypes[ebx*4], esi );
+					mov( fileTypes[esi*4], eax );
+					
+					w.SendDlgItemMessage( hwin, IDC_NEWFILE_TYPE, w.CB_ADDSTRING, 0, eax );
+					w.SendDlgItemMessage( hwin, IDC_NEWFILE_TYPE, w.CB_SETITEMDATA, eax, esi );
+					
+					inc( ebx );
+				endwhile;
+					
+				
+			case( jobtype_target )
+			
+				for( xor( ebx, ebx ); ebx < @elements( kmakeTypes ); inc( ebx ) )do
+
+					mov( kmakeTypes[ebx*4], esi );
+					mov( fileTypes[esi*4], eax );
+					
+					w.SendDlgItemMessage( hwin, IDC_NEWFILE_TYPE, w.CB_ADDSTRING, 0, eax );
+					w.SendDlgItemMessage( hwin, IDC_NEWFILE_TYPE, w.CB_SETITEMDATA, eax, esi );
+
+				endfor; 
+			
+			case( jobtype_dll )
+
+				mov( &project.hpr, esi );
+				mov( curjob, eax );
+				if( iniesi.isKeyDefined( jobeax.id, "main") ) then
+					
+					mov( 1, ebx );
+					
+				else
+					
+					xor( ebx, ebx );
+					
+				endif;
+				
+				while( ebx < @elements( dllTypes ) ) do
+					
+					mov( dllTypes[ebx*4], esi );
+					mov( fileTypes[esi*4], eax );
+					
+					w.SendDlgItemMessage( hwin, IDC_NEWFILE_TYPE, w.CB_ADDSTRING, 0, eax );
+					w.SendDlgItemMessage( hwin, IDC_NEWFILE_TYPE, w.CB_SETITEMDATA, eax, esi );
+					
+					inc( ebx );
+				endwhile;
+
+			case( jobtype_library )
+				
+				for( xor( ebx, ebx ); ebx < @elements( libraryTypes ); inc( ebx ) )do
+					
+					
+					mov( libraryTypes[ebx*4], esi );
+					mov( fileTypes[esi*4], eax );
+				
+					w.SendDlgItemMessage( hwin, IDC_NEWFILE_TYPE, w.CB_ADDSTRING, 0, eax );
+					w.SendDlgItemMessage( hwin, IDC_NEWFILE_TYPE, w.CB_SETITEMDATA, eax, esi );
+
+				endfor; 
+	
+			case( jobtype_misc )
+			
+				for( xor( ebx, ebx ); ebx < @elements( miscTypes ); inc( ebx ) )do
+
+					mov( miscTypes[ebx*4], esi );
+					mov( fileTypes[esi*4], eax );
+					
+					w.SendDlgItemMessage( hwin, IDC_NEWFILE_TYPE, w.CB_ADDSTRING, 0, eax );
+					w.SendDlgItemMessage( hwin, IDC_NEWFILE_TYPE, w.CB_SETITEMDATA, eax, esi );
+
+				endfor; 
+			
+			endswitch;
+			
+			w.SendDlgItemMessage( hwin, IDC_NEWFILE_TYPE, w.CB_SETCURSEL, 0, 0 );
+			w.GetDlgItem( hwin, IDC_NEWFILE_NAME );
+			w.SetFocus( eax );
+			
+		elseif( eax = w.WM_CLOSE ) then
+			
+			w.EndDialog( hwin, wparam );
+			
+		endif;
+		
+		xor( eax, eax );
+		
+	end Proc_NewFile;
+
+	Proc_RenameFile :procedure( lparam:dword; wparam:dword; umsg:uns32; hwin:dword );
+	
+		storage
+			node	:dword;
+			
+	
+	begin Proc_RenameFile;
+		
+		mov( umsg, eax );
+		
+		if( eax = w.WM_COMMAND ) then
+			
+			mov( wparam,eax );
+			mov( eax, edx );
+			shr( 16, edx );
+			and( $0ffff, eax );
+
+			if( edx = w.BN_CLICKED ) then
+				
+				if( eax = w.IDOK ) then
+					
+					w.GetDlgItemTextA( hwin, IDC_RENAMEFILE_NAME, &buffer, @elements (buffer)-1 );
+					test( eax, eax );
+					jz cancel;
+					
+					str.cpyz( &buffer, strbuf );
+					
+					w.SendDlgItemMessage( hwin, IDC_RENAMEFILE_FOLDER, w.CB_GETCURSEL, 0, 0 );
+					w.SendDlgItemMessage( hwin, IDC_RENAMEFILE_FOLDER, w.CB_GETLBTEXT, EAX, workpath );
+					mov( workpath, ebx );
+					mov( eax, (type str.strRec[ebx]).length );
+					
+					mov( node, ebx );
+					//dbg.put("renaming :", listebx.relative );
+					//dbg.put("to :", workpath, dirsep_c, strbuf );
+					project_rename( [ebx], workpath, strbuf );
+					
+					w.SendMessage( hwin, w.WM_CLOSE, true, 0 );
+					
+				elseif( eax = w.IDCANCEL ) then
+					
+					cancel:
+					w.SendMessage( hwin, w.WM_CLOSE, false, 0 );
+					
+				endif;
+				
+			endif;
+			
+		elseif( eax = w.WM_INITDIALOG ) then
+
+			// fill folders
+			str.cpy( project.id, strbuf );
+			filesys.deleteExt( strbuf, strbuf );
+			w.SendDlgItemMessage( hwin, IDC_RENAMEFILE_FOLDER, w.CB_ADDSTRING, 0, strbuf );
+			mov( &project.hpr, esi );
+			iniesi.getItemCount( "HPR Folders" );
+			mov( eax, count );
+			
+			for( xor( ebx, ebx ); ebx < count; inc( ebx ) ) do
+				
+				iniesi.readItem( "HPR Folders", ebx, strbuf );
+				w.SendDlgItemMessage( hwin, IDC_RENAMEFILE_FOLDER, w.CB_ADDSTRING, 0, strbuf );
+				
+			endfor;
+
+			
+			mov( lparam, ebx );
+			mov( ebx, node );
+			//dbg.put("file :", listebx.id );
+			
+			w.SendDlgItemMessage( hwin, IDC_RENAMEFILE_NAME, w.WM_SETTEXT, 0, listebx.id );
+			
+			if( str.eq( listebx.id, listebx.relative ) ) then
+				
+				str.put( strbuf, project.id );
+				filesys.deleteExt( strbuf, strbuf );
+				
+			else
+				
+				str.put( strbuf, listebx.relative );
+				filesys.extractPath( strbuf, strbuf );
+				
+			endif;
+			//dbg.put("folder path =", strbuf );
+			w.SendDlgItemMessage( hwin, IDC_RENAMEFILE_FOLDER, w.CB_FINDSTRINGEXACT, -1, strbuf );
+			w.SendDlgItemMessage( hwin, IDC_RENAMEFILE_FOLDER, w.CB_SETCURSEL, eax, 0 );
+			
+		elseif( eax = w.WM_CLOSE ) then
+			
+			w.EndDialog( hwin, wparam );
+			
+		endif;
+		
+		xor( eax, eax );
+		
+	end Proc_RenameFile;
+
+	Proc_NewJob :procedure( lparam:dword; wparam:dword; umsg:uns32; hwin:dword );
+	begin Proc_NewJob;
+		
+		mov( umsg, eax );
+		if( eax = w.WM_COMMAND ) then
+
+			mov( wparam,eax );
+			mov( eax, edx );
+			shr( 16, edx );
+			and( $0ffff, eax );
+
+			if( edx = w.BN_CLICKED ) then
+				
+				if( eax = w.IDOK ) then
+					
+					w.GetDlgItemTextA( hwin, IDC_NEWJOB_NAME, &buffer, @elements (buffer)-1 );
+					test( eax, eax );
+					jz cancel;
+					
+					str.cpyz( &buffer, strbuf );						
+					w.SendDlgItemMessage( hwin, IDC_NEWJOB_TYPE, w.CB_GETCURSEL, 0, 0 );
+					cmp( eax, w.CB_ERR );
+					je cancel;
+					
+					switch( eax );
+					
+					case( jobtype_program )
+						
+						job_addprogram( strbuf );
+						
+					case( jobtype_target )
+					
+						job_addtarget( strbuf );
+						
+					case( jobtype_dll )
+					
+						job_adddll( strbuf );
+					
+					case( jobtype_library )
+					
+						job_addlibrary( strbuf );
+					
+					case( jobtype_misc )
+					
+						job_addmisc( strbuf );
+			
+					endswitch;
+					
+					w.SendMessage( hwin, w.WM_CLOSE, true, 0 );
+					
+				elseif( eax = w.IDCANCEL ) then
+					
+					cancel:
+					w.SendMessage( hwin, w.WM_CLOSE, false, 0 );
+					
+				endif;
+				
+			endif;	
+			
+		elseif( eax = w.WM_INITDIALOG ) then
+			
+			xor( ebx, ebx );
+			while( ebx < nJobTypes ) do
+
+				mov( jobTypes[ebx*4], eax );
+				dbg.putz( eax );
+				w.SendDlgItemMessage( hwin, IDC_NEWJOB_TYPE, w.CB_ADDSTRING, 0, eax );
+				
+				inc( ebx );
+			endwhile;
+			
+			w.SendDlgItemMessage( hwin, IDC_NEWJOB_TYPE, w.CB_SETCURSEL, 0, 0 );
+			
+			w.GetDlgItem( hwin, IDC_NEWJOB_NAME );
+			w.SetFocus( eax );
+			
+			dbg.put("/init job");
+			
+		elseif( eax = w.WM_CLOSE ) then
+			
+			w.EndDialog( hwin, wparam );
+			
+		endif;
+		
+		xor( eax, eax );
+		
+	end Proc_NewJob;
+
+	Proc_JobsManager :procedure( lparam:dword; wparam:dword; umsg:uns32; hwin:dword );
+	begin Proc_JobsManager;
+	
+	pushabi;
+	mov( umsg, eax );
+
+	if( eax = w.WM_COMMAND ) then
+		
+		mov( wparam,eax );
+		mov( eax, edx );
+		shr( 16, edx );
+		and( $0ffff, eax );
+
+		if( edx = w.BN_CLICKED ) then
+
+			if( eax = IDC_MANAGERJOBS_PEGUI ) then
+				
+				mov( curjob, ebx );
+				mov( &project.hpr, esi );
+				
+				if( w.IsDlgButtonChecked( hwin, IDC_MANAGERJOBS_PEGUI )) then
+					mov( false, eax );
+				else
+					mov( true, eax );
+				endif;
+				iniesi.writeBool( jobebx.id, "console", al );
+			
+			elseif( eax = IDC_MANAGERJOBS_CON2OUT ) then
+
+				mov( curjob, ebx );
+				mov( &project.hpr, esi );
+				
+				w.IsDlgButtonChecked( hwin, IDC_MANAGERJOBS_CON2OUT );
+				iniesi.writeBool( jobebx.id, "stdout to output", al );
+				
+			elseif( eax = IDC_MANAGERJOBS_DEBUG ) then
+				
+				mov( curjob, ebx );
+				mov( &project.hpr, esi );
+
+				w.IsDlgButtonChecked( hwin, IDC_MANAGERJOBS_DEBUG );			
+				iniesi.writeBool( jobebx.id, "debug", al );
+
+
+			elseif( eax = IDC_MANAGERJOBS_THREADSAFE ) then
+				
+				mov( curjob, ebx );
+				mov( &project.hpr, esi );
+				
+				if( w.IsDlgButtonChecked( hwin, IDC_MANAGERJOBS_THREADSAFE ) = w.BST_CHECKED ) then
+					
+					project.removeLib( "hlalib.lib" );
+					project.importLib( "hlalib_safe.lib" );
+					updateLinkedObjects();
+					//or( opt_threadsafe, project.options );
+					iniesi.writeBool( jobebx.id, "thread safe", true );
+					
+				else
+					
+					project.removeLib( "hlalib_safe.lib" );
+					project.importLib( "hlalib.lib" );
+					updateLinkedObjects();
+					//and( ! opt_threadsafe, project.options );
+					iniesi.writeBool( jobebx.id, "thread safe", false );
+					
+				endif;
+				
+			elseif( eax = IDC_MANAGERJOBS_NEWLIB ) then
+				InitOF( "Add a library or object for linking", "lib", type_lib );
+				if ( GetOpenName() ) then
+					
+					push( eax );
+					project.importLib( eax );
+					pop( eax );
+					str.free( eax );
+					updateLinkedObjects();
+					
+				endif;
+		
+			elseif( eax = IDC_MANAGERJOBS_REMOVELIB ) then
+
+				w.SendDlgItemMessage( hwin, IDC_MANAGERJOBS_LINKLIST, w.LB_GETCURSEL, 0, 0 );
+				if( eax != w.LB_ERR ) then
+
+					w.SendDlgItemMessage( hwin, IDC_MANAGERJOBS_LINKLIST, w.LB_GETTEXT, EAX, &buffer );
+					str.cpyz( &buffer, strbuf );
+					project.removeLib( strbuf );
+					updateLinkedObjects();
+
+				endif;
+			
+			elseif (eax = IDC_MANAGERJOBS_NEWFILE) then
+				
+				w.DialogBoxParam( hinst, val ID_NEWFILE, hwin, &Proc_NewFile, false );
+				if( eax ) then
+					
+					updateFiles( curjob );
+					
+				endif;
+				
+				
+			elseif (eax = IDC_MANAGERJOBS_REMOVEFILE) then
+				
+				if( lvGetSel( hFiles )) then
+					
+					mov( eax, lvi.iItem );
+					mov( w.LVIF_PARAM, lvi.imask );
+					mov( 0, lvi.iSubItem );
+					w.SendMessage( hFiles, w.LVM_GETITEM, 0, &lvi );
+					mov( lvi.lParam, ebx );
+					dbg.put( "file :", listebx.id );
+					project.deleteFile( [ebx] );
+					updateFiles( curjob );
+					manager_updateDisplay( state_deselectfile );
+					
+				endif;
+				
+			elseif (eax= IDC_MANAGERJOBS_RENAMEFILE) then
+
+				if( lvGetSel( hFiles )) then
+
+					mov( eax, lvi.iItem );
+					mov( w.LVIF_PARAM, lvi.imask );
+					mov( 0, lvi.iSubItem );
+					w.SendMessage( hFiles, w.LVM_GETITEM, 0, &lvi );
+					mov( lvi.lParam, ebx );
+					dbg.put( "file :", listebx.id );
+					w.DialogBoxParam( hinst, val ID_RENAMEFILE, hwin, &Proc_RenameFile, ebx );
+					if( eax ) then
+						
+						updateFiles( curjob );
+						manager_updateDisplay( state_deselectfile );
+						
+					endif;
+					
+				endif;
+			
+			elseif( eax = IDC_MANAGERJOBS_QUESEL ) then
+				
+				mov( curjob, ebx );
+				mov( &project.hpr, esi );
+				
+				if( holdjobmode ) then
+					
+					// send job to queue
+					mov( true, jobebx.inQueue );
+					if( iniesi.findItem( "Held Jobs", jobebx.id ) != -1 ) then
+						iniesi.deleteItem( "Held Jobs", eax );
+					endif;
+					iniesi.writeItem( "HPR Jobs", -1, jobebx.id );
+					
+				else
+					
+					// send job to hold
+					mov( false, jobebx.inQueue );
+					if( iniesi.findItem( "HPR Jobs", jobebx.id ) != -1 ) then
+						iniesi.deleteItem( "HPR Jobs", eax );
+					endif;
+					iniesi.writeItem( "Held Jobs", -1, jobebx.id );
+				endif;
+				
+				updateJobs();
+				
+			elseif( eax = IDC_MANAGERJOBS_BUILD ) then
+				
+				mov( false, holdjobmode );
+				w.GetDlgItem( hwin, IDC_MANAGERJOBS_QUESEL );
+				w.SetWindowText( eax, "Hold" );
+				updateJobs();
+				
+			elseif( eax = IDC_MANAGERJOBS_HOLD ) then
+				
+				mov( true, holdjobmode );
+				w.GetDlgItem( hwin, IDC_MANAGERJOBS_QUESEL );
+				w.SetWindowText( eax, "Build" );
+				updateJobs();
+			
+			elseif( eax = IDC_MANAGERJOBS_REMOVEJOB ) then
+				
+				mov( curjob, ebx );
+				str.put( strbuf, jobebx.id, ".files" );
+				mov( &project.hpr, esi );
+				if(iniesi.getItemCount( strbuf ) > 0 ) then
+					
+					writeMessage( "Job contains files, please remove all files first" );
+					
+				else
+					
+					iniesi.deleteSection(strbuf );
+					
+					str.put( strbuf, jobebx.id, ".link" );
+					iniesi.deleteSection( strbuf );
+					
+					str.put( strbuf, jobebx.id, ".extlinked" );
+					iniesi.deleteSection( strbuf );
+					
+					iniesi.deleteSection( jobebx.id );
+					
+					if( holdjobmode ) then
+						str.put( strbuf, "Held Jobs" );
+					else
+						str.put( strbuf, "HPR Jobs" );
+					endif;
+					
+					if( iniesi.findItem( strbuf, jobebx.id ) != -1 ) then
+						iniesi.deleteItem( strbuf, eax );
+					endif;
+					
+					jobList.remove ([ebx]);
+					updateJobs();
+					
+				endif;
+				
+				
+			elseif (eax = IDC_MANAGERJOBS_RENAMEJOB) then
+				
+				lvGetSel( hJobs );
+				jnc donerename;
+				
+				
+				if( getStringInput( "Rename Job", strbuf )) then
+
+					mov (curjob, ebx);
+
+					mov (&project.hpr, esi);
+					iniesi.renameSection( jobebx.id, strbuf );
+					
+					str.put( workpath, jobebx.id, ".files" );
+					str.put( inwork, strbuf, ".files" );
+					iniesi.renameSection( workpath, inwork );
+					
+					str.put( workpath, jobebx.id, ".link" );
+					str.put( inwork, strbuf, ".link" );
+					iniesi.renameSection( workpath, inwork );
+					
+					str.put( workpath, jobebx.id, ".extlinked" );
+					str.put( inwork, strbuf, ".extlinked" );
+					iniesi.renameSection( workpath, inwork );
+					
+					if (holdjobmode) then
+						str.cpy ("Held Jobs", workpath);
+					else
+						str.cpy ("HPR Jobs", workpath);
+					endif;
+					
+					if( iniesi.findItem( workpath, jobebx.id ) != -1 ) then
+						// overwrite existing item
+						iniesi.writeItem( workpath, eax, strbuf );
+					endif;
+					
+					// rename job list object
+					str.free( jobebx.id );
+					str.a_cpy( strbuf );
+					mov( eax, jobebx.id );
+					
+					updateJobs();
+
+				endif;
+				
+				donerename:
+				
+			elseif (eax = IDC_MANAGERJOBS_NEWJOB) then
+
+				w.DialogBoxParam( hinst, val ID_NEWJOB, hwin, &Proc_NewJob, false );
+				if( eax ) then
+					
+					updateJobs();
+					
+				endif;
+			
+			elseif( eax = IDC_MANAGERJOBS_LINK ) then
+
+				mov( curjob, eax );
+				saveAll();
+				w.DialogBoxParam( hinst, val ID_ADVANCEDLINK, hwin, &Proc_AdvancedLink, eax );
+				
+			endif;
+			
+		
+		elseif( edx = w.EN_CHANGE ) then
+
+			if( eax = IDC_MANAGERJOBS_OUTPUT ) then
+				
+				w.SendDlgItemMessage( hwin, eax, w.WM_GETTEXT, @size(buffer),&buffer );
+				str.cpyz( &buffer, strbuf );
+				mov( &project.hpr, esi );
+				mov( curjob, eax );
+				iniesi.writeString( jobeax.id, "output", strbuf );
+				
+			endif;
+			
+		elseif( edx = w.LBN_SELCHANGE ) then
+			
+			if( eax = IDC_MANAGERJOBS_LINKLIST ) then
+				
+				w.SendDlgItemMessage( hwin, IDC_MANAGERJOBS_LINKLIST, w.LB_GETCURSEL, 0, 0 );
+				if( eax = w.LB_ERR ) then
+
+					w.GetDlgItem( hwin, IDC_MANAGERJOBS_REMOVELIB );
+					w.EnableWindow( eax, false );
+
+				else
+					
+					w.GetDlgItem( hwin, IDC_MANAGERJOBS_REMOVELIB );
+					w.EnableWindow( eax, true );
+
+				endif;
+				
+			endif;
+			
+			
+		elseif( edx = w.CBN_SELENDOK ) then
+
+			if( eax = IDC_MANAGERJOBS_LEVEL ) then
+				
+				w.SendDlgItemMessage( hwin, IDC_MANAGERJOBS_LEVEL, w.CB_GETCURSEL, 0, 0 );
+				if( eax != w.CB_ERR ) then
+					
+					mov( &project.hpr, esi );
+					mov( curjob, ebx );
+					
+					iniesi.writeInt( jobebx.id, "HLA Level", eax );
+					
+				endif;
+				
+			endif;
+		
+		endif;
+		
+		or( 1, eax );
+	
+	elseif( eax = w.WM_NOTIFY ) then
+		
+		mov( lparam, edx );
+		mov( (type w.NMHDR[edx]).code, eax );
+		mov( (type w.NMHDR[edx]).idFrom, ecx );
+		//mov( (type w.NM_UPDOWN [edx]).hdr.code, eax );
+		
+		if( ecx = IDC_MANAGERJOBS_JOBVIEW ) then
+			
+			if( eax = w.LVN_ITEMCHANGED ) then
+				
+				if( (type w.NM_LISTVIEW[EDX]).iItem != -1 ) then
+				
+					if( bitSet( w.LVIS_SELECTED, (type w.NM_LISTVIEW[EDX]).uNewState )) then
+	
+						mov( ( type w.NM_LISTVIEW[edx]).lParam, eax );
+						mov( eax, curjob );
+		
+						// enable U/D control
+						mov( &project.hpr, esi );
+						if( iniesi.getItemCount( "HPR Jobs" ) > 1 ) then
+		
+							w.GetDlgItem( hwin, IDC_MANAGERJOBS_UD );
+							w.EnableWindow( eax, true );
+							
+						endif;
+		
+						manager_updateDisplay( state_selectjob );
+						updateFiles( curjob );
+						updateLinkedObjects();
+						
+						mov( curjob, ebx );
+						mov( jobebx.ftype, eax );
+						if( eax = jobtype_library ) then
+							
+							pushd( state_selectlibrary );
+							
+						elseif( eax = jobtype_target || eax = jobtype_misc ) then
+							
+							pushd( state_selecttarget );
+								
+						elseif( eax = jobtype_dll ) then
+							
+							pushd( state_selectdll );
+							
+						else
+							
+							pushd( state_selectprogram );
+							
+						endif;
+						
+						call manager_updateDisplay;
+						
+						if( iniesi.readBool( jobebx.id, "console") ) then
+
+							w.CheckDlgButton( hwin, IDC_MANAGERJOBS_PEGUI, w.BST_UNCHECKED );
+
+						else
+
+							w.CheckDlgButton( hwin, IDC_MANAGERJOBS_PEGUI, w.BST_CHECKED );
+
+						endif;
+						
+						if( iniesi._readString( jobebx.id, "output", strbuf )) then
+							w.SetDlgItemText( hwin, IDC_MANAGERJOBS_OUTPUT, strbuf );
+						else
+							w.SetDlgItemText( hwin, IDC_MANAGERJOBS_OUTPUT, NULL );
+						endif;
+						
+						iniesi.readInt( jobebx.id, "HLA Level" );
+						w.SendDlgItemMessage( hwin, IDC_MANAGERJOBS_LEVEL, w.CB_SETCURSEL, eax, 0 );
+						
+						iniesi.readBool( jobebx.id, "thread safe" );
+						w.CheckDlgButton( hwin, IDC_MANAGERJOBS_THREADSAFE, eax );
+						
+						iniesi.readBool( jobebx.id, "stdout to output" );
+						w.CheckDlgButton( hwin, IDC_MANAGERJOBS_CON2OUT, eax );
+						
+						iniesi.readBool( jobebx.id, "debug" );
+						w.CheckDlgButton( hwin, IDC_MANAGERJOBS_DEBUG, eax );
+						
+					endif;
+					
+				endif;
+				
+			endif;
+
+		
+		elseif( ecx = IDC_MANAGERJOBS_FILEVIEW ) then
+		
+			if( eax = w.LVN_ITEMCHANGED ) then
+				
+				dbg.put(" file item changed ");
+				
+				if( (type w.NM_LISTVIEW[EDX]).iItem != -1 ) then
+					
+					if( bitSet( w.LVIS_SELECTED, (type w.NM_LISTVIEW[EDX]).uNewState )) then
+						
+						manager_updateDisplay( state_selectfile );
+					
+					endif;
+					
+				endif;
+				
+			endif;
+			
+		elseif( ecx = IDC_MANAGERJOBS_UD ) then
+			
+			if( eax = w.UDN_DELTAPOS ) then
+				
+				if (! holdjobmode) then
+					
+					mov( (type w.NM_UPDOWN[edx]).iDelta, eax );
+					if( (type int32 eax) < 0 ) then
+		
+						dbg.put( "up" );
+						lvGetSel( hJobs );
+						jnc endud;
+							
+						//dbg.put("got job item :", eax );
+						if( (type int32 eax) > 0 ) then
+							
+							mov( eax, ecx );
+							mov( &project.hpr, esi );
+							iniesi.readItem( "HPR Jobs", ecx, strbuf );
+							iniesi.deleteItem( "HPR Jobs", ecx );
+							dec( ecx );
+							iniesi.insertItem( "HPR Jobs", ecx, strbuf );
+							push( ecx );
+							updateJobs();
+							pop( ecx );
+							mov( w.LVIS_SELECTED, lvi.stateMask );
+							mov( w.LVIS_SELECTED, lvi.state );
+							w.SendMessage( hJobs, w.LVM_SETITEMSTATE, ecx, &lvi );
+							
+						endif;
+		
+					else
+		
+						dbg.put( "down" );
+						
+						w.SendMessage( hJobs, w.LVM_GETITEMCOUNT, 0, 0 );
+						cmp( eax, 1 );
+						jle endud;
+						
+						lvGetSel( hJobs );
+						jnc endud;
+						
+						//dbg.put("got job item :", eax );
+
+						mov( eax, ecx );
+						mov( &project.hpr, esi );
+						
+						iniesi.getItemCount( "HPR Jobs" );
+						dec( eax );
+						cmp( eax, ecx );
+						je endud;	//at bottom of list
+						
+						iniesi.readItem( "HPR Jobs", ecx, strbuf );
+						iniesi.deleteItem( "HPR Jobs", ecx );
+						inc( ecx );
+						iniesi.insertItem( "HPR Jobs", ecx, strbuf );
+						push( ecx );
+						updateJobs();
+						pop( ecx );
+						mov( w.LVIS_SELECTED, lvi.stateMask );
+						mov( w.LVIS_SELECTED, lvi.state );
+						w.SendMessage( hJobs, w.LVM_SETITEMSTATE, ecx, &lvi );
+					
+					endif;
+					
+					endud:
+				endif;
+			endif;
+		endif;
+		
+		or( 1, eax );
+		
+	elseif( eax = w.WM_INITDIALOG ) then
+
+		move( hwin, hmanager );
+		mov( false, holdjobmode );
+		
+		w.GetDlgItem( hwin, IDC_MANAGERJOBS_JOBVIEW );
+		mov( eax, hJobs );
+		w.GetDlgItem( hwin, IDC_MANAGERJOBS_FILEVIEW );
+		mov( eax, hFiles );
+		
+		mov( w.LVCF_FMT | w.LVCF_TEXT | w.LVCF_WIDTH, lvCols.imask );
+		mov( w.LVCFMT_LEFT, lvCols.fmt );
+		move( zJobs, lvCols.pszText );
+		mov( 70, lvCols.lx );
+		w.SendMessage( hJobs, w.LVM_INSERTCOLUMN, 0, &lvCols );
+		move( zFiles, lvCols.pszText );
+		mov( 300, lvCols.lx );
+		w.SendMessage( hFiles, w.LVM_INSERTCOLUMN, 0, &lvCols );
+
+		mov( w.LVCF_FMT | w.LVCF_TEXT | w.LVCF_WIDTH | w.LVCF_SUBITEM, lvCols.imask );
+		move( zType, lvCols.pszText );
+		mov( 90, lvCols.lx );
+		w.SendMessage( hJobs, w.LVM_INSERTCOLUMN, 1, &lvCols );
+		w.SendMessage( hFiles, w.LVM_INSERTCOLUMN, 2, &lvCols );
+		move( zFolder, lvCols.pszText );
+		w.SendMessage( hFiles, w.LVM_INSERTCOLUMN, 1, &lvCols );
+
+		w.SendDlgItemMessage( hwin, IDC_MANAGERJOBS_OUTPUT, w.EM_LIMITTEXT, 300, 0 );
+		updateJobs();
+	
+		w.SendDlgItemMessage( hwin, IDC_MANAGERJOBS_LEVEL, w.CB_RESETCONTENT, 0, 0 );
+		xor( ebx, ebx );
+		while( ebx < @elements( hlaLevels ) ) do
+			
+			mov( hlaLevels[ebx*4], eax );
+			w.SendDlgItemMessage( hwin, IDC_MANAGERJOBS_LEVEL, w.CB_ADDSTRING, 0, eax );
+			
+			inc( ebx );
+		endwhile;
+		
+		w.CheckDlgButton( hwin, IDC_MANAGERJOBS_BUILD, true );
+		
+		dbg.put("/init");
+		or( 1, eax );
+		
+	else
+		
+		xor( eax, eax );
+	
+	endif;
+
+	popabi;
+end Proc_JobsManager;
+
+procedure displayTemplate (hwin:dword; path:string);
+	var
+		gencfg	:tConfig;
+		s		:string;
+		htemp	:dword;
+		 
+begin displayTemplate;
+	//dbg.put ("displayTemplate :", path);
+	mov (str.talloc (300), s);
+	
+	if (filesys.exists (path)) then
+		
+		gencfg.create_file (path);
+	
+		w.GetDlgItem (hwin, IDC_PROJECT_DESC);
+		mov (eax, htemp);
+		str.cpy ("", strbuf);
+		w.SendMessage (htemp, w.WM_SETTEXT, false, strbuf);
+		
+		if (gencfg._readString ("Template", "author", s)) then
+			str.put (strbuf, "Author", stdio.tab, ':', s, nl);
+			w.SendMessage (htemp, w.EM_REPLACESEL, false, strbuf);
+		endif;
+		
+		if (gencfg._readString ("Template", "version", s)) then
+			str.put (strbuf, "Version", stdio.tab, ':', s, nl);
+			w.SendMessage (htemp, w.EM_REPLACESEL, false, strbuf);
+		endif;
+		
+		if (gencfg._readString ("Template", "date", s)) then
+			str.put (strbuf, "Date", stdio.tab, ':', s, nl);
+			w.SendMessage (htemp, w.EM_REPLACESEL, false, strbuf);
+		endif;
+		
+		w.SendMessage (htemp, w.EM_REPLACESEL, false, zSeperator);
+		str.put (strbuf, nl nl);
+		w.SendMessage (htemp, w.EM_REPLACESEL, false, strbuf);
+		if (gencfg.readSection ("Description", strbuf)) then
+			str.put2 (strbuf, nl nl);
+			w.SendMessage (htemp, w.EM_REPLACESEL, false, strbuf);
+		endif;
+		w.SendMessage (htemp, w.EM_REPLACESEL, false, zSeperator);
+		w.SendMessage (htemp, w.EM_SETSEL, 0, 0);
+		w.SendMessage (htemp, w.EM_SCROLLCARET, 0, 0);
+			
+		gencfg.destroy();
+	else
+		error.fileopenfailure (path);
+	endif;
+	//dbg.put ("/displayTemplate :");
+end displayTemplate;
+
+
+procedure OpenTemplate (hwin:dword);
+	
+	var
+		_tempname	:string;
+
+begin OpenTemplate;
+	pushabi;
+	InitOF("Open Template","kmk", type_template);
+		
+	if ( GetOpenTemplateName() ) then
+		mov(eax,_tempname);
+		w.SendDlgItemMessage(hwin,IDC_PROJECT_TEMPLATE,w.WM_SETTEXT,0,_tempname);
+		displayTemplate (hwin, _tempname);
+		str.free (_tempname);
+		mov (true, eax);
+	else
+		xor (eax, eax);
+	endif;
+
+	popabi;
+end OpenTemplate;
+
+
+procedure CreateProjectFromTemplate (hwin: dword; dest:string);
+
+	var
+		tplwork		:string;
+		curdir		:string;
+
+begin CreateProjectFromTemplate;
+
+	//dbg.put("create from temp");
+	
+	move (str.talloc (1024), tplwork);
+	move (str.talloc (pathsize_c), curdir);
+
+	pushabi;
+	filesys.gwd (curdir);
+	filesys.cd(projectpath);
+	
+	str.put (tplwork, "kmake.exe filename=");
+		
+	w.SendDlgItemMessage(hwin, IDC_PROJECT_NAME, w.WM_GETTEXT, @size(buffer),&buffer);
+
+	str.catz (&buffer, tplwork);
+	str.put2 (tplwork, " """);
+	
+	w.SendDlgItemMessage(hwin, IDC_PROJECT_TEMPLATE, w.WM_GETTEXT, @size(buffer), &buffer);
+	str.catz (&buffer, tplwork);
+	str.put2 (tplwork, '"');
+	
+	dbg.put ("final path for kmake = ", tplwork);
+
+	launchProgram( tplwork, true, true );
+	dbg.put ("/TEMPLATE MAKE");
+	
+	w.SendDlgItemMessage(hwin, IDC_PROJECT_NAME, w.WM_GETTEXT, @size(buffer),&buffer);
+
+	str.put (tplwork, projectpath, dirsep_c);
+	str.catz (&buffer, tplwork);
+	str.put2 (tplwork, dirsep_c);
+	str.catz (&buffer, tplwork);
+	str.put2 (tplwork, ".hpr");
+	
+	dbg.put ("loading :", tplwork);
+	str.cpy (tplwork, dest);
+	filesys.cd (curdir);
+	popabi;
+end CreateProjectFromTemplate;
+
+procedure Proc_NewProject (lparam:dword; wparam:dword; umsg:uns32; hwin:dword);
+begin Proc_NewProject;
+	pushabi;
+	mov (umsg, eax);
+	if (eax = w.WM_INITDIALOG) then
+
+		// look for custom projects folder
+		w.SendDlgItemMessage(hwin,IDC_PROJECT_FOLDER,w.EM_LIMITTEXT,w.MAX_PATH,0);
+		w.SendDlgItemMessage(hwin,IDC_PROJECT_TEMPLATE,w.EM_LIMITTEXT,w.MAX_PATH,0);
+		w.SendDlgItemMessage(hwin,IDC_PROJECT_FOLDER,w.WM_SETTEXT,0,projectpath);
+		w.SendDlgItemMessage(hwin,IDC_PROJECT_NAME,w.WM_SETFOCUS,0,0);
+		w.CheckDlgButton(hwin, ID_RBN_NONE, w.BST_CHECKED);
+		str.cpy ("", workpath);
+		
+	elseif (eax = w.WM_COMMAND) then
+
+		mov(wparam,eax);
+		if (eax = w.IDOK) then
+		
+			// process dialog options and create project
+			//dbg.put ("ok");
+			w.SendDlgItemMessage(hwin, IDC_PROJECT_NAME, w.WM_GETTEXT, @size(buffer),&buffer);
+			mov(buffer[0],al);
+			if (al) then
+				str.length (workpath);  dbg.put ("workpath = ", workpath, " ", eax);
+				if (eax) then
+					dbg.put ("create project :", workpath);
+					CreateProjectFromTemplate (hwin, workpath);
+					w.SendMessage(hwin,w.WM_CLOSE,0,0);
+					project.open (workpath);
+				else
+					str.cpyz (&buffer, strbuf);
+					project.new (strbuf);
+					w.SendMessage(hwin,w.WM_CLOSE,strbuf,0);
+				endif;			
+				
+			else
+				error.warning ("No Project Name Specified");
+				
+			endif;
+
+			
+		elseif (eax = w.IDCANCEL) then
+
+			w.SendMessage(hwin,w.WM_CLOSE,0,0);
+			
+		elseif (eax = IDC_PROJECT_BTN) then
+
+			OpenTemplate (hwin);
+			if (eax) then
+				w.CheckRadioButton ( hwin, ID_RBN_NONE, ID_RBN_DLL, ID_RBN_NONE);
+				w.SendDlgItemMessage(hwin, IDC_PROJECT_TEMPLATE, w.WM_GETTEXT, @size(buffer),&buffer);
+				str.cpyz (&buffer, workpath);
+			endif;
+				
+		elseif (eax = ID_RBN_NONE) then
+			w.SendDlgItemMessage(hwin, IDC_PROJECT_TEMPLATE, w.WM_SETTEXT, 0, 0 );
+			w.SendDlgItemMessage (hwin, IDC_PROJECT_DESC, w.WM_SETTEXT, 0, 0 ); 
+			str.cpy ("", workpath);
+
+		elseif (eax = ID_RBN_HLA) then
+			str.put (workpath, tplpath, dirsep_c, "Standard", dirsep_c, "HLA_Program.kmk");
+			w.SendDlgItemMessage(hwin, IDC_PROJECT_TEMPLATE, w.WM_SETTEXT, 0, workpath);
+			displayTemplate (hwin, workpath);
+			
+		elseif (eax = ID_RBN_MODULAR) then
+			str.put (workpath, tplpath, dirsep_c, "Standard", dirsep_c, "HLA_Modular.kmk");
+			w.SendDlgItemMessage(hwin, IDC_PROJECT_TEMPLATE, w.WM_SETTEXT, 0, workpath);
+			displayTemplate (hwin, workpath);
+			
+		elseif (eax = ID_RBN_LIB) then
+			str.put (workpath, tplpath, dirsep_c, "Standard", dirsep_c, "HLA_Lib.kmk");
+			w.SendDlgItemMessage(hwin, IDC_PROJECT_TEMPLATE, w.WM_SETTEXT, 0, workpath);
+			displayTemplate (hwin, workpath);
+			
+		elseif (eax = ID_RBN_DLL) then
+			str.put (workpath, tplpath, dirsep_c, "Standard", dirsep_c, "HLA_DLL.kmk");
+			w.SendDlgItemMessage(hwin, IDC_PROJECT_TEMPLATE, w.WM_SETTEXT, 0, workpath);
+			displayTemplate (hwin, workpath);
+			
+		endif;
+		
+			
+	elseif (eax = w.WM_CLOSE) then
+
+		w.EndDialog(hwin, wparam);
+		popabi;
+		xor (eax, eax);
+		exit Proc_NewProject;
+		
+	else
+		
+		popabi;
+		xor (eax, eax);
+		exit Proc_NewProject;
+	endif;
+
+	popabi;
+	or (1, eax);
+	
+
+end Proc_NewProject;
+
+
+end Project_unit;

@@ -1,0 +1,1288 @@
+unit EditFunctions;
+#includeonce	("HIDE.hhf")
+#includeonce	("fileio.hhf")
+#includeonce	("memory.hhf")
+
+?@nodisplay:=true;
+?@align:=4;
+
+readonly
+
+	align(4);
+		hlatype	:byte; @nostorage;
+				byte "HLA source (*.hla)",0,"*.hla",0;
+				byte "All Files (*.*)",0,"*.*",0,0;
+	align(4);
+		khelptype :byte; @nostorage;
+				byte "kHelp document (*.khelp)",0,"*.khelp",0;
+				byte "All Files (*.*)",0,"*.*",0,0;
+		
+	align(4);
+		hlaext	:mzstr ("hla");
+
+		//asmtype :byte; @nostorage;
+		//		byte "ASM unit (*.asm)",0,"*.asm",0;
+		//		byte "All Files (*.*)",0,"*.*",0,0;
+	align(4);
+		//asmext	:mzstr ("asm");
+				
+		hhftype	:byte; @nostorage;
+				byte "HHF header (*.hhf)",0,"*.hhf",0;
+				byte "All Files (*.*)",0,"*.*",0,0;
+	align(4);
+		hhfext	:mzstr ("hhf");
+		
+		rctype	:byte; @nostorage;
+				byte "RC resource (*.rc)",0,"*.rc",0;
+				byte "All Files (*.*)",0,"*.*",0,0;
+	align(4);
+		rcext	:mzstr ("rc");
+		
+		libtype	:byte; @nostorage;
+				byte "Library (*.lib)",0,"*.lib",0;
+				byte "Object  (*.obj)",0,"*.obj",0;
+				byte "All Files (*.*)",0,"*.*",0,0;
+	align(4);
+		libext	:mzstr ( "lib" );
+		
+		allfiles:byte; @nostorage;
+				byte "All Files (*.*)",0,"*.*",0;
+				byte "Source Files (*.hla, *.hhf, *.rc)",0,"*.hla;*.hhf;*.rc",0;
+				byte "Text Files (*.txt)",0,"*.txt",0,0;
+		
+	align(4);	
+		projtype	:byte; @nostorage;
+				byte "HLA Project File (*.hpr)",0,"*.hpr",0,0;
+	align(4);
+		projext	:mzstr ("hpr");
+
+		templatetype	:byte; @nostorage;
+				byte "HIDE Template File (*.kmk)",0,"*.kmk",0,0;
+				
+	align(4);
+		tempext	:mzstr ("kmk");
+
+		AppName	:string:=("HIDE");
+		sNewFile	:string:=("Untitled");
+				
+		// blocks \\
+
+		blocks	:dword; @nostorage;
+			//dword &rabdprogram;
+			dword &rabdmethod, &rabdprocedure, &rabdif,&rabdwhile,&rabdrec,&rabdmacro,&rabdbeg, &rabdfor;
+			dword &rabdproc, &rabdstore,&rabdstatic,&rabdconst,&rabdread;
+			dword &rabdvar,&rabdtype, &rabdval, 0;
+			dword 0;
+	
+		//rabdprogram :RABLOCKDEF := RABLOCKDEF:[&szProg, &szEnd, 0, 0, 0];
+		rabdmethod	:RABLOCKDEF	:= RABLOCKDEF:[ &id_strings[id_method], &id_strings[id_end],0,0,BD_DIVIDERLINE];
+		rabdprocedure:RABLOCKDEF := RABLOCKDEF:[&id_strings[id_procedure], &id_strings[id_end], 0, 0, BD_DIVIDERLINE | BD_NONESTING];
+		rabdif		:RABLOCKDEF := RABLOCKDEF:[&szIf,&szEndIf, &szElseIf,&szElse,0];
+		rabdwhile	:RABLOCKDEF := RABLOCKDEF:[&szWhile,&szEndw,0,0, 0];
+		rabdrec		:RABLOCKDEF := RABLOCKDEF:[&id_strings[id_record],&id_strings[id_endrecord],0,0,0];
+		rabdmacro	:RABLOCKDEF := RABLOCKDEF:[&szBlkMacro,&szEndm,0,0,BD_DIVIDERLINE];
+		rabdbeg		:RABLOCKDEF := RABLOCKDEF:[&id_strings[id_begin],&id_strings[id_end],0,0,BD_NONESTING];
+		rabdfor		:RABLOCKDEF	:= RABLOCKDEF:[&szForever, &szEndFor,0,0, 0];
+
+		rabdproc	:RABLOCKDEF	:= RABLOCKDEF:[&szProc,0,0,0,BD_DIVIDERLINE | BD_SEGMENTBLOCK];
+		rabdstore	:RABLOCKDEF := RABLOCKDEF:[&id_strings[id_storage],0,0,0,BD_DIVIDERLINE | BD_SEGMENTBLOCK];
+		rabdstatic	:RABLOCKDEF := RABLOCKDEF:[&id_strings[id_static],0,0,0,BD_DIVIDERLINE | BD_SEGMENTBLOCK];
+		rabdconst	:RABLOCKDEF := RABLOCKDEF:[&id_strings[id_const],0,0,0,BD_DIVIDERLINE | BD_SEGMENTBLOCK];
+		rabdread	:RABLOCKDEF := RABLOCKDEF:[&id_strings[id_readonly],0,0,0,BD_DIVIDERLINE | BD_SEGMENTBLOCK];
+		rabdvar		:RABLOCKDEF := RABLOCKDEF:[&id_strings[id_var],0,0,0, BD_SEGMENTBLOCK];
+		rabdtype	:RABLOCKDEF := RABLOCKDEF:[&id_strings[id_type],0,0,0,BD_DIVIDERLINE | BD_SEGMENTBLOCK];
+		rabdval		:RABLOCKDEF := RABLOCKDEF:[&id_strings[id_val], 0, 0, 0, BD_SEGMENTBLOCK ];
+		
+		
+		szProg		:mzstr ("program");
+		szProc		:mzstr ("proc");
+		szIf		:mzstr("if");
+		szEndIf		:mzstr("endif");
+		szElseIf	:mzstr("elseif");
+		szElse		:mzstr("else");
+		szWhile		:mzstr("while");
+		szEndw		:mzstr("endwhile");
+		szBlkMacro	:mzstr("#macro");
+		szEndm		:mzstr("#endmacro");
+		szForever	:mzstr("forever");
+		szEndFor	:mzstr("endfor");
+
+	// TOOL BAR
+		tbrbtns		:	w.TBBUTTON; @nostorage;
+					w.TBBUTTON
+						w.TBBUTTON:[ 0,0,0,w.TBSTYLE_SEP,0,0],
+						w.TBBUTTON:[ 0,IDM_FILE_NEW,w.TBSTATE_ENABLED,w.TBSTYLE_BUTTON,0,0],
+						w.TBBUTTON:[ 1,IDM_FILE_OPEN,w.TBSTATE_ENABLED,w.TBSTYLE_BUTTON,0,0],
+						w.TBBUTTON:[ 2,IDM_FILE_SAVE,w.TBSTATE_ENABLED,w.TBSTYLE_BUTTON,0,0],
+						w.TBBUTTON:[ 3,IDM_FILE_SAVEALL,w.TBSTATE_ENABLED,w.TBSTYLE_BUTTON,0,0],
+						w.TBBUTTON:[ 0,0,0,w.TBSTYLE_SEP,0,0],
+						w.TBBUTTON:[ 4,IDM_EDIT_CUT,0,w.TBSTYLE_BUTTON,0,0],
+						w.TBBUTTON:[ 5,IDM_EDIT_COPY,0,w.TBSTYLE_BUTTON,0,0],
+						w.TBBUTTON:[ 6,IDM_EDIT_PASTE,0,w.TBSTYLE_BUTTON,0,0],
+						w.TBBUTTON:[ 0,0,0,w.TBSTYLE_SEP,0,0],
+						w.TBBUTTON:[ 7,IDM_EDIT_UNDO,w.TBSTATE_ENABLED,w.TBSTYLE_BUTTON,0,0],
+						w.TBBUTTON:[ 8,IDM_EDIT_REDO,w.TBSTATE_ENABLED,w.TBSTYLE_BUTTON,0,0],
+						w.TBBUTTON:[ 9,IDM_EDIT_DELETE,w.TBSTATE_ENABLED,w.TBSTYLE_BUTTON,0,0],
+						w.TBBUTTON:[ 0,0,0,w.TBSTYLE_SEP,0,0],
+						w.TBBUTTON:[10,IDM_EDIT_FIND,w.TBSTATE_ENABLED,w.TBSTYLE_BUTTON,0,0],
+						w.TBBUTTON:[11,IDM_EDIT_REPLACE,w.TBSTATE_ENABLED,w.TBSTYLE_BUTTON,0,0],
+						w.TBBUTTON:[ 0,0,0,w.TBSTYLE_SEP,0,0],
+						w.TBBUTTON:[12,IDM_EDIT_SETMARK,w.TBSTATE_ENABLED,w.TBSTYLE_BUTTON,0,0],
+						w.TBBUTTON:[13,IDM_EDIT_PREVBOOK,w.TBSTATE_ENABLED,w.TBSTYLE_BUTTON,0,0],
+						w.TBBUTTON:[14,IDM_EDIT_NEXTBOOK,w.TBSTATE_ENABLED,w.TBSTYLE_BUTTON,0,0],
+						w.TBBUTTON:[15,IDM_EDIT_CLEARBOOK,w.TBSTATE_ENABLED,w.TBSTYLE_BUTTON,0,0],
+						w.TBBUTTON:[ 0,0,0,w.TBSTYLE_SEP,0,0],
+						w.TBBUTTON:[16,IDM_VIEW_OUTPUT,w.TBSTATE_ENABLED,w.TBSTYLE_BUTTON,0,0],
+						w.TBBUTTON:[ 0,0,0,w.TBSTYLE_SEP,0,0],
+//						w.TBBUTTON:[17,IDM_MAKE_RC,w.TBSTATE_ENABLED,w.TBSTYLE_BUTTON,0,0],
+						w.TBBUTTON:[18,IDM_MAKE_BUILDIT,w.TBSTATE_ENABLED,w.TBSTYLE_BUTTON,0,0],
+						w.TBBUTTON:[19,IDM_MAKE_REBUILD,w.TBSTATE_ENABLED,w.TBSTYLE_BUTTON,0,0],
+						w.TBBUTTON:[20,IDM_MAKE_RUN,w.TBSTATE_ENABLED,w.TBSTYLE_BUTTON,0,0],
+						w.TBBUTTON:[21,IDM_MAKE_BUILDITRUN,w.TBSTATE_ENABLED,w.TBSTYLE_BUTTON,0,0],
+						w.TBBUTTON:[ 0,0,0,w.TBSTYLE_SEP,0,0],
+						w.TBBUTTON:[22,IDM_TOOLS_DEBUG,w.TBSTATE_ENABLED,w.TBSTYLE_BUTTON,0,0],
+						w.TBBUTTON:[23,IDM_TOOLS_RESED,w.TBSTATE_ENABLED,w.TBSTYLE_BUTTON,0,0],
+						w.TBBUTTON:[24,IDM_TOOLS_CCALC,w.TBSTATE_ENABLED,w.TBSTYLE_BUTTON,0,0],
+						w.TBBUTTON:[25,IDM_TOOL_ASCII,w.TBSTATE_ENABLED,w.TBSTYLE_BUTTON,0,0],
+						w.TBBUTTON:[26,IDM_TOOL_CALC,w.TBSTATE_ENABLED,w.TBSTYLE_BUTTON,0,0],
+						w.TBBUTTON:[27,IDM_TOOL_COLOR,w.TBSTATE_ENABLED,w.TBSTYLE_BUTTON,0,0],
+						w.TBBUTTON:[28,IDM_TOOL_CONSOLE,w.TBSTATE_ENABLED,w.TBSTYLE_BUTTON,0,0],
+						w.TBBUTTON:[ 0,0,0,w.TBSTYLE_SEP,0,0],
+						w.TBBUTTON:[29,IDM_HELP_ABOUT,w.TBSTATE_ENABLED,w.TBSTYLE_BUTTON,0,0];
+				
+		ntbrbtns	:dword :=38;		// increase as more buttons are added
+		nbitmapimg	:dword := 30;
+
+endreadonly;
+
+storage
+	// local static vars
+	align(4);	
+	editstream	:w.EDITSTREAM;
+	of			:w.OPENFILENAME;
+	ofBuffer	:byte[300];
+
+
+procedure SetupToolBar( create_status:boolean);
+	
+	const
+		TRANSP_COLOR:	dword := $00_FF_00_FF;	// we used fuscia as transparent color
+		button_size	:	dword := 22;
+		
+	storage
+		image			:dword;
+		image_list_n	:dword;
+		image_list_d	:dword;
+		image_list_h	:dword;
+		graphic			:dword;
+		
+begin SetupToolBar;
+USE (EBX, EAX, ECX, EDX);
+	
+	if( create_status ) then
+		
+		w.ImageList_Create( button_size, button_size, w.ILC_COLORDDB | w.ILC_MASK, 0, 0 );
+		mov( eax, image_list_n );
+		w.LoadBitmap (hinst, val IDB_16N);
+		mov (eax, graphic);
+		w.ImageList_AddMasked ( image_list_n, graphic, TRANSP_COLOR);
+		w.DeleteObject (graphic);
+	
+		w.ImageList_Create( button_size, button_size, w.ILC_COLORDDB | w.ILC_MASK, 0, 0 );
+		mov( eax, image_list_h );
+		w.LoadBitmap (hinst, val IDB_16H);
+		mov (eax, graphic);
+		w.ImageList_AddMasked ( image_list_h, graphic, TRANSP_COLOR);
+		w.DeleteObject (graphic);
+	
+		w.ImageList_Create( button_size, button_size, w.ILC_COLORDDB | w.ILC_MASK, 0, 0 );
+		mov( eax, image_list_d );
+		w.LoadBitmap (hinst, val IDB_16D);
+		mov (eax, graphic);
+		w.ImageList_AddMasked ( image_list_d, graphic, TRANSP_COLOR);
+		w.DeleteObject (graphic);
+	 
+		w.CreateToolbarEx ( hwnd, w.WS_CHILD | w.TBSTYLE_TOOLTIPS | w.TBSTYLE_FLAT, IDC_TBR, nbitmapimg,
+							 NULL, image, &tbrbtns, ntbrbtns,
+							 button_size, button_size, button_size, button_size,
+							 @size(w.TBBUTTON) );
+	
+		mov (eax, htbr);
+		w.SendMessage (eax, w.TB_SETIMAGELIST, 0, image_list_n);
+		w.SendMessage (htbr, w.TB_SETHOTIMAGELIST, 0, image_list_h);
+		w.SendMessage (htbr, w.TB_SETDISABLEDIMAGELIST, 0, image_list_d);
+		w.SendMessage( htbr, w.TB_AUTOSIZE, 0, 0 );
+		w.ShowWindow (htbr, w.SW_SHOWNA);
+		w.SendMessage (hwnd, w.WM_SIZE, 0, 0);
+	
+	else
+
+		// destroy it
+		w.ImageList_Destroy (image_list_n);
+		w.ImageList_Destroy (image_list_h);
+		w.ImageList_Destroy (image_list_d);
+
+	endif;
+
+ENDUSE;
+end SetupToolBar;
+
+procedure GetSelText (var lpBuff:dword);
+
+var
+	chrg	:w.CHARRANGE;
+	
+begin GetSelText;
+USE (EBX, EDI);
+	//dbg.put ("GetSelText");
+	lea(edi,chrg);
+	mov (curnode, ebx);
+	w.SendMessage(listebx.hwnd, w.EM_EXGETSEL,0,edi);
+	mov	(chrg.cpMax,eax);
+	sub	(chrg.cpMin,eax);
+	lea(lpBuff,edi);
+	if (eax && eax < 256) then
+		w.SendMessage(listebx.hwnd, w.EM_GETSELTEXT,0,[edi]);
+	endif;
+	//dbg.put ("/GetSelText");
+ENDUSE;
+end GetSelText;
+
+procedure SetWindowCaption;
+	var
+		tm		:qword;
+		changed	:BOOL;
+		
+begin SetWindowCaption;
+	//dbg.put ("SetWindowCaption");
+	pushabi;
+	mov (0, changed);
+	//str.cpy(AppName,workpath);
+	mov (curnode, ebx);
+	str.cpy("", workpath);
+	
+	if (ebx) then
+		if (projectview_checkUpdate ([ebx])) then
+			mov (true, changed);
+		endif;
+		mov (listebx.job, eax);
+		if (eax) then
+			//str.put2 (workpath, " -{", project.id, "} (", jobeax.id, ") [");
+			str.put (workpath, project.id, " - {", jobeax.id, "} ");
+		//else
+		//	str.put2 (workpath, " -[");
+		endif;
+		
+		if (changed) then
+			str.put2 (workpath, '*');
+			toOutput (nl nl "Warning: File has been modified externally" nl);
+		endif;
+		str.put2 (workpath, listebx.relative, "   HIDE");
+	else
+		str.cpy( AppName, workpath );
+	endif;
+	
+	w.SetWindowText (hwnd, workpath);
+	//dbg.put ("/SetWindowCaption");
+	popabi;
+
+end	SetWindowCaption;
+
+procedure RAEdit_new (var node:fList.fnode);
+begin RAEdit_new;
+USE (EBX);
+	mov (node, ebx);
+	mov (w.WS_CHILD | STYLE_SCROLLTIP, eax);
+	w.CreateWindowEx(w.WS_EX_CLIENTEDGE, RAEditClassName,NULL,eax,
+					0,0,0,0,hwnd,NULL,hinst,NULL);
+	mov (eax, listebx.hwnd);
+
+	// subclass it
+	w.SendMessage (listebx.hwnd, REM_SUBCLASS, 0, &Proc_SubclassedEdit);
+	mov (eax, listebx.oldhwnd);
+
+ENDUSE;
+end RAEdit_new;
+
+procedure RAEdit_loadFile (var fnode:fList.fnode; fname:string);
+	var
+		hfile	:dword;
+		_chrg		:w.CHARRANGE;
+
+	// file must already exist before calling this proc.
+	// fnode = file node destination
+	// fname = file to open
+		
+begin RAEdit_loadFile;
+USE (EBX);
+	mov (fnode, ebx);
+	dbg.put ("RAEdit_loadFile :", listebx.relative);
+	fileio.open (fname, fileio.r);
+	mov (eax, hfile);
+	mov (hfile, editstream.dwCookie);
+	mov (&StreamInProc, editstream.pfnCallback);
+	w.SendMessage (listebx.hwnd, w.EM_STREAMIN, w.SF_TEXT, &editstream);
+	fileio.close (hfile);
+	w.SendMessage (listebx.hwnd, w.EM_SETMODIFY, false, 0);
+	mov (0,_chrg.cpMin);
+	mov (0,_chrg.cpMax);
+	lea (eax,_chrg);
+	w.SendMessage (listebx.hwnd,w.EM_EXSETSEL,0, eax);
+	GetFileTime (listebx.relative, listebx.writetime);
+	RAEdit_setFormat ([ebx]);
+	dbg.put ("/RAEdit_loadFile");
+ENDUSE;	
+end RAEdit_loadFile;
+
+procedure RAEdit_loadFileLight( var node: fList.fnode );
+	
+	var
+		hfile	:dword;
+		_chrg		:w.CHARRANGE;
+
+
+begin RAEdit_loadFileLight;
+	// node already taken care of, need to create a RAEdit and load the file
+	// make it quick since this could be temporary.
+	// to make it permanent and visible with a tab tool, send this node to
+	// hide_selectNode()
+	
+USE( EBX );
+	mov( node, ebx );
+	if( filesys.exists( listebx.fullname ) ) then
+		
+		RAEdit_new( node );
+		fileio.open( listebx.fullname, fileio.r );
+		mov( eax, hfile );
+		mov( hfile, editstream.dwCookie );
+		mov( &StreamInProc, editstream.pfnCallback );
+		w.SendMessage( listebx.hwnd, w.EM_STREAMIN, w.SF_TEXT, &editstream);
+		fileio.close( hfile );
+		w.SendMessage( listebx.hwnd, w.EM_SETMODIFY, false, 0 );
+		mov( 0,_chrg.cpMin );
+		mov( 0,_chrg.cpMax );
+		lea( eax,_chrg );
+		w.SendMessage( listebx.hwnd,w.EM_EXSETSEL,0, eax );
+		
+	else
+		toOutput( "File not found: ", listebx.fullname, nl );
+	endif;
+	
+ENDUSE;
+	
+	
+end RAEdit_loadFileLight;
+
+
+procedure RAEdit_openNew (fname:string);
+@alignstack;
+	// load fname into a new file handle
+	// if fname = NULL, then setup as "Untitled"
+	// add new file to fileList, return pointer in eax
+	var
+		s		:string;
+		
+begin RAEdit_openNew;
+//dbg.put ("RAEdit_openNew");
+//dbg.separator;
+	mov (str.talloc (pathsize_c), s);
+USE (EBX, ESI, EDI);
+	if (fname = NULL) then
+		
+		fileList.appendFile ("Untitled");
+		mov (eax, ebx);
+		RAEdit_new ([ebx]);
+		RAEdit_setFormat([ebx]);
+		str.a_cpy (listebx.id);
+		mov (eax, listebx.fullname);
+	else
+		str.cpy (fname, s);
+		if (filesys.exists (s)) then
+
+			fileList.newNode();
+			mov (eax, ebx);
+			
+			filesys.a_extractFilename( s );
+			mov( eax, listebx.id );
+			
+			str.a_cpy (s);
+			mov (eax, listebx.fullname);
+			
+	
+			fileList.append ([ebx]);
+	
+			//dbg.put ("open : ", s);
+			if (mode = mode_gui) then
+				RAEdit_new ([ebx]);
+				updateAction([ebx]);
+				RAEdit_loadFile ([ebx], s);
+			endif;
+		else
+			xor (ebx, ebx);
+		endif;
+	endif;
+	mov (ebx, eax);
+ENDUSE;
+//dbg.put ("/RAEdit_openNew");
+//dbg.separator;
+end RAEdit_openNew;
+
+proc
+	updateAction :procedure( var fnode:fList.fnode );
+	begin updateAction;
+		USE( EBX, EAX );
+		mov( fnode, ebx );
+		
+		filesys.extractExt( listebx.id, strbuf );
+		
+		if( str.ieq( strbuf, "hla" ) ) then
+	
+			mov( type_hla, listebx.ftype );
+		
+		elseif( str.ieq( strbuf, "hhf") ) then
+	
+			mov( type_hhf, listebx.ftype );
+			
+		else
+			
+			mov( type_misc, listebx.ftype );
+		endif;
+		
+		ENDUSE;
+	end updateAction;
+
+procedure RAEdit_open (fname:string);
+	// returns file node or NULL
+begin RAEdit_open;
+	if (! selectOpen (fname)) then
+		if (RAEdit_openNew (fname)) then
+			prop_updateMem ([eax]);
+		else
+			xor (eax, eax);
+		endif;
+	else
+		xor (eax, eax);
+	endif;
+end RAEdit_open;
+
+procedure RAHexed_new (var node:fList.fnode);
+begin RAHexed_new;
+USE (EBX);
+	mov (node, ebx);
+	w.CreateWindowEx(w.WS_EX_CLIENTEDGE, RAHexedClassName, NULL,
+		w.WS_CHILD, 0, 0, 0, 0, hwnd, NULL, hinst, NULL);
+	mov (eax, listebx.hwnd);	
+ENDUSE;
+end RAHexed_new;
+
+
+
+procedure RAHexed_openNew (fname:string);
+	var
+		s	:string;
+	
+begin RAHexed_openNew;
+	mov (str.talloc (pathsize_c), s);
+USE (EBX, ESI, EDI);
+	str.cpy (fname, s);
+	if (filesys.exists (s)) then
+
+		fileList.newNode();
+		mov (eax, ebx);
+		
+		filesys.a_extractFilename( s );
+		mov( eax, listebx.id );
+		
+		str.a_cpy (s);
+		mov (eax, listebx.fullname);
+		
+		fileList.append ([ebx]);
+
+		//dbg.put ("open : ", s);
+		if (mode = mode_gui) then
+			RAHexed_new ([ebx]);
+			RAEdit_loadFile ([ebx], s);
+		endif;
+
+	else
+		xor (ebx, ebx);
+	endif;
+	mov (ebx, eax);
+ENDUSE;
+
+end RAHexed_openNew;
+
+proc
+	RAHexed_open :procedure( fname:string );
+	begin RAHexed_open;
+		dbg.put ("hex open");
+		if (! selectOpen (fname)) then
+			RAHexed_openNew (fname);
+			mov( type_bin, listeax.ftype );
+		else
+			xor( eax, eax );
+		endif;
+		dbg.put ("/hex open");
+	end RAHexed_open;
+
+
+
+	RAEdit_setFormat :procedure( var node:fList.fnode );
+		var
+			gwstyle	:dword;
+			group	:dword;
+			hexfont	:HEFONT;
+			hexcolor:HECOLOR;
+			options	:dword;
+
+	begin RAEdit_setFormat;
+		//dbg.put ("RAEdit_setFormat");
+		USE( ebx, edx, esi, edi );
+	
+		mov (0, gwstyle);
+		mov (0, group);
+		mov (node, ebx);
+		//dbg.put ("NODE = ", ebx);
+		
+		if( listebx.isproject ) then
+			move( project.options, options );
+		else
+			mov( settings.options, options );
+		endif;
+	
+		if( listebx.ftype = type_bin ) then
+	
+			move (hmainfont, hexfont.hFont);
+			move (hlinefont, hexfont.hLnrFont);
+			lea (eax, hexfont);
+			w.SendMessage (listebx.hwnd, HEM_SETFONT, 0, eax);
+	
+			move (col.bckcol, hexcolor.bckcol);
+			move (col.txtcol, hexcolor.asctxtcol);
+			move (col.txtcol, hexcolor.adrtxtcol);
+			move (col.txtcol, hexcolor.dtatxtcol);
+			move (col.selbckcol, hexcolor.selbckcol);
+			move (col.seltxtcol, hexcolor.seltxtcol);
+			move (col.selbckcol, hexcolor.selascbckcol);
+			move (col.selbarbck, hexcolor.selbarbck);
+			move (col.selbarpen, hexcolor.selbarpen);
+			move (col.lnrcol, hexcolor.lnrcol);
+			move (col.cmntcol, hexcolor.sellfbckcol);
+			lea (eax, hexcolor);
+			w.SendMessage (listebx.hwnd, HEM_SETCOLOR, 0, eax);
+		
+		else
+			
+			// default settings for all source types
+			
+			w.GetWindowLong(listebx.hwnd,w.GWL_STYLE);
+			mov (eax, gwstyle);
+			
+			move (hmainfont, rafnt.hFont);
+			move (hitalic, rafnt.hIFont);
+			move (hlinefont, rafnt.hLnrFont);
+	
+			if (testnz (opt_exptabs, options)) then
+				mov (true, eax);
+			else
+				mov (false, eax);
+			endif;
+			
+			if( listebx.isproject ) then
+				movzx (project.tab, edx);
+			else
+				movzx( settings.tab, edx );
+			endif;
+			
+			w.SendMessage(listebx.hwnd,REM_TABWIDTH, edx, eax);
+			
+			hideini.readInt( "HIDE Settings", "Show Line Numbers" );
+			if( eax ) then
+			//if (testnz ( opt_showlines, project.options)) then
+				w.CheckDlgButton (listebx.hwnd, -2, true);
+				w.SendMessage (listebx.hwnd, w.WM_COMMAND, -2, 0);
+			endif;
+			w.SendMessage(listebx.hwnd,REM_SETFONT,0,&rafnt);
+			w.SendMessage(listebx.hwnd,REM_MOUSEWHEEL,3,0);
+	
+			xor (eax, eax);
+			if (testnz (opt_indent, project.options)) then
+				mov (true, eax);
+			endif;
+			w.SendMessage(listebx.hwnd,REM_AUTOINDENT,0, eax);
+	
+			// specific settings for assembly source types
+			if( listebx.ftype = type_hla ||
+				listebx.ftype = type_unit  ||
+				listebx.ftype = type_hhf ) then
+				
+				hideini.readInt( "HIDE Settings", "Show Divider" );
+				if( eax ) then
+				
+					or (STYLE_NODIVIDERLINE, gwstyle);
+					
+				else
+					
+					and(! (STYLE_NODIVIDERLINE) , gwstyle);
+					
+				endif;
+				
+				hideini.readInt( "HIDE Settings", "Highlight Comments" );
+				if( eax ) then
+
+					or (STYLE_HILITECOMMENT, gwstyle);
+				else
+					and (! STYLE_HILITECOMMENT, gwstyle);
+				endif;
+	
+				w.SendMessage (listebx.hwnd, REM_SETCHARTAB, '.', CT_OPER);
+				w.SendMessage(listebx.hwnd, REM_SETCHARTAB, ';', CT_NONE);
+				w.SendMessage(listebx.hwnd, REM_SETCHARTAB, '/', CT_CMNTDBLCHAR);
+				w.SendMessage (listebx.hwnd, REM_ADDBLOCKDEF, 0, 0);
+				mov	(&blocks, esi);
+				while ((type dword [esi])) do
+					w.SendMessage( listebx.hwnd, REM_ADDBLOCKDEF,0,[esi]);
+					add	(4,esi);
+				endwhile;
+				w.SendMessage (listebx.hwnd, REM_SETBLOCKS, 0, 0);
+				SetKeyWords (listebx.hwnd);
+	
+				w.SendMessage(listebx.hwnd, REM_SETCOMMENTBLOCKS, &szCmntStart,&szCmntEnd);
+		
+			elseif( listebx.ftype = type_rc ) then
+				
+				mov (1, group);
+			
+			else
+				// default type
+				w.SendMessage (listebx.hwnd, REM_ADDBLOCKDEF, 0, 0);
+	
+				or (STYLE_NOHILITE | STYLE_NOCOLLAPSE , gwstyle);
+				and (! STYLE_HILITECOMMENT, gwstyle);
+				mov (15, group);
+			
+			endif;
+			
+			w.SendMessage(listebx.hwnd,REM_SETWORDGROUP,0, group);
+			w.SendMessage(listebx.hwnd,REM_SETCOLOR,0,&col);
+			w.SendMessage(hwnd,HIDE_SETINSERTMODE,0,0);
+			w.SetWindowLong(listebx.hwnd,w.GWL_STYLE, gwstyle);
+	
+		endif;	
+	
+		ENDUSE;
+		//dbg.put ("/RAEdit_setFormat");	
+	end RAEdit_setFormat;
+
+procedure saveFileAs (var node:fList.fnode);
+begin saveFileAs;
+USE (EBX);
+	dbg.put ("saveFileAs");
+	mov (node, ebx);
+	test( ebx, ebx );
+	jz no_node;
+	
+	cmp( listebx.hwnd, 0 ); je no_node;
+	
+	if ( str.eq (listebx.id, "Untitled")) then
+		if (autountitled) then
+			
+			env2.get ("hlatmp", strbuf);
+			if(eax) then
+				str.put2 ( strbuf, dirsep_c, "temp.hla");
+				WriteToFile (listebx.hwnd, strbuf);
+				GetFileTime (listebx.relative, listebx.writetime);
+				str.cpy ("temp.hla", listebx.id);
+				mov( type_hla, listebx.ftype );
+				str.free (listebx.fullname);
+				str.a_cpy (strbuf);
+				mov (eax, listebx.fullname);
+				tabtool_update ([ebx]);
+				prop_updateMem ([ebx]);
+				if (ebx = curnode) then
+					SetWindowCaption();
+				endif;
+				RAEdit_setFormat ([ebx]);
+				w.SendMessage (listebx.hwnd, w.WM_PAINT, 0, 0);
+			endif;
+		else
+			Menu_SaveAs();
+		endif;
+	endif;
+	
+	no_node:
+ENDUSE;
+	dbg.put ("/saveFileAs");
+end saveFileAs;
+
+
+procedure RAEdit_SaveFile (var node:fList.fnode);
+	var
+		filestruc	:w.WIN32_FIND_DATA;
+		nextfile	:dword;
+		backpath	:string;
+		saveAsed	:BOOL;
+
+	static
+		backindex	:uns32 := 0;
+		
+	val
+		thisfile	:text := "(type w.WIN32_FIND_DATA [edi])";
+
+begin RAEdit_SaveFile;
+
+	//dbg.put("RAEdit_SaveFile");
+
+	mov (str.talloc (pathsize_c), backpath);
+	
+USE (ebx, esi, edi, ecx, edx);
+	
+	mov (node, ebx);
+	test( ebx, ebx );	jz no_node;
+	cmp( listebx.hwnd, 0 );	je no_node;
+	
+	mov (false, saveAsed);
+
+	if (! listebx.job) then
+		if (str.eq (listebx.id, "Untitled")) then
+			saveFileAs ([ebx]);
+			mov (true, saveAsed);
+		endif;
+	endif;
+		
+	// see if we need to do some backups.
+	if (project.backups > 0 ) then
+			
+		if (listebx.job) then
+			
+			// see if the project has a Backup folder
+			mov (&project.hpr, esi);
+			if ( iniesi.readBool ("HPR Settings", "useback")) then
+				// we have BAK folder
+				str.put (backpath, "BAK", dirsep_c);
+			elseif (iniesi.readBool ("HPR Settings", "usetemp")) then
+				// we have temp folder in project
+				str.put (backpath, "temp", dirsep_c);
+			else
+				jmp useHIDETemp;
+			endif;
+		else
+			
+			// save backups in the HIDE\Temp folder
+			useHIDETemp:
+			str.put (backpath, homepath, dirsep_c, "temp", dirsep_c);
+			
+		endif;
+		
+		// get first file with match
+		if (backindex = 0) then		
+			lea (edi, filestruc);
+			str.put (strbuf, backpath, "[*]", listebx.id);
+			w.FindFirstFile ( strbuf, filestruc);
+			if (eax <> w.INVALID_HANDLE_VALUE) then
+				mov(eax, nextfile);
+				inc (backindex);
+				lea (edx, thisfile.cFileName);
+				repeat
+					w.FindNextFile ( nextfile, filestruc);
+					if (eax ) then
+						inc (backindex);
+						lea (edx, thisfile.cFileName);
+					endif;
+				until ( eax = 0 );
+				w.FindClose (nextfile);
+			endif;
+		endif;
+		
+		// numbacks contains the number of backups found
+		// for the current save file
+		movzx (project.backups, eax);
+		inc (backindex);
+		if (backindex > eax ) then
+			mov (1, backindex);
+		endif;
+		str.put (strbuf, backpath, '[', backindex, ']', listebx.id);
+		WriteToFile (listebx.hwnd, strbuf);
+	endif;
+	
+	if (! saveAsed) then
+		WriteToFile (listebx.hwnd, listebx.fullname);
+		GetFileTime (listebx.relative, listebx.writetime);
+		projectview_checkUpdate ([ebx]);
+		prop_updateMem ([ebx]);
+	endif;
+	updateDisplay( update_general );
+	
+	no_node:
+ENDUSE;
+//dbg.put ("/RAEdit_SaveFile");
+end RAEdit_SaveFile;
+
+procedure StreamInProc (var pBytesRead:dword ; NumBytes:dword ; var pBuffer:dword ; hFile:dword);
+@nostackalign;
+begin StreamInProc;
+	
+	w.ReadFile(hFile,pBuffer,NumBytes,pBytesRead,NULL);
+	xor	(1, eax);
+
+end StreamInProc;
+
+procedure StreamOutProc (var pBytesRead:dword ; NumBytes:dword ; var pBuffer:dword ; hFile:dword);
+@nostackalign;
+begin StreamOutProc;
+	
+	w.WriteFile(hFile,pBuffer,NumBytes,pBytesRead,NULL);
+	xor	(1, eax);
+
+end StreamOutProc;
+
+	
+procedure WriteToFile (hwin:dword; FileName: string);
+	var
+		hfile	:dword;
+
+begin WriteToFile;
+
+	dbg.put ("WriteToFile :", FileName);
+	fileio.openNew(FileName);
+	if (eax <> 0) then
+		mov	(eax, hfile);
+		mov	(eax, editstream.dwCookie);
+		mov	(&StreamOutProc, editstream.pfnCallback);
+		w.SendMessage(hwin, w.EM_STREAMOUT, w.SF_TEXT, &editstream);
+		fileio.close(hfile);
+		w.SendMessage(hwin, w.EM_SETMODIFY, false, 0);
+		mov	(true, eax);
+	else
+		error.warning("Could not save file");
+		mov	(false,eax);
+	endif;
+	dbg.put ("after writetofile");
+end WriteToFile;
+
+
+
+procedure Recent_Insert ( source: string);
+//	add source to recently opened files list
+
+begin Recent_Insert;
+USE (EAX, ESI, EDI);
+	dbg.put ("Recent_Insert :", source );
+	if (hideini.findItem ("Recent Files", source)<> -1 ) then
+		//dbg.put ("found");
+		hideini.deleteItem ("Recent Files", eax);
+	endif;
+	
+	hideini.insertItem ("Recent Files", 0, source);
+	if (hideini.getItemCount ("Recent Files") > 10) then
+		hideini.deleteItem ("Recent Files", 10);
+	endif;
+	UpdateMenu();
+ENDUSE;
+end Recent_Insert;
+
+
+
+procedure InitOF (title:string; defext:string; filtertype:dword);
+	// initializes the OPENFILENAME structure
+begin InitOF;
+	pushabi;
+	mem2.fillMem(&of, @size(of), 0);
+	mov	(@size(of),of.lStructSize);
+	pushd(hwnd);
+	pop	(of.hWndOwner);
+	pushd(hinst);
+	pop(of.hInstance);
+	mov	(0,ofBuffer[0]);
+	mov	(&ofBuffer, of.lpstrFile);
+	mov	(@size(ofBuffer), of.nMaxFile);
+	move (title, of.lpstrTitle);
+
+	if (pathbuf[0] <> 0) then
+		mov(&pathbuf,eax);
+	else
+		if (project.isOpen) then
+			mov(project.folder,eax);
+		else
+			mov(homepath,eax);
+		endif;
+	endif;
+	mov(eax,of.lpstrInitialDir);
+
+	mov(defext,eax);
+	mov(eax,of.lpstrDefExt);
+		
+	mov(filtertype,ebx);
+	// determine default extensions to use	
+//	if (ebx = type_all) then
+//		
+//		mov(&allfiles,eax);
+//		
+	if ( (ebx = type_hla) || (ebx = type_unit) ) then
+		
+			mov(&hlatype,eax);
+
+    elseif (ebx = type_hhf) then
+    	mov(&hhftype,eax);
+    elseif (ebx = type_rc) then
+    	mov(&rctype,eax);
+    elseif (ebx = type_lib) then
+		mov(&libtype,eax);
+    elseif (ebx = type_all ) then
+    	mov(&allfiles,eax);
+    elseif (ebx = type_proj) then
+    	mov(&projtype,eax);
+    elseif (ebx = type_template) then
+    	mov(&templatetype,eax);
+    elseif (ebx= type_khelp) then
+    	mov (&khelptype, eax);	
+    endif;
+	mov(eax,of.lpstrFilter);
+	
+	mov	(	w.OFN_PATHMUSTEXIST | w.OFN_NOCHANGEDIR | w.OFN_FILEMUSTEXIST |
+			w.OFN_HIDEREADONLY | w.OFN_OVERWRITEPROMPT,of.Flags);
+	
+	if (filtertype = type_lib) then
+		// so that used does not have to navigate to the actual library location
+		and (! w.OFN_FILEMUSTEXIST, of.Flags);
+	endif;
+
+	popabi;
+end InitOF;
+
+procedure GetSaveName;	@noframe;
+	
+begin GetSaveName;
+	dbg.put("GetSaveName");
+	w.GetSaveFileName(&of);
+	if (eax) then
+		zstr.cpy(&ofBuffer,&pathbuf);
+		str.a_cpyz(&ofBuffer);
+	else
+		xor(eax,eax);	
+	endif;
+	ret();
+end GetSaveName;
+
+procedure GetOpenName;	@noframe;
+	
+begin GetOpenName;
+	dbg.put("GetOpenName");
+	w.GetOpenFileName(&of);
+	if (eax) then
+		zstr.cpy(&ofBuffer,&pathbuf);
+		str.a_cpyz(&ofBuffer);
+	else
+		xor(eax,eax);		
+	endif;
+	ret();
+end GetOpenName;
+
+procedure GetOpenTemplateName;	@noframe;
+begin GetOpenTemplateName;
+	push(tplpath);
+	pop(of.lpstrInitialDir);
+	w.GetOpenFileName(&of);
+	if (eax) then
+		str.a_cpyz(&ofBuffer);
+	endif;
+	ret();
+end GetOpenTemplateName;
+
+procedure GetSaveTemplateName; @noframe;
+begin GetSaveTemplateName;
+	push (tplpath);
+	pop (of.lpstrInitialDir);
+	w.GetSaveFileName (&of);
+	if (eax) then
+		str.a_cpyz(&ofBuffer);
+	endif;
+	ret();
+end GetSaveTemplateName;
+
+
+procedure GetOpenProjectName;	@noframe;
+begin GetOpenProjectName;
+	mov(projectpath,eax);
+	mov(eax,of.lpstrInitialDir);
+	w.GetOpenFileName(&of);
+	if (eax) then
+		str.cpyz(&ofBuffer, strbuf);
+		mov(of.nFileOffset,ax);
+		dec(ax);
+		movzx(ax,eax);
+		mov(0,ofBuffer[eax]);
+		str.a_cpy (strbuf);
+	else
+		xor(eax,eax);		
+	endif;
+//	dbg.put ("/getopenprojectname");
+	ret();
+end GetOpenProjectName;
+
+procedure saveAll; @noframe;
+	// go through file-list and save all edit controls
+	// that have been altered
+begin saveAll;
+USE (ESI, EDI, EBX, EAX);
+	Notes_Save();
+	fileList.getHead();
+	mov (eax, ebx);
+	while (ebx) do
+		if( listebx.hwnd != 0 ) then
+			if ( w.SendMessage (listebx.hwnd, w.EM_GETMODIFY, 0, 0) ) then
+				RAEdit_SaveFile ([ebx]);
+			endif;
+		endif;
+		mov (listebx.next, ebx);
+	endwhile;
+ENDUSE;
+ret();
+end saveAll;
+
+//procedure destroyAll; @noframe;
+//begin destroyAll;
+//USE (ESI, EDI, EBX);
+//	fileList.getHead();
+//	mov (eax, ebx);
+//	while (ebx) do
+//		w.DestroyWindow (listebx.hwnd);
+//		mov (ebx, edi);
+//		mov (listebx.next, ebx);
+//		fileList.remove ([edi]);
+//	endwhile;
+//ENDUSE;
+//RET();
+//end destroyAll;
+
+procedure setFormatAll;
+
+	var
+		count	:uns32;
+		
+
+begin setFormatAll;
+//	USE (ESI, EDI, EBX);
+//	fileList.getHead();
+//	mov (eax, ebx);
+//	while (ebx) do
+//		RAEdit_setFormat ([ebx]);
+//		mov (listebx.next, ebx);
+//	endwhile;
+//	ENDUSE;
+	// cycle through all open tabs and set format
+USE (EBX, ESI, EDI);
+	w.SendMessage (htab, w.TCM_GETITEMCOUNT, 0, 0);
+	mov (eax, count);
+	if (eax) then
+		mov	(w.TCIF_PARAM, tci.imask);
+		while (count >=0) do
+			dec (count);
+			w.SendMessage (htab, w.TCM_GETITEM, count, &tci);
+			breakif (!eax);
+			mov (tci.lParam, ebx);
+			RAEdit_setFormat( [ebx] );
+
+		endwhile;
+	endif;
+ENDUSE;	
+
+end setFormatAll;
+
+
+procedure closeAll;
+	// close all the open tab windows
+	var
+		count	:uns32;
+		
+begin closeAll;
+	dbg.put ("closeAll");
+USE (EBX, ESI, EDI);
+	w.SendMessage (htab, w.TCM_GETITEMCOUNT, 0, 0);
+	mov (eax, count);
+	if (eax) then
+		mov	(w.TCIF_PARAM, tci.imask);
+		while (count >=0) do
+			dec (count);
+			w.SendMessage (htab, w.TCM_GETITEM, count, &tci);
+			breakif (!eax);
+			mov (tci.lParam, ebx);
+			breakif (querySave ([ebx]));
+			w.SendMessage (htab, w.TCM_DELETEITEM, count,0);
+			
+			// if this is a project file, hide the window, else destroy the window .
+			w.DestroyWindow (listebx.hwnd);
+			
+			if (listebx.job) then
+				mov( 0, listebx.hwnd );
+				
+			else
+				// also remove from list
+				fileList.remove ([ebx]);
+			endif;
+		endwhile;
+	else
+		xor (eax, eax);
+	endif;
+	if (! eax) then
+		mov (0, curnode);
+	endif;
+ENDUSE;
+//dbg.put ("/closeAll :", eax);
+end closeAll;
+
+procedure querySave (var node:fList.fnode);
+
+	// see if edit window has changed, ask to save
+	// return true in EAX if cancelled.
+	
+	var
+		s	:string;
+		
+begin querySave;
+	//dbg.put ("querySave");
+	mov (str.talloc (pathsize_c), s);
+USE (EBX);
+	xor(eax,eax);
+	mov (node, ebx);
+	if (w.SendMessage (listebx.hwnd, w.EM_GETMODIFY, 0, 0)) then
+		str.put (s, "Want to Save Changes to ", listebx.id, '?');
+		w.MessageBox (hwnd, s,AppName, w.MB_YESNOCANCEL | w.MB_ICONQUESTION);
+		if (eax= w.IDYES) then
+			RAEdit_SaveFile ([ebx]);
+			mov(false,eax);
+			
+		elseif (eax = w.IDNO) then
+			mov	(false, eax);		// don't save
+		else
+			mov	(true, eax);		// cancel
+		endif;
+	else
+		mov (false,eax);
+	endif;
+ENDUSE;
+//dbg.put ("/querySave");
+end querySave;
+
+procedure repaintAll; @noframe;
+begin repaintAll;
+USE (ESI, EDI, EBX);
+	fileList.getHead();
+	mov (eax, ebx);
+	while (ebx) do
+		if (listebx.ftype = type_bin) then
+			w.SendMessage (listebx.hwnd, HEM_REPAINT, 0, 0);
+		else
+			w.SendMessage (listebx.hwnd, REM_REPAINT, 0, 0);
+		endif;
+		mov (listebx.next, ebx);
+	endwhile;
+ENDUSE;
+ret();
+end repaintAll;
+
+procedure IndentComment (nChr:dword; fN:dword);
+	storage
+		ochr	:w.CHARRANGE;
+		chr		:w.CHARRANGE;
+		LnSt	:dword;
+		LnEn	:dword;
+		buffer1	:byte[32];
+
+	var	
+		LineTxt	:dword;
+
+begin IndentComment;
+	
+	pushabi;
+	mem.alloc(16384);
+	mov(eax,LineTxt);
+	mov (curnode, ebx);
+	
+	w.SendMessage(listebx.hwnd,w.WM_SETREDRAW, false,0);
+	if (fN) then
+		if (nChr = DOUBLESLASH) then
+			mov	('/', buffer1[0]);
+			mov	('/', buffer1[1]);
+		else
+			mov	(nChr, eax);
+			mov	(eax,(type dword buffer1[0]));
+		endif; 
+	endif;
+	w.SendMessage(listebx.hwnd, w.EM_EXGETSEL,0, &ochr);
+	w.SendMessage(listebx.hwnd, w.EM_EXGETSEL,0, &chr);
+	w.SendMessage(listebx.hwnd, w.EM_HIDESELECTION,true,0);
+	w.SendMessage(listebx.hwnd, w.EM_EXLINEFROMCHAR,0,chr.cpMin);
+	mov	(eax, LnSt);
+	mov	(chr.cpMax, eax);
+	dec	(eax);
+	w.SendMessage(listebx.hwnd, w.EM_EXLINEFROMCHAR,0,eax);
+	mov	(eax, LnEn);
+	
+	nxt:
+	mov	(LnSt,eax);
+	if	(eax <= LnEn) then
+		w.SendMessage(listebx.hwnd,w.EM_LINEINDEX, LnSt,0);
+		mov	(eax, chr.cpMin);
+		inc	(LnSt);
+		if	(fN) then
+			mov	(eax, chr.cpMax);
+			w.SendMessage(listebx.hwnd, w.EM_EXSETSEL,0, &chr);
+			w.SendMessage(listebx.hwnd, w.EM_REPLACESEL, true, &buffer1);
+			zstr.len(&buffer1);
+			add	(eax, ochr.cpMax);
+			jmp	nxt;
+		else
+
+			w.SendMessage(listebx.hwnd, w.EM_LINEINDEX, LnSt,0);
+			mov	(eax, chr.cpMax);
+			w.SendMessage(listebx.hwnd, w.EM_EXSETSEL,0,&chr);
+			lea (esi, LineTxt);
+			w.SendMessage(listebx.hwnd, w.EM_GETSELTEXT,0,[esi]);
+			mov	(LineTxt, esi);
+			xor	(eax, eax);
+			mov	([esi], al);
+			mov	([esi+1], ah);
+			if(al = '/' && ah = '/') then	// checks for double-slash comments
+				add(2, esi);
+				w.SendMessage(listebx.hwnd, w.EM_REPLACESEL, true, esi);
+				sub(2,ochr.cpMax);
+				
+			elseif (nChr = $3b) then
+				inc (esi);
+				w.SendMessage(listebx.hwnd, w.EM_REPLACESEL, true, esi);
+				dec (ochr.cpMax);
+				
+			elseif (nChr = $09) then	// checks for tab-indentation
+				movzx (project.tab, ecx);
+				dec (esi);
+				l0:
+				inc (esi);
+				mov	([esi],al);
+				cmp (al, ' ');
+				jne	l1;
+				loop l0;
+				l1:
+				if	(al = $09) then
+					inc	(esi);
+					dec	(ecx);
+				endif;
+				movzx (project.tab, eax);
+				sub	(ecx, eax);
+				sub	(eax, ochr.cpMax);
+				w.SendMessage(listebx.hwnd, w.EM_REPLACESEL, true, esi);
+			endif;
+			jmp	nxt;
+		endif;
+	endif;
+	w.SendMessage(listebx.hwnd, w.EM_EXSETSEL,0, &ochr);
+	w.SendMessage(listebx.hwnd, w.EM_HIDESELECTION,false, 0);
+	w.SendMessage(listebx.hwnd, w.EM_SCROLLCARET,0,0);
+	w.SendMessage(listebx.hwnd, w.WM_SETREDRAW,true,0);
+	w.SendMessage(listebx.hwnd, REM_REPAINT,0,0);
+	
+	mem.free(LineTxt);
+	popabi;
+end IndentComment;
+
+end EditFunctions;

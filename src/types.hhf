@@ -1,0 +1,352 @@
+// HIDE types and macros
+
+	#macro toOutput ( _parms_[]): __parms, __counter, __buildstr;
+		?__parms := @elements( _parms_);
+		?__counter := 0;
+		?__buildstr := "str.put ( strbuf, ";
+		#while ( __counter < __parms-1 )
+			?__buildstr += _parms_[__counter]+ ", ";
+			?__counter += 1;
+		#endwhile
+		?__buildstr += _parms_[__counter] + ");";
+		@text (__buildstr);
+		WriteOutput ( strbuf );
+	#endmacro
+
+	#macro verbOut ( _parms_[]): __parms, __counter, __buildstr;
+		?__parms := @elements( _parms_);
+		?__counter := 0;
+		?__buildstr := "str.put ( strbuf, ";
+		#while ( __counter < __parms-1 )
+			?__buildstr += _parms_[__counter]+ ", ";
+			?__counter += 1;
+		#endwhile
+		?__buildstr += _parms_[__counter] + ");";
+		@text (__buildstr);
+		
+		hideini.readInt( "HIDE Settings", "Verbose HLA" );
+		if( eax ) then
+			WriteOutput ( strbuf );
+		endif;
+	#endmacro
+	
+	#macro getStringInput ( parms[] );
+		returns (
+		{
+			hla.overload( parms );
+			
+				hla.signature( getStringInput2( string, string ) )
+				hla.signature( getStringInput3( string, string, string ) )
+	
+			hla.endoverload;
+		}, "EAX")
+	#endmacro
+
+#macro strToBA( _theStr_, _bufSize_ ): _i_, _ch_;
+ 
+ #if( @length( _theStr_ ) <= _bufSize_ )
+ 
+  ?_i_ := 0;
+  [
+   #for( _ch_ in _theStr_ )
+ 
+    @byte( _ch_ )
+    #if( _i_ < (_bufSize_-1) )
+     ,
+    #endif
+    ?_i_ += 1;
+ 
+   #endfor
+  
+   #while( _i_ < (_bufSize_-1) )
+    0,
+    ?_i_ += 1;
+   #endwhile
+ 
+   #if( @length( _theStr_ ) < _bufSize_ )
+    0
+   #endif
+  ]
+ 
+ #else
+ 
+  #error
+  (
+   "String constant must be less than ",
+   _bufSize_,
+   " chars long"
+  )
+  [ _bufSize_ dup [0]]
+ 
+ #endif
+ 
+#endmacro
+
+const
+
+	iniesi	:text := "(type tConfig[esi])";
+	iniedx	:text := "(type tConfig[edx])";
+	inieax	:text := "(type tConfig[eax])";
+	iniebx	:text := "(type tConfig[ebx])";
+
+	listebx	:text := "(type fList.fnode[ebx])";
+	listedx	:text := "(type fList.fnode[edx])";
+	listeax	:text := "(type fList.fnode[eax])";
+	listecx	:text := "(type fList.fnode[ecx])";
+	listesi	:text := "(type fList.fnode[esi])";
+
+	jobebx		:text := "(type jList.jnode[ebx])";
+	jobeax		:text := "(type jList.jnode[eax])";
+	jobecx		:text := "(type jList.jnode[ecx])";
+	jobedx		:text := "(type jList.jnode[edx])";
+	jobedi		:text := "(type jList.jnode[edi])";
+
+	tableesi	:text	:= "(type table[esi])";
+	tableeax	:text	:= "(type table[eax])";
+
+	tablenodeeax:text	:= "(type tableNode[eax])";
+	tablenodeebx:text	:= "(type tableNode[ebx])";
+	tablenodeecx:text	:= "(type tableNode[ecx])";
+	tablenodeedx:text	:= "(type tableNode[edx])";
+	tablenodeesi:text	:= "(type tableNode[esi])";
+	
+	propedx		:text	:= "(type propNode_t[edx])";
+	propebx		:text	:= "(type propNode_t[ebx])";
+	propeax		:text	:= "(type propNode_t[eax])";
+
+type
+
+	BOOL		:dword;
+	save_t:
+		record
+			cursor	:dword;
+			line	:uns32;
+		endrecord;
+
+	id_types	:enum
+		{
+			id_main,
+			id_type,
+			id_static,
+			id_readonly,
+			id_val,
+			id_var,
+			id_const,
+			id_storage,
+			id_method,
+			id_procedure,
+			id_class,
+			id_iterator,
+			id_macro,
+			id_label,
+			id_bookmark,
+			id_external,
+			id_begin,
+			id_end,
+			id_record,
+			id_endrecord
+			
+		};
+	
+const
+
+	fnode_id	:= 0;
+	jnode_id	:= 1;
+		
+type
+
+	fd_keys	:enum
+		{
+			f2,
+			sft_f2,
+			ctl_f2,
+			alt_f2,
+			mouse
+		};
+
+
+	WINPOS:	//window position
+		record
+			fmax	:dword;	// maximized state for windows; current distence from mainwindow edge for bars.
+			x		:dword;
+			y		:dword;
+			wt		:dword;
+			ht		:dword;
+		endrecord;
+	
+	EDITOPTS:
+		record
+			options		:dword;		// bit-set options for various HIDE features
+			winview		:dword;		// keeps track of which windows are visible and/or docked
+			edtwin		:WINPOS;	// saves position of main window
+			outwin		:WINPOS;	// saves position of undocked output window
+			treewin		:WINPOS;	// saves position of undocked treeview window
+			propwin		:WINPOS;	// saves position of undocked properties window
+			hsplitbar	:WINPOS;	// saves position of long horizontal split bar
+			vsplitbar	:WINPOS;	// saves position of long vertical split bar
+			panelwin	:dword;		// keeps track of which panel window is active
+			panelactive	:dword;		// handle of current panel window
+			unused01	:dword;		// spares
+			unused02	:dword;
+			unused03	:dword;
+			tab			:uns8;
+			reserve		:byte[3];	// more spares
+			resd1		:dword;
+			resd2		:dword;
+			findscope	:dword;		// where to search
+			findflags	:dword;		// determines direction, flags
+			backups		:uns8;		// number of backups to created, as requested by user
+			reserve2	:byte[3];	// more spares
+		endrecord;
+	
+		jList	:class inherits( tBaseList );
+			
+			type
+				jnode :record inherits( tBaseList.baseNode );
+					id			:string;	// name of job
+					ftype		:dword;		// type number of job
+					inQueue		:BOOL;		// job is in active queue or Held
+					treenode	:dword;	// this objects node handle in Project View
+					align(4);
+				endrecord;
+
+				
+			override procedure create; @external;
+			override method destroy; @external;
+			override method remove; @external;
+			
+			method newNode; @returns ("EAX"); @external;
+			method appendJob (id:string); @returns ("EAX"); @external;
+			method findID (id:string); @returns ("EAX"); @external;
+		endclass;
+	
+		fList	:class inherits (tBaseList);
+			
+			type
+				fnode :record inherits( tBaseList.baseNode );
+			
+					id			:string;	// name + extension of file
+					union
+						fullname	:string;	// full path for orphan files or
+						relative	:string;	// path releative to project folder for project files
+					endunion;
+					
+					ftype		:dword;		// determines what HIDE will do with this file
+					hwnd		:dword;		// attached handle for RAEDIT window
+					oldhwnd		:dword;		// subclassed proc
+					props		:pointer to table; // table of hla symbols, local
+					props_ext	:pointer to table; // table of hla symbols, external
+					union
+						job			:dword;		// points to job structure,
+						isproject	:BOOL;		// or NULL if this is not a project file
+					endunion;
+					
+					// this keeps track of the last time this file was written to by HIDE
+					// used to check if external programs modified this file without
+					// HIDE's knowledge
+					writetime	:qword;
+					
+					treenode	:dword;	// objects node handle in the Project view
+					
+					// a pointer to a linked list of dependencies associated with this file.
+					// this is used when autodependencies option is selected
+					deps		:pointer to tList;
+					
+					align(4);
+				endrecord;
+				
+			
+			override procedure create; @external;
+			override method destroy; @external;
+			override method remove; @external;
+			
+			method newNode; @returns ("EAX"); @external;
+			method appendFile (id:string); @returns ("EAX"); @external;
+			method findFullname (id:string); @returns ("EAX"); @external;
+			method findID (id:string); @returns ("EAX"); @external;
+			method findJobID (var job:jList.jnode; id:string); @returns ("EAX"); @external;
+			method findJobRelative (var job:jList.jnode; id:string); @returns ("EAX"); @external;
+			method dumpList; @external;
+		endclass;
+
+	propNode_t:
+		record
+			ptype	:id_types;				// property type
+			fnode	:pointer to fList.fnode;	// file where this is located
+			line	:uns32;					// line of property
+			typestr	:string;
+		endrecord;
+
+	findDeclare_t:
+		record
+			chrg	:w.CHARRANGE;
+			from	:pointer to fList.fnode;
+			return	:boolean;
+		endrecord;
+
+	EDIT_CLASS:
+		record
+			hwnd		:dword;		//Handle of main window
+			fstyle		:dword;		//Window style
+			ID			:dword;		//Window ID
+			hpar		:dword;		//Handle of parent window
+			edta		:dword[12];	//RAEDT <>
+			edtb		:dword[12];	//RAEDT <>
+			hhscroll	:dword;		//Handle of horizontal scrollbar
+			hgrip		:dword;		//Handle of sizegrip
+			hnogrip		:dword;		//Handle of nosizegrip
+			hsbtn		:dword;		//Handle of splitt button
+			hlin		:dword;		//Handle of linenumber button
+			hexp		:dword;		//Handle of expand button
+			hcol		:dword;		//Handle of collapse button
+			hsta		:dword;		//Handle of state window
+			htt			:dword;		//Handle of tooltip
+			fresize		:dword;		//Resize in action flag
+			fsplitt		:dword;		//Splitt factor
+			nsplitt		:dword;		//Splitt height
+		
+			hHeap		:dword[3];	//Handle of heap
+			hLine		:dword;		//Handle of line pointer mem
+			cbLine		:dword;		//Size of line pointer mem
+			rpLine		:dword;		//Relative pointer into line pointer mem
+			rpLineFree	:dword;		//Pointer to free line pointer
+			hChars		:dword;		//Handle of character mem
+			cbChars		:dword;		//Size of character mem
+			rpChars		:dword;		//Relative pointer into character mem
+			rpCharsFree	:dword;		//Relative pointer to free character
+			hUndo		:dword;		//Handle of undo memory
+			cbUndo		:dword;		//Size of undo memory
+			rpUndo		:dword;		//Relative pointer to free (last)
+			line		:dword;		//Linenumber
+			cpLine		:dword;		//Character position for start of line
+		
+			rc			:hide.rect_t;		//Main rect
+			selbarwt	:dword;		//Width of selection bar
+			nlinenrwt	:dword;		//Initial width of linenumber bar
+			linenrwt	:dword;		//Width of linenumber bar
+			nScroll		:dword;		//Mouse wheel scroll lines
+			nPageBreak	:dword;		//Page break
+			cpMin		:dword;		//Selection min
+			cpMax		:dword;		//Selection max
+			fOvr		:dword;		//Insert / Overwrite
+			nHidden		:dword;		//Number of hidden lines
+			cpx			:dword;		//Scroll position
+			focus		:dword;		//Handle of edit having focus
+			fCaretHide	:dword;		//Caret is hidden
+			fChanged	:dword;		//Content changed
+			fHideSel	:dword;		//Hide selection
+			fIndent		:dword;		//Auto indent
+			clr			:RACOLOR;
+			br			:dword[7];	//RABRUSH <?>
+			nTab		:dword;		//Tab size
+			fnt			:RAFONT;
+			fntinfo		:dword[9];	//RAFONTINFO <?>
+			lpBmCB		:dword;		//Bookmark paint callback
+			nchange		:dword;		//Used by EN_SELCHANGE
+			nlastchange	:dword;		//Used by EN_SELCHANGE
+			nWordGroup	:dword;		//Hilite word group
+			fExpandTab	:dword;		//TRUE/FALSE Epand tabs to spaces
+			savesel		:w.CHARRANGE;
+			htlt		:dword;		//Scroll tooltip
+		endrecord;
+

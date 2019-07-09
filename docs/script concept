@@ -1,0 +1,63 @@
+scripts defined by 
+.script <id> ( <parameters> ) { <body> }
+
+scripts also act as functions/procedures
+they can have parameters and returns
+
+being loaded into memory only implies that HIDE has added the hidescript into
+the script symbol table and knows in which file/file index/package it is located.
+
+statements end in semicolon ';'
+semicolon not necessary after braced sections {} or after parenthesis ()
+since closing brace/parenthesis implies an end.
+
+comments use traditional // and /* .. */
+
+variables contained within a .hidescript {} are local to that script
+but may be accessed by <script id>.<variable id>
+
+variables contained outside of a .hidescript {} are considered local to
+the package and may be accessed by <package id>.<variable id>
+
+all hidescripts are local to the package but may be accessed by
+<package id>.<script id>
+
+collections of scripts may be loaded into memory together
+in 'packages'
+
+scripts may be directed to run automatically, individually or in packages upon
+starting/exiting HIDE, opening/closing a file, opening/closing a project,
+loading scripts, running a program, building a project, etc.
+**a dialog for controling these is necessary
+
+there should be a mechanism to remove from memory scripts designed to run only once
+for a given task.
+
+sample package:
+
+.package hide {
+
+	.script main {
+
+		var ints = 25;
+			
+		.return( 0 )
+
+	}
+}
+
+execute main above by:
+
+hide.main()
+
+or since main has a return, the following may also be used:
+
+success = hide.main()
+
+
+scripts should be able to control every aspect of HIDE from building menus to
+directing make.
+
+scripts should be able to create simple dialogs with buttons and have an ability
+to get information from the user. 
+

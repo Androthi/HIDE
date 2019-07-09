@@ -1,0 +1,355 @@
+unit printunit;
+
+
+	#includeonce ("HIDE.hhf")
+	#includeonce	("excepts.hhf")
+	#includeonce	("fileio.hhf")
+
+	?@nodisplay := true;
+
+type
+	PrnPos_t:
+		record
+			margins		:w.RECT;
+			pagesize	:w.POINT;
+		endrecord;
+
+	
+
+const
+	MAX_STR			:= 1024;
+//	PrinterTabWidth	:= 8;
+
+static
+	ppos		:PrnPos_t := PrnPos_t:[ w.RECT:[1000,1000,1000,1000], w.POINT:[21000,29700]];
+	AppName			:mzstr ("HIDE");
+
+storage
+	psd				:w.PAGESETUPDLG;
+	prnInches		:boolean;
+	
+procedure GetPrnCaps;
+	var
+		buffer		:byte[256];
+		
+begin GetPrnCaps;
+	w.GetUserDefaultLCID();
+	w.GetLocaleInfo (eax, w.LOCALE_IMEASURE, buffer, @size (buffer));
+	mov (buffer[0], al);
+	if (al = '1') then
+		mov (true, prnInches);
+	else
+		mov (false, prnInches);
+	endif;
+end GetPrnCaps;
+
+procedure initPrinter; @noframe;
+begin initPrinter;
+
+	if (hideini.isKeyDefined ("HIDE Settings", "printer")) then
+		hideini.readBin ("HIDE Settings", "printer", &ppos, @size(PrnPos_t));
+	endif;
+
+	move (ppos.margins.left, psd.rtMargin.left);
+	move (ppos.margins.top, psd.rtMargin.top);
+	move (ppos.margins.right, psd.rtMargin.right);
+	move (ppos.margins.bottom, psd.rtMargin.bottom);
+	move (ppos.pagesize.x, psd.ptPaperSize.x);
+	move (ppos.pagesize.y, psd.ptPaperSize.y);	
+	ret();
+	
+end initPrinter;
+
+
+procedure PageSetup; // auto=don't show box, return default setup structure
+
+begin PageSetup;
+
+	GetPrnCaps();
+	mov(hwnd, psd.hwndOwner);
+	mov(hinst, psd.hInstance);
+	mov (@size (w.PAGESETUPDLG), psd.lStructSize);
+	mov (w.PSD_MARGINS, psd.flags);
+	if (prnInches) then
+		or ( w.PSD_INTHOUSANDTHSOFINCHES, psd.flags);
+	else
+		or ( w.PSD_INHUNDREDTHSOFMILLIMETERS, psd.flags);
+	endif;
+
+	if (w._PageSetupDlg(&psd)) then
+		move (psd.rtMargin.left, ppos.margins.left);
+		move (psd.rtMargin.top, ppos.margins.top);
+		move (psd.rtMargin.right, ppos.margins.right);
+		move (psd.rtMargin.bottom, ppos.margins.bottom);
+		move (psd.ptPaperSize.x, ppos.pagesize.x);
+		move (psd.ptPaperSize.y, ppos.pagesize.y);
+		hideini.writeBin ("HIDE Settings", "printer", &ppos, @size (PrnPos_t) );
+	endif;
+
+
+end PageSetup;
+
+procedure PrintDoc;
+	
+	const
+		pointebx		:text	:= "(type w.POINT[EBX])";
+	
+	
+	var	
+		_buffer			:char[1024];
+		iWidth			:int32;
+		iHeight			:int32;
+		iPhysicalOffsetX:int32;
+		iPhysicalOffsetY:int32;
+		iPhysicalWidth	:int32;
+		iPhysicalHeight	:int32;
+		iLeftAdjust		:int32;
+		iTopAdjust		:int32;
+		iRightAdjust	:int32;
+		iBottomAdjust	:int32;
+		ilinesperpage	:uns32;
+		itotallines		:uns32;
+		itotalpages		:uns32;
+		icharsperline	:uns32;
+		bufpos			:dword;
+		editpage		:uns32;
+		printlength		:uns32;
+		ipage			:uns32;
+		iline			:uns32;
+		_hfont			:dword;
+		holdfont		:dword;
+		TabStops		:dword;
+		pwnd			:dword;
+	
+		margins			: w.RECT;
+		din				: w.DOCINFO;
+		tm				: w.TEXTMETRIC;
+		pd				: w.PRINTDLG;
+		lfnt			: w.LOGFONT;
+	
+begin PrintDoc;
+
+	pushad();
+	
+	mov (curnode, eax);
+	mov (listeax.hwnd, eax);
+	mov (eax, pwnd);
+	
+	// initialize a PRINTDLG structure
+	lea (eax, pd);
+	mem2.fillMem([eax], @size(w.PRINTDLG), 0);
+	mov (@size(w.PRINTDLG), pd.lStructSize); // set the size
+	move (hwnd, pd.hWndOwner);
+	move (hinst, pd.hInstance);
+
+	mov(1, pd.nMinPage);
+	mov(1, pd.nFromPage);
+	mov(-1, pd.nToPage);
+	mov(-1, pd.nMaxPage);
+
+	mov (w.PD_RETURNDC | w.PD_NOPAGENUMS | w.PD_NOSELECTION, pd.Flags);
+		
+	if(!w._PrintDlg(pd))then
+		jmp abort;
+	endif;
+	
+	w.LoadCursor(0,val w.IDC_WAIT);
+	w.SetCursor(eax);
+	
+	if (pwnd = 0) then
+		jmp abort;
+	endif;
+	
+//===================================================================
+// compute the printing device's margins and page area, etc.
+//================================================================================\
+	
+
+	w.MulDiv(psd.rtMargin.left, w.GetDeviceCaps(pd.hDC, w.LOGPIXELSX), 1000);
+	mov(eax, margins.left);
+	w.MulDiv(psd.rtMargin.top, w.GetDeviceCaps(pd.hDC, w.LOGPIXELSY), 1000);
+	mov(eax, margins.top);
+	
+	w.MulDiv(psd.rtMargin.right, w.GetDeviceCaps(pd.hDC, w.LOGPIXELSX), 1000);
+	mov(eax, margins.right);
+	w.MulDiv(psd.rtMargin.bottom, w.GetDeviceCaps(pd.hDC, w.LOGPIXELSY), 1000);
+	mov(eax, margins.bottom);
+	
+	mov(w.GetDeviceCaps(pd.hDC, w.PHYSICALOFFSETX), iPhysicalOffsetX);
+	mov(w.GetDeviceCaps(pd.hDC, w.PHYSICALOFFSETY), iPhysicalOffsetY);
+	mov(w.GetDeviceCaps(pd.hDC, w.PHYSICALWIDTH), iPhysicalWidth);
+	mov(w.GetDeviceCaps(pd.hDC, w.PHYSICALHEIGHT), iPhysicalHeight);
+	
+	mov(margins.left, eax);
+	sub(iPhysicalOffsetX, eax);
+	mov(eax, iLeftAdjust);
+	
+	mov(margins.top, eax);
+	sub(iPhysicalOffsetY, eax);
+	mov(eax, iTopAdjust);
+	
+	// int iRightAdjust = margin.right - (iPhysicalWidth - iPhysicalOffsetX -GetDeviceCaps(hPrinter, HORZRES));
+	mov(iPhysicalWidth, ebx);
+	sub(iPhysicalOffsetX, ebx);
+	sub(w.GetDeviceCaps(pd.hDC, w.HORZRES), ebx);
+	mov(margins.right, eax);
+	add (ebx, eax);
+	mov(eax, iRightAdjust);
+	
+	// int iBottomAdjust = margin.bottom - (iPhysicalHeight - iPhysicalOffsetY- GetDeviceCaps(hPrinter, VERTZRES));
+	mov(iPhysicalHeight, ebx);
+	sub(iPhysicalOffsetY, ebx);
+	sub(w.GetDeviceCaps(pd.hDC, w.VERTRES), ebx);
+	mov(margins.bottom, eax);
+	sub(ebx, eax);
+	mov(eax, iBottomAdjust);
+		
+	w.GetDeviceCaps(pd.hDC, w.HORZRES);
+	mov(iLeftAdjust, ebx);
+	add(iRightAdjust, ebx);
+	sub(ebx, eax);
+	mov(eax, iWidth);
+	
+	w.GetDeviceCaps(pd.hDC, w.VERTRES);
+	mov(iTopAdjust, ebx);
+	add(iBottomAdjust, ebx);
+	sub(ebx, eax);
+	mov(eax, iHeight);
+	
+	lea(eax, lfnt);
+	mem2.fillMem ([eax], @size(w.LOGFONT), 0);
+	w.lstrcpy(lfnt.lfFaceName, mainfont.lfFaceName);
+	w.GetDeviceCaps(pd.hDC, w.LOGPIXELSY);
+	mov(mainfont.lfHeight, ecx);
+	neg(ecx);
+	mul(ecx);
+	xor(edx,edx);
+	mov(72,ecx);
+	div(ecx);
+	mov(eax, lfnt.lfHeight);
+
+	mov(mainfont.lfWeight, eax);
+	mov(eax, lfnt.lfWeight);
+	w.CreateFontIndirect(lfnt);
+	mov(eax,_hfont);
+	
+	w.SetMapMode(pd.hDC, w.MM_TEXT);
+	w.SelectObject(pd.hDC, _hfont);
+	
+	w.GetTextMetrics(pd.hDC, tm);
+
+	mov(iHeight, eax);
+	mov(tm.tmHeight, ebx);
+	xor(edx, edx);
+	div(ebx, edx:eax); // divide eax / ebx --> result in edx:eax
+	mov(eax, ilinesperpage);
+	
+	mov(iWidth, eax);
+	mov(tm.tmAveCharWidth, ebx);
+	xor(edx,edx);
+	div(ebx, edx:eax);
+	mov(eax, icharsperline);
+	
+	w.SendMessage(pwnd,w.EM_GETLINECOUNT,0,0);
+	inc(eax);
+	mov(eax, itotallines);		
+
+	add(ilinesperpage, eax);
+	dec(eax);
+	mov(ilinesperpage, ebx);
+	xor(edx, edx);
+	div(ebx, edx:eax); // divide eax / ebx --> result in edx:eax
+	mov(eax, itotalpages);
+	
+	/* get tab width
+		Use 4 "W" characters and take average.
+		"W" = $57 
+	*/
+	lea (eax, _buffer);
+	mov ($57575757, (type dword [eax]) );
+	lea (ebx, [eax+4]);
+	w.GetTextExtentPoint32( pd.hDC, eax, 4, [ebx]);
+	mov (pointebx.x, eax);
+	shr (2, eax);
+	movzx (settings.tab, ecx);
+	mul (ecx);
+	mov (eax, TabStops);
+	
+	lea(eax,din);
+	mem2.fillMem([eax], @size(din),0);
+	mov(@size(din), din.cbSize);
+	mov(&AppName, din.lpszDocName);
+		
+	w.SetTextColor(pd.hDC, RGB(0,0,0));
+
+	if(w.StartDoc(pd.hDC, din)>0) then
+		mov(0, editpage);
+		mov(0, ipage);
+		repeat
+			mov(0,iline);
+			w.StartPage(pd.hDC);
+			mov(w.SelectObject(pd.hDC, _hfont), holdfont);
+			w.SetViewportOrgEx(pd.hDC, iLeftAdjust, iTopAdjust, NULL);
+			repeat
+
+				mov(editpage,eax);
+				breakif(eax>=itotallines);
+				
+				lea(ebx,_buffer);
+				mov(ebx, bufpos);
+				mov( @size(_buffer), (type word [ebx]) );
+
+				w.SendMessage(pwnd, w.EM_GETLINE, editpage, ebx);
+				mov (0, (type byte[ebx+eax]));
+				// wrap text if necessary
+				_wraptext:
+					mov(bufpos,eax);
+					w.lstrlen([eax]);
+					if (eax > icharsperline) then
+						mov( icharsperline, eax);
+					endif;
+					mov(eax, printlength);
+					mov(iline, eax);
+					mov(tm.tmHeight, ebx);
+					mul(ebx, eax);
+					mov(eax,ebx);
+					
+					w.TabbedTextOut(pd.hDC, 0, ebx, bufpos, printlength , 1,TabStops, 0);
+					
+					inc(iline);
+					mov(printlength, eax);
+					add(eax, bufpos);
+					
+					mov(bufpos,eax);
+					if ( (type byte [eax]) = 0) then
+						jmp _endwrap;
+					endif;
+					jmp _wraptext;
+				_endwrap:
+					
+				inc (editpage);					
+				mov(iline, eax);
+			until( eax >= ilinesperpage);
+			w.SelectObject(pd.hDC, holdfont);
+			w.EndPage(pd.hDC);
+			inc(ipage);
+			mov(ipage, eax);
+		until(eax>=itotalpages);
+		// end this document and release the printer's DC
+		w.EndDoc(pd.hDC);
+	
+	endif; // StartDoc condition
+	w.SelectObject(pd.hDC, holdfont);
+	w.DeleteObject(_hfont); // delete font created by CreateFontIndirect()
+	w.DeleteDC(pd.hDC);
+	
+	abort:
+
+	w.LoadCursor(0,val w.IDC_ARROW);
+	w.SetCursor(eax);
+	popad();
+	
+end PrintDoc;
+
+
+end printunit;

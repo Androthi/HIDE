@@ -1,0 +1,996 @@
+////////////////////////////////////////////////////////////////////////////////////
+// File: autocompletion.hla
+// Author: Bernd Kastenholz
+// Created: July 2006
+// Email: Bernd Kastenholz@web.de
+
+unit autocompletion_unit;
+
+	#includeonce ("HIDE.hhf")
+	#includeonce ("fileio.hhf")
+	#includeonce ("excepts.hhf")
+	#includeonce ("memory.hhf")
+	#includeonce ("autocompletion.hhf")
+
+	?@nodisplay := true;
+	?@noalignstack := true;
+	?@align:=4;
+	
+const
+	AUTOCOMPLETION_INI	:="Data" + dirsep_c + "Autocompletion.ini";			//"Data\Autocompletion.ini";
+	WORDLISTDEFAULT  := "Data" + dirsep_c + "autocompletionlist.txt";
+	
+static	
+	procedure SubListbox(lparam:dword; wparam:dword; umsg:uns32; hwin:dword); @forward;
+	
+storage
+	align(4);
+	cursel 				:w.CHARRANGE;
+	m_autocompletion	:RAutoCompletion;
+	align(4);
+
+	CWordlist			:tList;				// container for the wordlist
+	hEditWin 			:dword;				// Handle of the RAedit window
+	autohomepath		:string;			// path to the ini file
+	pathwordlist 		:string; 			// path to the word list
+	autocompleteini		:tConfig;
+	
+static
+	align(4);
+	curword 			:dword := NULL; 	// stores the word left from the cursor
+	charbuf				:mzstr(" ");
+
+procedure freeCWordlist; @noframe;
+begin freeCWordlist;
+	USE (EAX, EBX);
+		CWordlist.getHead();
+		mov (eax, ebx);
+		while (ebx) do
+			str.free ( (type tList.listNode [ebx]).value);
+			mov ( (type tList.listNode[ebx]).next, ebx);
+		endwhile;
+		CWordlist.destroy();
+	ENDUSE;
+	ret();
+end freeCWordlist;
+
+/////////////////////////////////////////////////////////////////
+// - WriteListToFile
+//
+procedure WriteListToFile;
+var
+	hFile : dword;
+begin WriteListToFile;
+//dbg.put("WriteListToFile");
+
+	USE (EAX, EBX);	
+		mov(fileio.openNew (pathwordlist), hFile);		
+		CWordlist.getHead();
+		while (eax) do
+			fileio.puts (hFile, (type tList.listNode [eax]).value);
+			fileio.newln(hFile);
+			mov ( (type tList.listNode[eax]).next, eax);		
+		endwhile;
+		fileio.close(hFile);		
+	ENDUSE;
+//dbg.put("Leave WriteListToFile");
+end WriteListToFile;
+
+//////////////////////////////////////////////////////////////////
+// - insertEmptyString
+//
+procedure insertEmptyString;@noframe;
+begin insertEmptyString;
+	w.SendMessage(hEditWin, w.EM_REPLACESEL, true, 0);
+	ret();
+end insertEmptyString;
+
+//////////////////////////////////////////////////////////////////
+// - FreeCurword
+//
+// free the memory of variable curword
+procedure FreeCurword;@noframe;
+begin FreeCurword;
+	if(curword <> NULL) then
+		str.free(curword);
+		mov(NULL, curword);
+	endif;
+	ret();
+end FreeCurword;
+
+//////////////////////////////////////////////////////////////////
+// - HideDialog
+//
+// Hide the dialog and free the memory of variable curword
+procedure HideDialog;@noframe;
+begin HideDialog;
+	if(m_autocompletion.hDialog <> 0) then
+		w.ShowWindow(m_autocompletion.hDialog, w.SW_HIDE);
+		FreeCurword();
+		w.SetFocus(hEditWin);
+	endif;
+	ret();
+end HideDialog;
+
+//////////////////////////////////////////////////////////////////
+// - ReadWordlist
+//
+// Load word list file and add the words to the listbox
+//
+procedure ReadWordlist;
+var
+	hFile	:tBuffer;
+	sWord : string;
+	
+begin ReadWordlist;
+//	dbg.put("ReadWordlist");
+	mov (str.talloc (128), sWord);
+	
+USE (ESI, EDI);
+	if (filesys.exists (pathwordlist)) then
+		hFile.create (pathwordlist);
+		hFile.cursorToBOF();
+		freeCWordlist();
+		CWordlist.create();
+		lea (esi, hFile);
+		forever
+			breakif (! bufesi.reads (sWord));
+			str.a_cpy (sWord);
+			USE (EAX, ESI);
+				CWordlist.appendValue(eax);
+			ENDUSE;
+			w.SendMessage(m_autocompletion.hListbox, w.LB_ADDSTRING, 0, eax);
+		endfor;
+		hFile.destroy();
+	else
+		error.warning ("AutoComplete: Can't open file of word list!");
+	endif;
+ENDUSE;
+//	dbg.put("Leave ReadWordlist");
+end ReadWordlist;
+
+//////////////////////////////////////////////////////////////////
+// - find_str_wordlist
+//
+procedure find_str_wordlist (id:string);
+	// returns list ptr in EAX, or 0
+begin find_str_wordlist;
+USE (EBX);
+	mov (CWordlist.getHead(), ebx);
+	while (ebx) do
+		mov ((type tList.listNode [ebx]).value, eax);		
+		if (eax) then
+			breakif (str.ieq (id, (type string eax)));
+		endif;
+		mov ((type tList.listNode [ebx]).next, ebx);
+	endwhile;
+	mov (ebx, eax);
+ENDUSE;
+end find_str_wordlist;
+
+//////////////////////////////////////////////////////////////////
+// - StoreWord
+// 
+//	writes a new word to 'autocompletionlist.txt'
+procedure StoreWord(var sWord : string);
+var
+	hFile : dword;
+begin StoreWord;
+
+USE (EAX, EBX);
+	
+	if (filesys.exists (pathwordlist)) then
+		
+		try
+			mov(fileio.open(pathwordlist, fileio.w), hFile);
+			exception(ex.FileOpenFailure);
+			exit StoreWord;
+		endtry;
+
+		fileio.append(hFile);
+		mov(sWord, eax);
+		fileio.puts(hFile, (type string eax));
+		fileio.newln(hFile);		
+		fileio.close(hFile);
+	endif;
+ENDUSE;
+end StoreWord;
+
+//////////////////////////////////////////////////////////////////
+// - createListbox
+//
+// creates a listbox for the dialog, subclasses the listbox
+// sets the font and reads the wordlist
+procedure createListbox;@noframe;
+begin createListbox;
+	xor(eax, eax);
+	if(m_autocompletion.sort) then
+		or(w.LBS_SORT, eax);
+	endif;
+	or(w.WS_VISIBLE | w.WS_CHILD | w.LBS_HASSTRINGS | w.LBS_NOTIFY 
+		| w.WS_VSCROLL | w.LBS_NOINTEGRALHEIGHT, eax);
+
+	mov(w.CreateWindowEx(w.WS_EX_CLIENTEDGE,"LISTBOX", 0, eax, 
+		0,0,203,110,m_autocompletion.hDialog, IDC_LSTAUTOCOMPLETION,hinst,NULL),
+		 m_autocompletion.hListbox);
+	
+	// subclass listbox  		
+	mov(w.SetWindowLong(m_autocompletion.hListbox, w.GWL_WNDPROC, &SubListbox),
+		 m_autocompletion.oldProcListbox);
+	
+	w.SendMessage (m_autocompletion.hListbox, w.WM_SETFONT, hmainfont, true);
+	ReadWordlist(); 
+	ret();
+end createListbox;
+
+//////////////////////////////////////////////////////////////////
+// - Proc_Autosetting
+//
+// Message procedure of the settings dialog
+//
+procedure Proc_Autosetting (lparam:dword; wparam:dword; umsg:uns32; hwin:dword);
+begin Proc_Autosetting;
+
+	mov(umsg,eax);	
+	cmp(eax,w.WM_COMMAND);
+	je _command;
+	cmp(eax,w.WM_INITDIALOG);
+	je _init;
+	cmp(eax,w.WM_DESTROY);
+	je _destroy;
+	jmp _xProc_Properties;
+	
+_command:
+
+	if(wparam = w.IDOK) then
+		autocompleteini.create_file (autohomepath);
+		
+		if (w.IsDlgButtonChecked(hwin,IDC_CHKSORT)) then			
+			if(!m_autocompletion.sort) then
+				mov(true, m_autocompletion.sort);
+				autocompleteini.writeInt("Settings", "sort", 1);
+				w.DestroyWindow(m_autocompletion.hListbox); 
+				createListbox();				
+			endif;
+		else
+			if(m_autocompletion.sort) then
+				mov(false, m_autocompletion.sort);
+				autocompleteini.writeInt("Settings", "sort", 0);
+				w.DestroyWindow(m_autocompletion.hListbox); 
+				createListbox();				
+			endif; 
+		endif;
+		
+		if (w.IsDlgButtonChecked(hwin,IDC_CHKCASE)) then			
+			if(!m_autocompletion.caseSensitive) then
+				mov(true, m_autocompletion.caseSensitive);
+				autocompleteini.writeInt("Settings", "case", 1);				
+			endif;
+		else
+			if(m_autocompletion.caseSensitive) then
+				mov(false, m_autocompletion.caseSensitive);
+				autocompleteini.writeInt("Settings", "case", 0);			
+			endif; 
+		endif;
+		
+		autocompleteini.write (autohomepath);
+		autocompleteini.destroy();
+		
+		w.EndDialog ( hwin, 0 );
+//		dbg.put ("/ok");
+		jmp _xProc_Properties;
+	endif;
+	if(wparam = w.IDCANCEL) then
+		
+		w.EndDialog ( hwin, 0 );
+		jmp _xProc_Properties;
+	endif;
+	jmp _xProc_Properties;
+
+_init:
+	xor (eax, eax);
+	mov(m_autocompletion.sort, al);
+	w.CheckDlgButton(hwin,IDC_CHKSORT, eax);
+	
+	mov(m_autocompletion.caseSensitive, al);
+	w.CheckDlgButton(hwin,IDC_CHKCASE, eax);
+	jmp _xProc_Properties;
+_destroy:
+	jmp _xProc_Properties;
+	
+_xProc_Properties:
+	xor(eax,eax);
+	exit Proc_Autosetting;
+	
+end Proc_Autosetting;
+
+//////////////////////////////////////////////////////////////////
+// - GetCurWord
+//
+// determines the word left from the cursor and
+// stores it in variable curword
+//
+// returns true, if there is no error, else false
+procedure GetCurWord;
+
+var
+	dMin 	: dword;
+	dMax 	: dword;
+	buffer	: char[1024];
+	
+begin GetCurWord;
+//dbg.put("begin getcurword");	
+	
+	FreeCurword();
+	w.SendMessage (hEditWin, w.EM_EXGETSEL, 0, &cursel);
+
+	// save selection
+	mov(mov(cursel.cpMax, eax), dMax);
+	mov(mov (cursel.cpMin, eax), dMin);
+	
+	// get word
+	mov(eax, cursel.cpMax);
+	w.SendMessage (hEditWin, w.EM_FINDWORDBREAK, w.WB_MOVEWORDLEFT, eax);
+	mov(eax, cursel.cpMin);
+	w.SendMessage (hEditWin, w.EM_EXSETSEL, 0, &cursel);
+	
+	// compute size of word
+	mov(cursel.cpMax, eax);
+	sub(cursel.cpMin, eax);
+	if(eax <> 0 && eax < 1024) then
+		lea (eax, buffer);
+		w.SendMessage (hEditWin, w.EM_GETSELTEXT, 0, eax);
+		lea( eax, buffer );
+		str.a_cpyz (eax);
+		mov(eax, curword);
+//		dbg.put("word: ", (type string curword));
+	endif;
+
+	// restore old selection
+	mov(mov (dMin, eax), cursel.cpMin);
+	mov(mov (dMax, eax), cursel.cpMax);
+	w.SendMessage (hEditWin, w.EM_EXSETSEL, 0, &cursel);
+
+	mov(true, eax);
+//dbg.put("leave getcurword");
+_Leave:
+end GetCurWord;
+
+//////////////////////////////////////////////////////////////////
+// - zBegins
+// Test if zero-terminated string zsrc1 begins with zsrc2 
+// and sets the flags 
+// according to the result. Also returns the comparison	  
+// status in EAX.	
+//
+// Note: Stolen from hlalib zcmp.hla. Only made a small 
+// 		modification in cmpLoop.
+procedure zBegins( var _zsrc1:byte; var _zsrc2:byte ); 
+	@nodisplay; 
+	@noalignstack;
+	@noframe;
+	
+const
+	zsrc1	:text := "(type dword [esp+16])";
+	zsrc2	:text := "(type dword [esp+12])";
+	
+begin zBegins;
+
+	push( esi );
+	push( edi );
+	
+	mov( zsrc1, esi );
+	mov( zsrc2, edi );
+	cmpLoop:
+		mov( [esi], al );
+		cmp( al, 0 );
+		je StrsEQ;
+		add( 1, esi );
+		cmp( al, [edi] );
+		jb StrsLT;
+		ja StrsGT;
+		add( 1, edi );
+		jmp cmpLoop;
+		
+	StrsEQ:
+		xor( eax, eax );
+		pop( edi );
+		pop( esi );
+		ret( 8 );		// flags are set from XOR.
+		
+	StrsGT:
+		mov( 1, eax );
+		cmp( eax, 0 );	// Set flags appropriately.
+		pop( edi );
+		pop( esi );
+		ret( 8 );
+		
+		
+	StrsLT:
+		mov( -1, eax );
+		cmp( eax, 0 );
+		clc();			// no carry = "below";
+		pop( edi );
+		pop( esi );
+		ret( 8 );
+		
+end zBegins; 
+
+//////////////////////////////////////////////////////////////////
+// - findWordInListbox
+//
+// Tries to find curword in the listbox. When it finds the
+// prefix word in the list, the listbox selects this item else
+// it selects the first item.
+//
+// The search may be case sensitive!
+procedure findWordInListbox;
+var
+	mBuf		:char[256];
+	dIndexOld	:dword;
+begin findWordInListbox;
+//dbg.put("findWordInListbox");
+	if(m_autocompletion.caseSensitive) then
+		mov(-1, ecx);
+		mov(0, dIndexOld);
+		forever
+			lea(eax, curword);
+			w.SendMessage(m_autocompletion.hListbox, w.LB_FINDSTRING, ecx, [eax]);
+			if(eax = w.LB_ERR || eax <= dIndexOld) then
+				xor(eax, eax);
+				jmp _leaveIf;
+			endif;
+			push(eax); // save index
+				// compare the string in the listbox with curword
+				lea(ebx, mBuf);
+				w.SendMessage(m_autocompletion.hListbox, w.LB_GETTEXT, eax, ebx);
+				mov(curword, eax);
+				lea(ebx, mBuf);
+				zBegins([eax], [ebx]); // curword Begins mBuf ?
+				if(@e) then
+					pop(eax); // restore index
+					jmp _leaveIf;
+				endif;
+			pop(ecx); // restore index
+			mov(ecx, dIndexOld);
+			inc(ecx); 
+		endfor;
+	else
+		lea(eax, curword);
+		w.SendMessage(m_autocompletion.hListbox, w.LB_FINDSTRING, -1, [eax]);
+	endif;
+	
+	if(eax = w.LB_ERR) then // not found then select
+		xor(eax, eax); 		// first item
+	endif;
+_leaveIf:
+	w.SendMessage(m_autocompletion.hListbox, w.LB_SETCURSEL, eax, 0);
+//dbg.put("leave findWordInListbox");
+end findWordInListbox;
+
+//////////////////////////////////////////////////////////////////
+// - InsertSelText
+//
+// Inserts the selected text from the listbox
+procedure InsertSelText;@noframe;
+static 
+	mTemp : dword;
+begin InsertSelText;
+//dbg.put("InsertSelText");
+	USE(ecx);
+		w.SendMessage(m_autocompletion.hListbox, w.LB_GETCURSEL, 0, 0);
+		push(eax); // save index
+			w.SendMessage(m_autocompletion.hListbox, w.LB_GETTEXTLEN, eax, 0);	
+			try
+				mem.zalloc(inc(eax));
+			anyexception
+				error.fatal ("AutoComplete: Couldn't alloc memory, sorry!");
+				jmp _leave;
+			endtry;
+			mov(eax, mTemp);
+		pop(eax); // restore index
+		w.SendMessage(m_autocompletion.hListbox,w.LB_GETTEXT,eax,mTemp);
+		
+		if(eax <> w.LB_ERR) then
+				
+			xor(ecx, ecx);
+			if(curword <> NULL) then
+				str.length(curword);
+				mov(eax, ecx);
+			endif;
+			lea(eax, mTemp);
+			mov([eax], eax);
+			add(ecx, eax);
+			w.SendMessage(hEditWin, w.EM_REPLACESEL, true, eax);
+		endif;
+		try
+			mem.free(mTemp);
+		anyexception
+			jmp _leave;
+		endtry;
+	_leave:
+	ENDUSE;
+//dbg.put("Leave InsertSelText");
+	ret();
+end InsertSelText;
+
+//////////////////////////////////////////////////////////////////////
+// - DeleteWord
+//
+// Deletes the selected word in the listbox, in CWordlist 
+// and in the autocompletionlist.txt
+//
+procedure DeleteWord;
+var 
+	mTempa : dword;
+	sWord : string;
+	buffer	:char[1024];
+	
+begin DeleteWord;	
+//dbg.put("DeleteWord");
+	w.MessageBox(0, "Delete word?", "Delete", w.MB_YESNO | w.MB_ICONQUESTION);
+	
+	if (eax == w.IDNO) then
+		exit DeleteWord;
+	endif;
+	
+	w.SendMessage(m_autocompletion.hListbox, w.LB_GETCURSEL, 0, 0);
+	lea(ebx, buffer);
+	push(eax);
+	w.SendMessage(m_autocompletion.hListbox,w.LB_GETTEXT,eax, ebx);
+	pop(eax);
+	w.SendMessage(m_autocompletion.hListbox, w.LB_DELETESTRING, eax, 0);
+	lea( eax, buffer );
+	mov(str.a_cpyz (eax), sWord);	
+	find_str_wordlist(sWord);
+	
+	if (eax <> NULL) then			
+//dbg.put("deleteword", sWord);			
+		str.free ( (type tList.listNode [eax]).value);
+		CWordlist.remove( [eax]);	
+		WriteListToFile();		
+	endif;
+	
+	str.free(sWord);	
+//dbg.put("Leave deleteword");
+end DeleteWord;
+
+//////////////////////////////////////////////////////////////////
+// - ListboxChanged
+//
+// Reacts when the item in the listbox is changing.
+// Inserts the selected word.
+procedure ListboxChanged;
+var
+	dPos 		:dword;
+	dStrLength 	:dword;
+	mstr_ptr 	:dword;
+begin ListboxChanged;
+//	dbg.put("ListboxChanged");
+USE(ecx, ebx);
+	w.SendMessage (hEditWin, w.EM_EXGETSEL, 0, &cursel);
+	mov(cursel.cpMin, eax);
+	mov(eax, dPos);
+	
+	// store selected text in mStr_ptr
+	w.SendMessage(m_autocompletion.hListbox, w.LB_GETCURSEL, 0, 0);
+	push(eax); // save index
+		w.SendMessage(m_autocompletion.hListbox, w.LB_GETTEXTLEN, eax, 0);
+		try
+			mem.zalloc(inc(eax));	
+		anyexception
+			error.fatal("AutoComplete: Couldn't alloc memory, sorry!");
+			exit ListboxChanged;		
+		endtry;		
+		mov(eax,mstr_ptr);
+	pop(eax); // restore index
+	w.SendMessage(m_autocompletion.hListbox,w.LB_GETTEXT,eax,mstr_ptr);
+
+	// compute the length of selected text
+	mov(mstr_ptr, eax);
+	xor(ecx, ecx);
+	mov([eax], bl);
+	while(bl <> 0) do
+		inc(ecx);
+		mov([eax + ecx], bl);
+	endwhile;
+	mov(ecx, dStrLength);
+
+	if(curword <> NULL) then
+		str.length(curword);
+		if(eax < dStrLength) then
+			lea(ecx, mstr_ptr);
+			mov([ecx], ecx);
+			add(eax, ecx);
+			sub(eax, dStrLength);
+
+			w.SendMessage(hEditWin,w.EM_REPLACESEL,true,ecx);
+			w.SendMessage (hEditWin, w.EM_EXGETSEL, 0, &cursel);
+			mov(dPos, eax);
+			mov(eax, cursel.cpMin);
+			add(dStrLength, eax);
+			mov(eax, cursel.cpMax);
+			w.SendMessage(hEditWin, w.EM_EXSETSEL, 0, &cursel);
+		else
+			insertEmptyString();
+		endif;
+	else
+		lea(eax, mstr_ptr);
+		w.SendMessage(hEditWin,w.EM_REPLACESEL,true,[eax]);
+		w.SendMessage (hEditWin, w.EM_EXGETSEL, 0, &cursel);
+		mov(dPos, eax);
+		mov(eax, cursel.cpMin);
+		
+		add(dStrLength, eax);
+		mov(eax, cursel.cpMax);
+		w.SendMessage(hEditWin, w.EM_EXSETSEL, 0, &cursel);
+	endif;
+		
+	try
+		mem.free(mstr_ptr);
+	anyexception
+		error.fatal("AutoComplete: memory problem!");		
+	endtry;
+		mov(NULL, mstr_ptr);
+ENDUSE;
+//dbg.put("Leave ListboxChanged");
+end ListboxChanged;
+
+
+//////////////////////////////////////////////////////////////////
+// - LearnWord
+//
+// Gets the selected word. If the word is not in the word list
+// then store it.
+procedure LearnWord;
+var
+	buffer	:char[1024];
+	bufstr	: string;
+begin LearnWord;
+	// check if something is selected
+	w.SendMessage (hEditWin, w.EM_EXGETSEL, 0, &cursel);
+	if(cursel.cpMin == mov(cursel.cpMax, eax)) then 
+		exit LearnWord;
+	endif;
+	
+	// check if selection < buffersize
+	sub(cursel.cpMin, eax);
+	if (eax > 1023) then
+		exit LearnWord;
+	endif;
+	
+	w.SendMessage (hEditWin, w.EM_GETSELTEXT, 0, lea (eax, buffer));
+	
+	lea( eax, buffer );
+	mov(str.a_cpyz (eax), bufstr);
+	find_str_wordlist(bufstr);
+	if (eax <> NULL) then	
+		str.free(bufstr);
+		exit LearnWord;
+	endif;
+	
+	// store new word
+	mov(bufstr, eax);
+	USE (EAX, ESI);
+		CWordlist.appendValue(eax);
+	ENDUSE;
+	StoreWord((type string [eax]));
+	w.SendMessage(m_autocompletion.hListbox, w.LB_ADDSTRING, 0, eax);
+	mov(mov(cursel.cpMax, eax), cursel.cpMin);
+	w.SendMessage (hEditWin, w.EM_EXSETSEL, 0, &cursel);
+end LearnWord;
+
+//////////////////////////////////////////////////////////////////
+// - SubListbox
+//
+// Message procedure of sublassed listbox
+procedure SubListbox(lparam:dword; wparam:dword; umsg:uns32; hwin:dword);
+var
+	dMax : dword;
+	dMin : dword;
+begin SubListbox;
+	mov (umsg, eax);
+	switch(eax);
+		case(w.WM_COMMAND);
+			
+		case(w.WM_CHAR);
+			mov(wparam, eax);
+			if(eax < $20) then
+				exit SubListbox;
+			endif;			
+			mov(al, (type byte charbuf));
+
+			w.SendMessage (hEditWin, w.EM_EXGETSEL, 0, &cursel);
+			// save selection
+			mov(mov(cursel.cpMax, eax), dMax);
+			mov(mov (cursel.cpMin, eax), dMin);
+			
+			// replace one char
+			if(eax < dMax) then
+				mov(inc(eax), cursel.cpMax);
+				w.SendMessage (hEditWin, w.EM_EXSETSEL, 0, &cursel);
+				w.SendMessage(hEditWin, w.EM_REPLACESEL, true, &charbuf);
+				
+				// set new selection
+				mov(dMin, eax);
+				mov(inc(eax), cursel.cpMin);
+				mov(mov(dMax, eax), cursel.cpMax);
+				w.SendMessage (hEditWin, w.EM_EXSETSEL, 0, &cursel);
+			else
+				w.SendMessage(hEditWin, w.EM_REPLACESEL, true, &charbuf);
+			endif;
+			
+			GetCurWord();
+			findWordInListbox();
+			ListboxChanged();
+			
+			exit SubListbox;
+			
+		case(w.WM_KEYUP);		
+			if(wparam = w.VK_RETURN) then 		
+				InsertSelText();			
+				HideDialog();
+				exit SubListbox;
+			elseif(wparam = w.VK_ESCAPE) then	
+				insertEmptyString();
+				HideDialog();
+				exit SubListbox;
+			elseif(wparam = w.VK_F1) then
+//				dbg.put ("f1");
+				w.DialogBoxParam(hinst,val IDD_DLGAUTOSETTINGS,hwin,&Proc_Autosetting,0);
+//				dbg.put ("/f1");
+			elseif(wparam = w.VK_DELETE) then
+				DeleteWord();
+			endif;
+			exit SubListbox;
+			
+		case(w.WM_KEYDOWN);		
+			if (wparam = w.VK_UP) then		// scroll up the Listbox
+				w.SendMessage(m_autocompletion.hListbox, w.LB_GETCURSEL, 0, 0);
+				if(eax > 0) then
+					w.SendMessage(m_autocompletion.hListbox, w.LB_SETCURSEL, dec(eax), 0);
+					ListboxChanged();
+				endif;
+				exit SubListbox;
+				
+			elseif(wparam = w.VK_DOWN) then	// scroll down the Listbox
+				w.SendMessage(m_autocompletion.hListbox, w.LB_GETCURSEL, 0, 0);
+				w.SendMessage(m_autocompletion.hListbox, w.LB_SETCURSEL, inc(eax), 0);
+				ListboxChanged();
+				exit SubListbox;
+				
+			elseif(wparam = w.VK_BACK) then
+				GetCurWord();
+				if(curword = NULL) then
+					insertEmptyString();
+					HideDialog();
+					exit SubListbox;
+				endif;
+	
+				w.SendMessage (hEditWin, w.EM_EXGETSEL, 0, &cursel);
+				dec(cursel.cpMin);
+				w.SendMessage (hEditWin, w.EM_EXSETSEL, 0, &cursel);					
+				exit SubListbox;
+				
+			elseif(wparam = w.VK_LEFT) then
+				if(curword <> NULL) then
+					w.SendMessage (hEditWin, w.EM_EXGETSEL, 0, &cursel);
+					dec(cursel.cpMin);
+					w.SendMessage (hEditWin, w.EM_EXSETSEL, 0, &cursel);
+					GetCurWord();
+				endif;
+				
+			elseif(wparam = w.VK_RIGHT) then
+				w.SendMessage (hEditWin, w.EM_EXGETSEL, 0, &cursel);			
+				if(mov(cursel.cpMin, eax) < cursel.cpMax) then
+					inc(cursel.cpMin);
+					w.SendMessage (hEditWin, w.EM_EXSETSEL, 0, &cursel);
+					GetCurWord();
+				endif;
+			elseif(wparam = w.VK_PGDN) then
+				dec(w.SendMessage(m_autocompletion.hListbox, w.LB_GETCOUNT, 0, 0));	
+				mov(eax, dMax);
+				w.SendMessage(m_autocompletion.hListbox, w.LB_GETCURSEL, 0, 0);	
+				add(7, eax);
+				if(eax > dMax) then
+					mov(dMax, eax);
+				endif;							
+				w.SendMessage(m_autocompletion.hListbox, w.LB_SETCURSEL, eax, 0);
+				ListboxChanged();
+				exit SubListbox;
+			elseif(wparam = w.VK_PGUP) then
+				w.SendMessage(m_autocompletion.hListbox, w.LB_GETCURSEL, 0, 0);	
+				if(eax < 7) then
+					xor(eax, eax);
+				else
+					sub(7, eax);
+				endif;							
+				w.SendMessage(m_autocompletion.hListbox, w.LB_SETCURSEL, eax, 0);
+				ListboxChanged();
+				exit SubListbox;
+			elseif(wparam = w.VK_HOME) then
+				w.SendMessage(m_autocompletion.hListbox, w.LB_SETCURSEL, 0, 0);
+				ListboxChanged();
+			elseif(wparam = w.VK_END) then
+				dec(w.SendMessage(m_autocompletion.hListbox, w.LB_GETCOUNT, 0, 0));
+				w.SendMessage(m_autocompletion.hListbox, w.LB_SETCURSEL, eax, 0);
+				ListboxChanged();
+			endif;
+						
+			exit SubListbox;
+			
+		case(w.WM_MOUSEWHEEL);											
+			if((type int32 wparam) > 0) then // wheel forward -> up the listbox
+				w.SendMessage(m_autocompletion.hListbox, w.LB_GETCURSEL, 0, 0);
+				w.SendMessage(m_autocompletion.hListbox, w.LB_SETCURSEL, dec(eax), 0);
+				ListboxChanged();
+			else 							// wheel backward -> down the listbox
+				w.SendMessage(m_autocompletion.hListbox, w.LB_GETCURSEL, 0, 0);
+				w.SendMessage(m_autocompletion.hListbox, w.LB_SETCURSEL, inc(eax), 0);
+				ListboxChanged();
+			endif;
+			
+			exit SubListbox;
+	endswitch;
+	w.CallWindowProc(m_autocompletion.oldProcListbox,hwin,umsg,wparam,lparam);
+end SubListbox;
+
+//////////////////////////////////////////////////////////////////
+// - Proc_CodeCompletion
+//
+// Message procedure of the dialog
+procedure Proc_CodeCompletion (lparam:dword; wparam:dword; umsg:uns32; hwin:dword);
+begin Proc_CodeCompletion;
+	mov (umsg, eax);
+	switch(eax);
+	case(w.WM_COMMAND);
+		mov(wparam, eax);	
+		if(ax == IDC_LSTAUTOCOMPLETION) then
+			shr(16, eax);
+			if(eax = w.LBN_DBLCLK) then
+				InsertSelText();
+				HideDialog();
+			elseif(eax = w.LBN_SELCHANGE) then
+				ListboxChanged();
+			endif;
+		endif;
+		
+	case(w.WM_DESTROY);
+//		dbg.put ("WM_DESTROY");
+		freeCWordlist();		
+		w.EndDialog (hwin, 0);
+	
+	endswitch;
+	mov(false,eax);
+end Proc_CodeCompletion;
+
+//////////////////////////////////////////////////////////////////
+// -AutoCompletion_DOIT
+//
+// Start of autocompletion.
+// Called from Hide.hla with key combination ctrl-space  
+procedure AutoCompletion_DOIT(hwin:dword);
+static
+	p  : w.POINTL;
+begin AutoCompletion_DOIT;
+//dbg.put("AutoCompletion_DOIT");
+USE(edx);
+	mov(mov(hwin, eax), hEditWin);
+	// retrieves the starting and ending character positions of the selection
+	w.SendMessage(hwin, w.EM_EXGETSEL, 0, &cursel);
+	
+	if(hwin <> 0) then
+		// determine position for dialog
+		w.SendMessage(hwin, w.EM_POSFROMCHAR, &p, cursel.cpMin);
+		not(mov(mainfont.lfHeight, eax));
+		add(eax, p.y);
+		
+		if (eax > 0) then
+			xor(edx, edx);
+			div(3, edx:eax);
+		endif;
+		add(eax, p.y);
+		w.ClientToScreen(hwin, &p);			
+		
+		if (m_autocompletion.hDialog == 0) then			
+			mov(w.CreateDialogParam(hinst,val IDD_DLGAUTO, 
+					hwin, &Proc_CodeCompletion, false),
+				m_autocompletion.hDialog);
+				
+			if(eax == NULL) then
+				error.warning("AutoComplete: Couldn't create dialog for autocompletion.");
+				exit AutoCompletion_DOIT;
+			endif;
+			
+			// Remove caption 
+			w.SetWindowLong(m_autocompletion.hDialog, w.GWL_STYLE, 
+					xor(w.WS_CAPTION, w.GetWindowLong(m_autocompletion.hDialog, w.GWL_STYLE)));	
+	
+			createListbox();					                 
+		endif;
+		w.SendMessage (m_autocompletion.hListbox, w.WM_SETFONT, hmainfont, true);
+		w.SetWindowPos(m_autocompletion.hDialog,NULL,p.x,p.y,203, 110, w.SWP_NOZORDER /*| w.SWP_NOMOVE*/ | $20 /*w.SWP_DRAWFRAME*/ );
+		w.ShowWindow( m_autocompletion.hDialog, w.SW_SHOW);
+		w.SetFocus(m_autocompletion.hListbox);
+	endif;
+	 
+	LearnWord();
+	GetCurWord();
+	findWordInListbox();
+	ListboxChanged();
+	
+ENDUSE;
+//dbg.put("Leave AutoCompletion_DOIT");
+end AutoCompletion_DOIT;
+
+//////////////////////////////////////////////////////////////////
+// - AutoCompletion_INIT
+//
+// Initialization of some variables
+// using the autocompletion-ini file
+procedure AutoCompletion_INIT;@noframe;
+begin AutoCompletion_INIT;
+//dbg.put("AutoCompletion_INIT :", homepath);
+
+	CWordlist.create();	
+	mov(0, m_autocompletion.hListbox);
+	mov(0, m_autocompletion.hDialog);
+	mov( str.alloc (pathsize_c), autohomepath);
+	mov( str.alloc (pathsize_c), pathwordlist);
+	
+	str.put (autohomepath, homepath, dirsep_c, AUTOCOMPLETION_INI);
+	str.put (pathwordlist, homepath, dirsep_c, WORDLISTDEFAULT);
+
+	if ( filesys.exists (autohomepath)) then
+		autocompleteini.create_file ( autohomepath  );
+		autocompleteini.readInt("Settings", "sort");
+		mov(al, m_autocompletion.sort);
+		
+		autocompleteini.readInt("Settings", "case");
+		mov(al, m_autocompletion.caseSensitive);
+		autocompleteini.destroy();
+	else
+		try
+			mov(true, m_autocompletion.sort);
+			mov(false, m_autocompletion.caseSensitive);
+			autocompleteini.create();
+			xor(eax, eax);
+			mov(m_autocompletion.sort, al);
+			autocompleteini.writeInt("Settings", "sort", eax); 
+			
+			mov(m_autocompletion.caseSensitive, al);
+			autocompleteini.writeInt("Settings", "case", eax); 
+			
+			autocompleteini.write (autohomepath);
+			autocompleteini.destroy();
+		anyexception
+			error.warning("AutoComplete: Couldn't create ini file for autocompletion!");
+			jmp _leaveit;
+		endtry;
+	endif;
+_leaveit:
+//dbg.put("Leave AutoCompletion_INIT");
+	ret();
+end AutoCompletion_INIT;
+
+//////////////////////////////////////////////////////////////////
+// - AutoCompletion_ONMOVE
+//
+// Reaction when parent window is moving
+procedure AutoCompletion_ONMOVE;@noframe;
+begin AutoCompletion_ONMOVE;
+	HideDialog();
+	ret();
+end AutoCompletion_ONMOVE;
+
+//////////////////////////////////////////////////////////////////
+// - AutoCompletion_ONSIZE
+//
+// Reaction when parent window is resizing
+procedure AutoCompletion_ONSIZE;@noframe;
+begin AutoCompletion_ONSIZE;
+	HideDialog();
+	ret();
+end AutoCompletion_ONSIZE;
+
+end autocompletion_unit;

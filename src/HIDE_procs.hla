@@ -1,0 +1,1333 @@
+unit HIDE_procs;
+
+	#includeonce ("HIDE.hhf")
+	#includeonce ("memory.hhf")
+	
+	?@nodisplay:=true;
+	?@noalignstack := true;
+	?@align:=4;
+
+//
+// parts of code from about dialog, text scrolling, 
+// graphic objects and music player
+// provided by aRC.
+//
+
+	const
+		def_align	:= 4096;
+		
+	
+	static
+		aRC_XM_Init   : procedure;
+		aRC_XM_Play   : procedure( modulo_o_recurso: string; 
+                             LoadFromResource: boolean );
+                  @stdcall;
+		aRC_XM_Stop   : procedure;
+		aRC_XM_DeInit : procedure;
+
+	
+	storage
+		align(4);
+		split			:dword;
+		h_dll			:dword;
+		getStringRec:
+			record
+				title	:string;
+				init	:string;
+				dest	:string;
+			endrecord;
+		thisini		:pointer to tConfig;
+		alignpos		:byte;
+		align(4);
+
+
+	h_win			:	dword;
+	h_credits		:	dword;
+	h_static		:	dword;
+	h_btn_close		:	dword;
+	h_font			:	dword;
+	h_brush			:	dword;
+	h_pen			:	dword;
+	h_bmp_back		:	dword;
+	h_bmp_target	:	dword;
+	h_bitmap		:	dword;
+	h_event			:	dword;
+	h_thread		:	dword;
+	ID_Thread		:	dword;
+	
+	comp_dc			:	dword;
+	dc_target		:	dword;
+	h_dc			:	dword;
+	scroll_len		:	dword;
+	col_text		:	dword;
+	row_text		:	dword;
+	h_back			:	dword;
+	credits_brush	:	dword;
+	
+	align(4);
+
+	const
+
+		col_initial		:=	60;		// columna inicio del área visible del banner
+		row_initial		:=	312;	// fila inicio del área visible del banner
+		width_visible	:=	330;	// ancho del área visible del banner
+		width_text		:=	11500;	// ancho en pixels del texto del banner (estimar este valor)
+		width_bmp		:=	width_visible + width_text; // ancho real del bmp virtual
+		height_bmp		:=	18;
+		delay_time		:=	16;		// better use multiply of 8
+
+	readonly
+		// scrolling text in about dialog
+		
+				txt_credits	:	string	:=
+			version + nl
+			"--------------------"#13#10
+			"HIDE [HLA IDE]"#13#10
+			"Integrated Development Environment"#13#10
+			"for the High Level Assembler [HLA]"#13#10#13#10
+	
+			"Sevag Krikorian (C)2008, 2009"#13#10
+			"sevag.krikorian@gmail.com"#13#10
+			"http://sites.google.com/site/highlevelassembly/" #13#10#13#10
+	
+			"HLA is developed by Randall Hyde"#13#10
+			"and released to the public domain."#13#10
+			"http://webster.cs.ucr.edu"#13#10#13#10
+		
+			"RAEDIT.dll, ResEd (resource editor)"#13#10
+			"written by Ketil Olsen"#13#10
+			"http://radasm.visualassembler.com"#13#10#13#10
+	
+			"POTools (polink, polib, porc) and"#13#10
+			"static library files for Windows"#13#10
+			"from the 'Pelles C' development"#13#10
+			"package written and maintained by"#13#10
+			"Pelles Orinius"#13#10
+			"http://www.smorgasbordet.com/pellesc"#13#10#13#10
+			
+			"Graphics, template and Spanish" nl
+			"language contributions by " nl
+			"Furious Logic of aRC" nl
+			"http://www.arc666.com" nl nl
+			
+			"German language contributions" nl
+			"by Bernd Kastenholz" nl
+			"Bernd Kastenholz@web.de" nl nl
+	
+			"Thanks to all those who contributed"#13#10
+			"and tested this project and to the"#13#10
+			"developers of the tools whose"#13#10
+			"hard work and consent made this"#13#10
+			"possible"#13#10;
+
+		align(4);
+		texttoscroll	:string := 
+			"This software has come to life through the labor and "
+			"dedication of many individuals who have contributed to "
+			"assembly and to this project either directly or indirectly.             "
+			"Code Contributors:  o  Furious Logic  o  Bernd Kastenholz  o  "     
+			"      Kudos:  Randall Hyde who manages to find "
+			"the time from his busy schedule to work on HLA and write "
+			"assembly related articles.     Ketil Olsen, author of the "
+			"fabulous edit control used in HIDE and release of code that was my "
+			"original inspiration.      The developers of tools used as "
+			"back ends: Tomasz Grysztar, Pelles Orinius.     The rest of the crew at aoaprogramming " 
+			"Yahoo group responsible for contributions to hidelib, documentation, "
+			"translations, beta testing, code sniplets, suggestions and support: Nathan Baker [Evenbit], Roger Taylor, NoDot, "
+			"Frank Kotler, SilkOdyssey, David Zavitz, Paul Panks and anybody else "
+			"I missed.       Last and least Rene Tournois [Betov], who despite being an ass "
+			"has been a great inspiration to this project    ....               BETH where are you? .....            "
+			"The music you are listening to is 'ARYX' XM mod.  Visit the Mod Archive "
+			"www.modarchive.com for more great tunes, players and trackers.          "
+			"If you have suggestions, bug reports or anything else to say, feel free to contact "
+			" me  ...  sevag.krikorian@gmail.com or at one of my usual "
+			"hangout, aoaprogramming Yahoo groups" 
+			"                                   fin."
+			"                                         "
+			"                                         ";
+
+		align(4);
+
+		AboutClass		:	string := "window_class";
+		// n^2 n={1..13} table
+		powertable	:dword[5]	:= [ 4096,8192,16384,32768,65536];
+		szDefAlign	:zstring := "4096"; 
+
+
+
+procedure Proc_VSplit(lparam:dword; wparam:dword; umsg:uns32; hwin:dword);
+var
+	_max	:dword;
+	_min	:dword;
+	pt		:hide.point_t;
+
+
+begin Proc_VSplit;
+		
+	mov(umsg,eax);
+	cmp(eax,w.WM_LBUTTONDBLCLK);
+	je _retfalse;
+	cmp(eax,w.WM_LBUTTONDOWN);
+	je _lbuttondown;
+	cmp(eax,w.WM_LBUTTONUP);
+	je _lbuttonup;
+	cmp(eax,w.WM_MOUSEMOVE);
+	je _mousemove;
+	// float defproc
+_defproc:
+	w.CallWindowProc(Proc_OldVSplit, hwin,umsg,wparam,lparam);
+	Exit Proc_VSplit;
+
+_lbuttondown:
+	w.SetCapture(hwin);
+	w.SetCursor(hHsplitcursor);
+	mov(true,split);
+	jmp _retfalse;
+	
+_lbuttonup:
+	w.ReleaseCapture();
+	mov(false,split);
+	w.SendMessage(hwnd,w.WM_SIZE,0,0);
+	w.UpdateWindow(hwin);
+	jmp _retfalse;
+	
+_mousemove:
+	w.SetCursor(hHsplitcursor);
+	cmp(split,true);
+	jne _retfalse;
+	w.GetCursorPos(pt);
+	w.ScreenToClient(hwnd,pt);
+
+	w.GetClientRect(hwnd,&rect);
+	
+	// check for panel
+	if( settings.panelwin != panel_closed ) then
+		// get the verticle splitbar border
+		mov( settings.hsplitbar.x, eax );
+		mov( eax, rect.right );
+	else
+		sub( TABHT, rect.right );
+	endif;
+		
+	mov(rect.bottom,eax);
+	mov(eax,ecx);
+	shr(3,eax);
+	mov(eax,_min);
+	sub(eax,ecx);
+	mov(ecx,_max);
+
+	// check limits
+	mov(pt.y,eax);
+	cmp(eax,_max);
+	jle _checkminlimit;
+	mov(_max,eax);
+	jmp _limitok;
+_checkminlimit:
+	cmp(eax,_min);
+	jge _limitok;
+	mov(_min,eax);
+_limitok:
+	mov(eax,pt.y);
+//	test(HSPLIT,settings.winview);
+//	_if(@nz)
+//		mov(settings.hsplitbar.x,eax);
+//		inc(eax);
+//		mov(rect.right,ebx);
+//		sub(eax,ebx);
+//		sub(ebx,rect.right);
+//	_endif;
+	w.MoveWindow(hwin,0,pt.y,rect.right,3,true);
+	mov(pt.y,settings.vsplitbar.y);
+	mov(rect.right,settings.vsplitbar.wt);
+	// fall _retfalse
+		
+_retfalse:
+	xor(eax,eax);
+	exit Proc_VSplit;
+	
+end Proc_VSplit;
+
+procedure Proc_HSplit(lparam:dword; wparam:dword; umsg:uns32; hwin:dword);
+var
+	_max	:dword;
+	_min	:dword;
+	pt		:hide.point_t;
+	_rect	:hide.rect_t;
+
+begin Proc_HSplit;
+	mov(umsg,eax);
+	cmp(eax,w.WM_LBUTTONDBLCLK);
+	je _retfalse;
+	cmp(eax,w.WM_LBUTTONDOWN);
+	je _lbuttondown;
+	cmp(eax,w.WM_LBUTTONUP);
+	je _lbuttonup;
+	cmp(eax,w.WM_MOUSEMOVE);
+	je _mousemove;
+
+	// float defproc
+_defproc:
+	w.CallWindowProc(Proc_OldHSplit, hwin,umsg,wparam,lparam);
+	Exit Proc_HSplit;
+	
+_lbuttondown:
+	w.SetCapture(hwin);
+	w.SetCursor(hVsplitcursor);
+	mov(true,split);
+	jmp _retfalse;
+	
+_lbuttonup:
+	w.ReleaseCapture();
+	mov(false,split);
+	w.SendMessage(hwnd,w.WM_SIZE,0,0);
+	w.UpdateWindow(hwin);
+	jmp _retfalse;
+	
+_mousemove:
+	w.SetCursor(hVsplitcursor);
+	cmp(split,true);
+	jne _retfalse;
+
+	w.GetCursorPos(pt);
+	w.ScreenToClient(hwnd,pt);
+
+	w.GetClientRect(hwnd,&rect);
+	sub (TABHT, rect.right);
+	call _getworkheight;		// modifies &rect to consider other windows
+
+	mov(rect.right,eax);
+	mov(eax,ebx);
+	shr(4,eax);
+	sub(eax,ebx);
+	mov(ebx,_max);
+	mov(eax,_min);
+
+	// check limits
+	mov(pt.x,eax);
+	cmp(eax,_max);
+	jle _checkminlimit;
+	mov(_max,eax);
+	jmp _limitok;
+_checkminlimit:
+	cmp(eax,_min);
+	jge _limitok;
+	mov(_min,eax);
+_limitok:
+	mov(eax,pt.x);
+	mov(eax,settings.hsplitbar.x);
+	w.MoveWindow(hwin,pt.x,rect.top,3,rect.bottom,true);
+	mov(rect.bottom,settings.hsplitbar.ht);
+	mov(rect.right,eax);
+	sub(pt.x,eax);
+	mov(eax,settings.hsplitbar.fmax);		// current distance from client right.
+		
+_retfalse:
+	xor(eax,eax);
+	exit Proc_HSplit;
+
+_getworkheight:
+	test(TOOL,settings.winview);
+	_if(@nz)
+		w.GetWindowRect(htbr,_rect);
+		mov(_rect.bottom,eax);
+		sub(_rect.top,eax);
+		add(eax,rect.top);
+	_endif;
+	test(STATUS,settings.winview);
+	_if(@nz)
+		w.GetWindowRect(hsbr,_rect);
+		mov(_rect.bottom,eax);
+		sub(_rect.top,eax);			// get height of statusbar
+		sub(eax,rect.bottom);	// shrink the main client area from bottom
+	_endif;
+	ret();
+	
+end Proc_HSplit;
+
+procedure GetTablePower;	@noframe;
+// eax = number offset in table;
+	
+begin GetTablePower;
+
+	xor(ecx,ecx);
+	while ( ecx < @elements( powertable ) ) do
+		mov(powertable[ecx*4],ebx);
+		cmp(ebx,eax);
+		_if(@e)
+			// found it, return power in eax
+			break;
+		_endif;
+		inc(ecx);
+	endwhile;
+	
+	mov(cl,alignpos);
+	ret();
+end GetTablePower;
+
+
+procedure SaveLinkResponse(linksec_s:string; hwin:dword; node:dword); @alignstack;
+var
+	_count	:dword;
+	temps	:string;
+	s		:string;
+	isdll	:boolean;
+	
+begin SaveLinkResponse;
+	//dbg.put ("SaveLinkResponse");
+	mov (str.talloc (worksize_c), s);
+
+	pushabi;
+	mov (false, isdll);
+	str.alloc($10000);
+	mov(eax,temps);
+	str.cpy("",temps);
+
+	mov (false, isdll);
+//	dbg.put ("node");
+	if (node) then
+		mov (node, eax);
+		if (eax) then
+			if (jobeax.ftype = jobtype_dll) then
+				mov (true, isdll);
+				jmp _base;
+			endif;
+		endif;
+	endif;
+//	dbg.put ("/node");
+	
+	str.cats(temps, "-heap:");
+	w.SendDlgItemMessage(hwin,ADVLINK_HEAPRES,w.WM_GETTEXT,@size(buffer),&buffer);
+	str.catz(&buffer,temps);
+	str.catc(temps, ',');
+	w.SendDlgItemMessage(hwin,ADVLINK_HEAPALL,w.WM_GETTEXT,@size(buffer),&buffer);
+	str.catz(&buffer,temps);
+	str.cats(temps, nl);
+	
+	str.cats(temps, "-stack:");
+	w.SendDlgItemMessage(hwin,ADVLINK_STACKRES,w.WM_GETTEXT,@size(buffer),&buffer);
+	str.catz(&buffer,temps);
+	str.catc(temps, ',');
+	w.SendDlgItemMessage(hwin,ADVLINK_STACKALL,w.WM_GETTEXT,@size(buffer),&buffer);
+	str.catz(&buffer,temps);
+	str.cats(temps, nl);
+
+_base:
+	str.cats(temps, "-base:");
+	w.SendDlgItemMessage(hwin,ADVLINK_BASE,w.WM_GETTEXT,@size(buffer),&buffer);
+	str.catz(&buffer,temps);
+	str.cats(temps, nl);
+	
+	w.IsDlgButtonChecked(hwin,ADVLINK_ENTRY);
+	_if(eax=w.BST_CHECKED)
+		str.cats(temps, "-entry:");
+		w.SendDlgItemMessage(hwin,ADVLINK_ENTRYEDT,w.WM_GETTEXT,@size(buffer),&buffer);
+		str.catz(&buffer,temps);
+		str.cats(temps, nl);
+	_endif;	
+	
+	w.IsDlgButtonChecked(hwin,ADVLINK_DEBUG);
+	_if(eax=w.BST_CHECKED)
+		xor(ebx,ebx);
+		w.IsDlgButtonChecked(hwin,ADVLINK_CV);
+		_if(eax=w.BST_CHECKED)
+			inc(ebx);
+			str.cpy("CV",s);
+		_endif;
+		w.IsDlgButtonChecked(hwin,ADVLINK_COFF);
+		_if(eax=w.BST_CHECKED)
+			_if(ebx)
+				str.cpy("BOTH"nl,s);
+			_else
+				str.cpy("COFF"nl,s);
+			_endif;
+		_endif;
+		str.put2 (temps, "-debug", nl, "-debugtype:", s);
+	_endif;
+	
+	w.IsDlgButtonChecked(hwin, ADVLINK_FYES);
+	if (eax != w.BST_CHECKED) then
+
+		// fixed is default
+		str.cats ( temps, "-fixed:no" nl);
+		
+	endif;
+	
+	xor(eax,eax);
+	mov(eax,_count);
+	_getloop:
+			w.SendDlgItemMessage(hwin,ADVLINK_SECTIONS,w.LB_GETTEXT,_count,&buffer);
+			_if(eax <> w.LB_ERR);
+				str.put2 (temps, "-section:");
+				str.catz(&buffer,temps);
+				str.cats(temps, nl);
+				inc(_count);
+				jmp _getloop;
+			_endif;
+
+	w.SendDlgItemMessage(hwin,ADVLINK_ALIGN,w.WM_GETTEXT,@size(buffer),&buffer);
+
+	w.GetDlgItemInt( hwin, ADVLINK_ALIGN, NULL, false );
+	if( eax != def_align ) then
+	//zstr.zcmp(&buffer,&szDefAlign);
+	//_if(eax)
+		
+		str.put2( temps, "-align:", (type int32 eax ), nl );
+	
+		//str.cats(temps, "-align:");
+		//str.cati32( (type int32 eax ), temps );
+		//str.cats(temps, nl);
+	//_endif;	
+	endif;
+
+	if (isdll) then
+		str.put2 (temps, "-dll" nl);
+	//else
+		//str.cats(temps, "-machine:ix86" nl);			
+	endif;
+	
+	thisini.writeSection (linksec_s, temps);	
+	str.free (temps);
+	//dbg.put ("/SaveLinkResponse");
+	popabi;
+end SaveLinkResponse;
+
+procedure LinkScanner(source:string; hwin:dword);	@noalignstack;
+
+	var
+		line_s	:string;
+		left_s	:string;
+		right_s	:string;
+		align_b	:dword;
+	
+begin LinkScanner;
+
+	mov( str.talloc( 256), line_s );
+	mov( str.talloc( 256), left_s );
+	mov( str.talloc( 256), right_s );
+
+USE(esi,edi);
+	//dbg.put("LinkScanner : ",nl,source);
+	//dbg.separator;
+
+	mov(source,esi);
+	mov(false,align_b);
+	
+	scanLink:
+		scan.skipws();
+		jnc doneScan;
+		cmp( (type byte[esi]), '-' );
+		jne nextline;
+		
+		inc( esi );
+		scan.getLine( line_s );
+		
+		push( esi );  // esi currently at next line or EOS
+		mov( line_s, esi );
+		if( scan.findc( ':' ) ) then
+			
+			scan.extract( left_s );
+			mov( edi, esi );
+			inc( esi );
+			scan.getLine( right_s );
+			
+			if ( str.ieq (left_s, "heap")) then
+				
+				mov (right_s, esi);
+				scan.findc( ',' );
+				jnc x0;
+				scan.extract( line_s );
+				w.SendDlgItemMessage(hwin,ADVLINK_HEAPRES,w.WM_SETTEXT,0,line_s);
+				mov( edi, esi );
+				inc( esi );
+				scan.getLine( line_s );
+				jnc x0;
+				w.SendDlgItemMessage(hwin,ADVLINK_HEAPALL,w.WM_SETTEXT,0,line_s);
+				x0:
+			
+			elseif (str.ieq (left_s, "stack")) then
+				
+				mov(right_s,esi);
+				scan.findc( ',' );
+				jnc x0;
+				scan.extract( line_s );
+				w.SendDlgItemMessage(hwin,ADVLINK_STACKRES,w.WM_SETTEXT,0,line_s);
+				mov( edi, esi );
+				inc( esi );
+				scan.getLine( line_s );
+				w.SendDlgItemMessage(hwin,ADVLINK_STACKALL,w.WM_SETTEXT,0,line_s);
+				x1:
+				
+			elseif (str.ieq (left_s, "base")) then
+				
+				w.SendDlgItemMessage(hwin,ADVLINK_BASE,w.WM_SETTEXT,0,right_s);
+				
+			elseif (str.ieq (left_s, "entry")) then
+				
+				w.SendDlgItemMessage(hwin,ADVLINK_ENTRYEDT,w.WM_SETTEXT,0,right_s);
+				w.SendDlgItemMessage(hwin,ADVLINK_ENTRY,w.BM_SETCHECK,w.BST_CHECKED,0);
+				
+			elseif (str.ieq(left_s,"section")) then
+				
+				w.SendDlgItemMessage(hwin,ADVLINK_SECTIONS,w.LB_ADDSTRING,0,right_s);
+				
+			elseif (str.ieq(left_s,"fixed")) then
+				
+				if (str.ieq (right_s, "yes")) then
+					w.SendDlgItemMessage(hwin,ADVLINK_FYES,w.BM_SETCHECK,w.BST_CHECKED,0);
+					w.SendDlgItemMessage(hwin,ADVLINK_FNO,w.BM_SETCHECK,w.BST_UNCHECKED,0);
+				else
+					w.SendDlgItemMessage(hwin,ADVLINK_FYES,w.BM_SETCHECK,w.BST_UNCHECKED,0);	
+					w.SendDlgItemMessage(hwin,ADVLINK_FNO,w.BM_SETCHECK,w.BST_CHECKED,0);
+				endif;
+				
+			elseif (str.ieq(left_s,"debugtype")) then
+
+				call _ActivateDebug;
+				if (str.ieq (right_s, "cv")) then
+					w.SendDlgItemMessage(hwin,ADVLINK_CV,w.BM_SETCHECK,w.BST_CHECKED,0);
+				elseif (str.ieq(right_s, "coff")) then
+					w.SendDlgItemMessage(hwin,ADVLINK_COFF,w.BM_SETCHECK,w.BST_CHECKED,0);
+				else
+					// else it must be "both"
+					w.SendDlgItemMessage(hwin,ADVLINK_CV,w.BM_SETCHECK,w.BST_CHECKED,0);
+					w.SendDlgItemMessage(hwin,ADVLINK_COFF,w.BM_SETCHECK,w.BST_CHECKED,0);
+				endif;
+				
+			elseif (str.ieq(left_s,"align")) then
+				w.SendDlgItemMessage(hwin,ADVLINK_ALIGN,w.WM_SETTEXT,0,right_s);
+				mov(true,align_b);
+			endif;
+		
+		else
+		
+			if (str.ieq (line_s, "fixed")) then
+
+				w.SendDlgItemMessage(hwin,ADVLINK_FYES,w.BM_SETCHECK,w.BST_CHECKED,0);	
+				w.SendDlgItemMessage(hwin,ADVLINK_FNO,w.BM_SETCHECK,w.BST_UNCHECKED,0);	
+					
+			elseif (str.ieq (line_s, "debug")) then
+
+				call _ActivateDebug;
+
+			endif;
+
+		endif;
+		
+		pop( esi );
+		jmp scanLink;
+		
+		
+		nextline:
+			scan.nextLine();
+			jc scanLink;
+			jmp doneScan;
+
+		// local procedure
+		_ActivateDebug:
+			w.SendDlgItemMessage(hwin,ADVLINK_DEBUG,w.BM_SETCHECK,w.BST_CHECKED,0);
+			w.GetDlgItem(hwin,ADVLINK_CV);
+			w.EnableWindow(eax,true);
+			w.GetDlgItem(hwin,ADVLINK_COFF);
+			w.EnableWindow(eax,true);
+			ret();
+
+	doneScan:
+
+	if (! align_b) then
+		w.SendDlgItemMessage(hwin,ADVLINK_ALIGN,w.WM_SETTEXT,0,szDefAlign);
+	endif;
+ENDUSE;
+//dbg.put ("/LinkScanner");
+
+end LinkScanner;
+
+proc
+
+	Proc_AdvancedLink :procedure( lparam:dword; wparam:dword; umsg:uns32; hwin:dword );
+		
+		var	
+			count		:dword;
+			index		:dword;
+			
+		storage
+			thisjob		:dword;
+		
+		static
+			linksec_s	:str.strvar(20);
+	
+	begin Proc_AdvancedLink;
+		pushabi;
+		
+		mov(umsg,eax);
+		switch( eax );
+		case( w.WM_COMMAND )		
+			
+			mov(wparam,eax);
+			mov(eax,edx);
+			shr(16,edx);
+			and($0ffff,eax);
+			cmp(edx,w.BN_CLICKED);
+			je _buttons;
+			cmp(edx,w.EN_CHANGE);
+			je _change;
+			cmp(edx,w.LBN_SELCHANGE);
+			je _selchange;
+			mov(false,eax);
+			jmp _xcommand2;
+			
+			_buttons:
+				cmp(eax,w.IDOK);
+				je _ok;
+				cmp(eax,w.IDCANCEL);
+				je _cancel;
+				cmp(eax,ADVLINK_ADD);
+				je _add;
+				cmp(eax,ADVLINK_DELETE);
+				je _delete;
+				cmp(eax,ADVLINK_DEBUG);
+				je _toggledebug;
+				jmp _xcommand;		
+				
+				_add:
+					w.GetDlgItemTextA(hwin,ADVLINK_SECTIONEDIT,&buffer,@size(buffer));
+					w.SendDlgItemMessage(hwin,ADVLINK_SECTIONS,w.LB_ADDSTRING,0,&buffer);
+					mov(0,buffer[0]);
+					w.SetDlgItemText(hwin,ADVLINK_SECTIONEDIT,&buffer);
+					jmp _xcommand;
+				
+				_delete:
+					w.SendDlgItemMessage(hwin,ADVLINK_SECTIONS,w.LB_GETSELCOUNT,0,0);
+					mov(eax,count);
+					mov(0,index);
+					while(count) do
+						w.SendDlgItemMessage(hwin,ADVLINK_SECTIONS,w.LB_GETSEL,index,0);
+						test(eax,eax);
+						jz _not;
+						w.SendDlgItemMessage(hwin,ADVLINK_SECTIONS,w.LB_DELETESTRING,index,0);
+						dec(count);
+						mov(1,eax);
+					_not:
+						xor(1,eax);
+						add(eax,index);
+					endwhile;
+		
+					jmp _xcommand;
+				
+				_toggledebug:
+					w.IsDlgButtonChecked(hwin,ADVLINK_DEBUG);
+					_if(eax=w.BST_CHECKED)
+						// activate debug
+						mov(true,edx);
+						mov(ADVLINK_CV,eax);
+						call EnButton;
+						mov(true,edx);
+						mov(ADVLINK_COFF,eax);
+						call EnButton;
+					_else
+						// deactivate debug
+						mov(false,edx);
+						mov(ADVLINK_CV,eax);
+						call EnButton;
+						mov(false,edx);
+						mov(ADVLINK_COFF,eax);
+						call EnButton;
+						w.SendDlgItemMessage(hwin,ADVLINK_CV,w.BM_SETCHECK,w.BST_UNCHECKED,0);
+						w.SendDlgItemMessage(hwin,ADVLINK_COFF,w.BM_SETCHECK,w.BST_UNCHECKED,0);
+					_endif;
+					jmp _xcommand;
+		
+				_ok:
+					// read and save all the info from the dialog
+					SaveLinkResponse (linksec_s, hwin, thisjob);
+					if (thisjob = 0) then
+						hideini.write ( configmain );
+					endif;
+					
+				_cancel:
+					w.SendMessage(hwin,w.WM_CLOSE,0,0);
+					
+				
+			_change:
+				cmp (eax, ADVLINK_SECTIONEDIT);
+				jne _xcommand;
+				w.SendDlgItemMessage(hwin,ADVLINK_SECTIONEDIT,w.WM_GETTEXTLENGTH,0,0);
+				_if(eax)
+					mov(true,eax);
+				_endif;
+				mov(eax,edx);
+				mov(ADVLINK_ADD,eax);
+				call EnButton;
+				jmp _xcommand;		
+		
+			_selchange:
+				cmp(eax,ADVLINK_SECTIONS);
+				jne _xcommand;
+				w.SendDlgItemMessage(hwin,ADVLINK_SECTIONS,w.LB_GETSELCOUNT,0,0);
+				_if(eax)
+					mov(true,eax);
+				_endif;
+				mov(eax,edx);
+				mov(ADVLINK_DELETE,eax);
+				call EnButton;
+		
+		
+			_xcommand:
+			mov( true, eax );
+			_xcommand2:
+
+		case( w.WM_NOTIFY )
+
+			mov(lparam,edx);
+			mov((type w.NMHDR [edx]).code,eax);
+			mov((type w.NM_UPDOWN [edx]).hdr.code,eax);
+			_if(eax=w.UDN_DELTAPOS)
+				mov((type w.NM_UPDOWN[edx]).iDelta,eax);
+				if( (type int32 eax) < 0) then
+					// down
+					mov(alignpos,cl);
+					dec(cl);
+					jns _doneud;
+					xor(cl,cl);
+				elseif( (type int32 eax) > 0) then
+					// up
+					mov(alignpos,cl);
+					inc(cl);
+					cmp(cl, 4);
+					jbe _doneud;
+					mov(4,cl);
+				endif;
+			_doneud:
+				
+				mov( cl, alignpos );
+				movzx( cl, eax );
+				mov( powertable[eax*4], eax );
+				w.SetDlgItemInt(hwin,ADVLINK_ALIGN,eax,false);
+			
+			_endif;
+			
+			or( 1, eax );
+		
+		case( w.WM_INITDIALOG )
+	
+			mov (0, thisjob);
+		
+			mov (lparam, eax);	
+			if (! eax) then
+				_notproject:
+				//dbg.put ("link - non project");
+				move (&hideini, thisini);
+				str.cpy ("default link", linksec_s);
+			else
+				move (&project.hpr, thisini);
+				mov (eax, thisjob);
+				str.put (linksec_s, jobeax.id, ".link");
+			endif;
+			
+			w.SendDlgItemMessage (hwin, ADVLINK_FYES, w.BM_SETCHECK, w.BST_CHECKED, 0);	
+		
+			if (thisini.readSection (linksec_s, strbuf)) then
+				LinkScanner (strbuf, hwin);
+			else
+				error.warning("Link Section not found");
+				w.SendMessage(hwin,w.WM_CLOSE,0,0);
+				jmp _xinit;
+			endif;
+			
+			mov (thisjob, eax);
+			if (eax && jobeax.ftype = jobtype_dll) then
+		
+				// enable /disable stuff
+				w.SendDlgItemMessage(hwin,ADVLINK_FNO,w.BM_SETCHECK,w.BST_CHECKED,0);	
+				w.SendDlgItemMessage(hwin,ADVLINK_FYES,w.BM_SETCHECK,w.BST_UNCHECKED,0);	
+		
+				// decativate
+				mov(false,edx);
+				mov(ADVLINK_STACKRES,eax);
+				call EnButton;
+				mov(false,edx);
+				mov(ADVLINK_STACKALL,eax);
+				call EnButton;
+				mov(false,edx);
+				mov(ADVLINK_HEAPALL,eax);
+				call EnButton;
+				mov(false,edx);
+				mov(ADVLINK_HEAPRES,eax);
+				call EnButton;
+				mov(false,edx);
+				mov(ADVLINK_FYES,eax);
+				call EnButton;			
+		
+			endif;
+			
+			mov( 0,ax );	// min pos
+			shl( 16,eax );
+			mov( 4,ax );	// max pos
+			w.SendDlgItemMessage(hwin,ADVLINK_UPDOWN,w.UDM_SETRANGE,0,eax);
+			
+			// calculate align from edit window and calculate initial position of up-down control.
+			w.GetDlgItemInt(hwin,ADVLINK_ALIGN,NULL,false);
+			call GetTablePower;
+			//dbg.put("returned value = ",(type uns32 eax));
+			w.SendDlgItemMessage(hwin,ADVLINK_UPDOWN,w.UDM_SETPOS,0,eax);
+			//dbg.put ("Advanced Link Proc, done _init:");
+
+			_xinit:
+			or( 1, eax );
+
+		case( w.WM_CLOSE )
+
+			w.EndDialog(hwin,NULL);
+			or( 1, eax );
+		
+		default
+		
+			xor( eax, eax );
+			
+		endswitch;
+		
+		popabi;
+		
+		exit Proc_AdvancedLink;
+		
+		EnButton:
+				//dbg.put ("EnButton");
+				push(edx);
+				w.GetDlgItem(hwin,eax);
+				pop(edx);
+				w.EnableWindow(eax,edx);
+				//dbg.put ("/EnButton");
+				ret();
+				
+		
+	end Proc_AdvancedLink;
+
+
+procedure proc_Text_Scroll( lpParameter: dword );
+	begin proc_Text_Scroll;
+		forever
+			w.WaitForSingleObject( h_event, -1 );
+			breakif( eax = -1 );
+			w.CreateCompatibleDC( h_dc );
+			mov( eax, dc_target );
+			w.SelectObject( dc_target, h_bmp_target );
+			w.SelectObject( comp_dc, h_bmp_back );
+			w.BitBlt( dc_target, 0, 0, width_visible, height_bmp, comp_dc, 0, 0, w.SRCCOPY );
+			w.SelectObject( comp_dc, h_bitmap );
+			w.BitBlt( dc_target, 0, 0, width_visible, height_bmp, comp_dc, col_text, 0, w.SRCPAINT );
+			w.BitBlt( h_dc, col_initial, row_text, width_visible, height_bmp, dc_target, 0, 0, w.SRCCOPY );
+			w.DeleteDC( dc_target );
+			w.Sleep( delay_time );
+			if ( col_text = width_bmp ) then
+				//and( 0, col_text );
+				mov( col_initial-width_visible, col_text );
+			else
+				inc( col_text );
+			endif;
+		endfor;
+		// liberamos memoria
+		w.DeleteDC( comp_dc );
+		w.ReleaseDC( h_win, h_dc );
+	end proc_Text_Scroll;
+
+procedure Start_Text_Scroll;
+	begin Start_Text_Scroll;
+		mov( col_initial-width_visible, col_text );
+		mov( row_initial, row_text );
+		
+		// working with a background bitmap
+		w.GetStockObject( w.SYSTEM_FIXED_FONT );
+		mov( eax, h_font );
+		
+		// get dc from window
+		w.GetDC( h_win );
+		mov( eax, h_dc );
+		
+		// make an identical dc in memory
+		w.CreateCompatibleDC( h_dc );
+		mov( eax, comp_dc );
+		// create bitmap with the visible area size
+		w.CreateCompatibleBitmap( h_dc, width_visible, height_bmp );
+		mov( eax, h_bmp_back );
+		// select bitmap in DC copy
+		w.SelectObject( comp_dc, h_bmp_back );
+		
+		// copy visible data 
+		w.BitBlt( comp_dc, 0, 0, width_visible, height_bmp, h_dc, col_initial, row_text, w.SRCCOPY );
+		
+		// create a second bitmap
+		w.CreateCompatibleBitmap( h_dc, width_bmp, height_bmp );
+		mov( eax, h_bitmap );
+		// select bitmap in DC copy
+		w.SelectObject( comp_dc, h_bitmap );
+		// transparent background
+		w.SetBkMode( comp_dc, w.TRANSPARENT );
+		// text color
+		w.SetTextColor( comp_dc, $00FFEE66 );
+		// font
+		w.SelectObject( comp_dc, h_font );
+
+		// fill area using color. This color will be transparent to copy it
+		w.CreateSolidBrush( 0 );
+		mov( eax, h_brush );
+		w.SelectObject( comp_dc, h_brush );
+		w.CreatePen( w.PS_SOLID, 1, 0 );
+		mov( eax, h_pen );
+		w.SelectObject( comp_dc, h_pen );
+		w.Rectangle( comp_dc, 0, 0, width_bmp, height_bmp );
+		
+		// writing text in bitmap
+		w.lstrlen( val texttoscroll );
+		mov( eax, scroll_len );
+		w.TextOut( comp_dc, col_initial, 0, texttoscroll, scroll_len );
+		w.CreateCompatibleBitmap( h_dc, width_bmp, height_bmp );
+		mov( eax, h_bmp_target );
+
+		// now we have 3 handles in runtime :o)
+		// h_bitmap: text convert to bitmap
+		// h_bmp_back: text background
+		// h_bmp_target: bmp to mix both			
+		
+		// control thread with event
+		w.CreateEvent( NULL, true, true, NULL );
+		mov( eax, h_event );
+		// control scroll using thread
+		w.CreateThread( NULL, 0, &proc_Text_Scroll, NULL, 0, ID_Thread );
+		mov( eax, h_thread );
+		w.SetThreadPriority( h_thread, w.THREAD_PRIORITY_HIGHEST );
+	end Start_Text_Scroll;
+
+procedure Stop_Text_Scroll;
+	begin Stop_Text_Scroll;
+		w.ResetEvent( h_event );
+		w.CloseHandle( h_event );
+		w.WaitForSingleObject( h_thread, -1 );
+		w.CloseHandle( h_thread );
+		w.DeleteObject( h_bitmap );
+		w.DeleteObject( h_back );
+		w.DeleteObject( credits_brush );
+	end Stop_Text_Scroll;
+
+
+procedure Start_SoundTrack;
+		var
+			res	:dword;
+			xyz	:dword;
+			
+	begin Start_SoundTrack;
+		
+		str.put (strbuf, homepath, dirsep_c, "data", dirsep_c, "aRC_XM.dll");
+		w.LoadLibrary (strbuf);
+		if ( eax) then
+
+			mov (eax, h_dll);
+			w.GetProcAddress( h_dll, "aRC_XM_Init" );
+			mov( eax, aRC_XM_Init );
+			w.GetProcAddress( h_dll, "aRC_XM_Play" );
+			mov( eax, aRC_XM_Play );
+			w.GetProcAddress( h_dll, "aRC_XM_Stop" );
+			mov( eax, aRC_XM_Stop );
+			w.GetProcAddress (h_dll, "aRC_XM_DeInit");
+			mov (eax, aRC_XM_DeInit);
+
+			// Init sound engine (FIRST function to call)
+			// Play MyModule
+			// true: module in resource section
+			// false:  module is a file
+
+			aRC_XM_Init();
+			aRC_XM_Play (val IDB_ARYXXM, true);
+
+		else
+			error.fatal ("data/aRC_XM.dll missing");
+		endif;
+
+	end Start_SoundTrack;
+
+procedure Stop_SoundTrack;
+	begin Stop_SoundTrack;
+
+		// Stop playing
+		
+		aRC_XM_Stop();
+
+		// Deinit sound engine (LAST function to call)
+		aRC_XM_DeInit();
+		w.FreeLibrary (h_dll);
+
+	end Stop_SoundTrack;
+
+procedure Proc_About(	hwnd	: dword;
+					uMsg	: uns32;
+					wParam	: dword;
+					lParam	: dword ); @stdcall; @NoDisplay;
+					
+		// about window procedure
+	
+	begin Proc_About;
+		if ( uMsg = w.WM_CREATE ) then
+			// static back brush
+			w.CreateSolidBrush( $00FEC0A0 );
+			mov( eax, credits_brush );
+			Start_SoundTrack();
+
+		elseif ( uMsg = w.WM_COMMAND ) then
+			mov( lParam, eax );
+			if ( eax = h_btn_close) then
+				w.DestroyWindow( hwnd );
+			endif;
+
+		// EDIT locked sends WM_CTLCOLORSTATIC
+		elseif ( uMsg = w.WM_CTLCOLORSTATIC ) then
+			// text color
+			w.SetTextColor( wParam, $00FF0000 );
+			// back color
+			w.SetBkColor( wParam, $00FEC0A0 );
+			// area background brush
+			mov( credits_brush, eax );
+			exit Proc_About;
+		
+		// move window dragging any part
+		elseif ( uMsg = w.WM_LBUTTONDOWN ) then
+			w.SendMessage( hwnd, w.WM_NCLBUTTONDOWN, w.HTCAPTION, 0 );
+
+		elseif ( uMsg = w.WM_KEYUP) then
+			w.DestroyWindow ( hwnd );
+
+		elseif ( uMsg = w.WM_SETFOCUS) then
+			w.SetFocus (hwnd);
+
+		elseif ( uMsg = w.WM_DESTROY ) then
+			Stop_SoundTrack();
+			Stop_Text_Scroll();
+			w.PostQuitMessage( 0 );
+			sub( eax, eax );
+		else
+			w.DefWindowProc( hwnd, uMsg, wParam, lParam );
+		endif;
+	end Proc_About;
+
+procedure showAboutWin;
+	static
+		wc		:w.WNDCLASSEX;
+		msg		:w.MSG;
+		oldEditProc	:dword;
+			
+		
+		// subclass edit control :: don't want any input there
+		procedure NoControlResponse  ( lParam:dword; wParam:dword; uMsg:uns32; hWin:dword );
+		begin NoControlResponse;
+		
+			mov (uMsg, eax);
+			cmp (eax, w.WM_KEYFIRST);
+			jb pass;
+			cmp (eax, w.WM_KEYLAST);
+			jbe ignore;
+		
+			cmp (eax, w.WM_MOUSEFIRST);
+			jb pass;
+			cmp (eax, w.WM_MOUSELAST);
+			ja pass;
+			
+			ignore:
+				mov (true, eax);
+				exit NoControlResponse;
+		
+			pass:
+				w.CallWindowProc (oldEditProc, hWin, uMsg, wParam, lParam);
+			
+		end NoControlResponse;
+
+begin showAboutWin;
+		w.RtlZeroMemory( &wc, @size(w.WNDCLASSEX) );
+		mov( @size(w.WNDCLASSEX), wc.cbSize );
+		mov( w.CS_HREDRAW | w.CS_VREDRAW, wc.style );
+		mov( &Proc_About, wc.lpfnWndProc );
+		mov( w.COLOR_BTNFACE+1, wc.hbrBackground );
+		mov( AboutClass, wc.lpszClassName );
+		mov( hinst, wc.hInstance );
+		w.LoadIcon( NULL, val w.IDI_APPLICATION );
+		mov( eax, wc.hIcon );
+		mov( eax, wc.hIconSm );
+		w.LoadCursor( NULL, val w.IDC_ARROW );
+		mov( eax, wc.hCursor );
+		w.RegisterClassEx( wc );
+
+		w.CreateWindowEx(	NULL, AboutClass, NULL,
+							w.WS_CHILD | w.WS_VISIBLE | w.DS_CENTER | w.WS_POPUP,
+							200, 100, 450, 360, hwnd, 0, hinst, NULL );
+		mov( eax, h_win );
+		w.CreateWindowEx(	0, "BUTTON", "X",
+							w.WS_CHILD | w.WS_VISIBLE | w.BS_FLAT,
+							425, 10, 15, 15, h_win, 0, hinst, NULL );
+		mov( eax, h_btn_close );
+		// graphic background
+		w.CreateWindowEx(	0, "STATIC", NULL,
+							w.WS_CHILD | w.WS_VISIBLE | w.SS_BITMAP,
+							0, 0, 256, 192, h_win, 0, hinst, NULL );
+		mov( eax, h_static );
+		// load jpg background
+		
+		GraphicEx.LoadGraphic( hinst, "IDB_ABOUTJPG" );
+		mov( eax, h_back );
+		w.SendMessage( h_static, w.STM_SETIMAGE, w.IMAGE_BITMAP, h_back );
+		
+		// central credits
+		w.CreateWindowEx(	0, "EDIT", txt_credits,
+							w.WS_CHILD | w.WS_VISIBLE | w.ES_MULTILINE | w.WS_VSCROLL | w.ES_READONLY,
+							col_initial, 194, width_visible, 111, h_win, 0, hinst, NULL );
+		mov( eax, h_credits );
+		
+		// subclass it to ignore messages except scrolling
+		w.SetWindowLong (h_credits, w.GWL_WNDPROC, &NoControlResponse);
+		mov (eax, oldEditProc);
+
+		w.GetStockObject( w.ANSI_FIXED_FONT );
+		mov( eax, h_font );
+		w.SendMessage( h_credits, w.WM_SETFONT, eax, true );
+		w.UpdateWindow( h_win );
+		w.ShowWindow (h_btn_close, true);
+		Start_Text_Scroll();
+		
+		forever
+			w.GetMessage( msg, NULL, 0, 0 );
+			breakif( eax = 0 );
+			w.TranslateMessage( msg );
+			w.DispatchMessage( msg );
+		endfor;
+		mov( msg.wParam, eax );
+
+
+end showAboutWin;
+
+procedure Proc_Goto(lparam:dword; wparam:dword; umsg:uns32; hwin:dword);
+@nostackalign;
+	var
+		_chrg		:w.CHARRANGE;
+		_scrap		:dword;
+	endvar;
+	
+begin Proc_Goto;
+	mov(umsg,eax);
+	cmp(eax,w.WM_INITDIALOG);
+	je _init;
+	cmp(eax,w.WM_COMMAND);
+	je _command;
+	cmp(eax,w.WM_CLOSE);
+	je _close;
+	jmp _xProc_Goto;
+	
+_command:
+	mov(wparam,eax);
+	cmp(eax,w.IDCANCEL);
+	je _closecom;
+	
+	_gotoline:
+		w.GetDlgItemInt(hwin,ID_GOTO_EDT,_scrap,false);
+		if(eax) then
+		USE (EBX);
+			dec(eax);
+			mov (curnode, ebx);
+			w.SendMessage(listebx.hwnd,w.EM_LINEINDEX,eax,0);
+			mov(eax,_chrg.cpMin);
+			mov(eax,_chrg.cpMax);
+			lea(eax,_chrg);
+			w.SendMessage(listebx.hwnd, w.EM_EXSETSEL,0,eax);
+			w.SendMessage(listebx.hwnd, REM_VCENTER,0,0);
+			w.SendMessage(listebx.hwnd, w.EM_SCROLLCARET,0,0);
+		ENDUSE;
+		endif;
+		jmp _xProc_Goto;
+			
+	_closecom:
+		w.SendMessage(hwin,w.WM_CLOSE,0,0);
+		jmp _xProc_Goto;
+	
+_init:
+	w.GetDlgItem(hwin,ID_GOTO_EDT);
+	w.SetFocus(eax);
+	jmp _xProc_Goto;
+		
+_close:
+	w.EndDialog(hwin,wparam);
+	// fall
+_xProc_Goto:
+	mov	(false, eax);
+
+end Proc_Goto;
+
+procedure Proc_GetString (lparam:dword; wparam:dword; umsg:uns32; hwin:dword);
+begin Proc_GetString;
+	mov (umsg, eax);
+	if (eax = w.WM_INITDIALOG) then
+		push (ebx);
+		w.SetWindowText (hwin, getStringRec.title);
+		w.GetDlgItem(hwin,IDC_EDT_TARGET);
+		mov (eax, ebx);
+		if ( getStringRec.init > 0 ) then
+			w.SendMessage (ebx, w.WM_SETTEXT, 0, getStringRec.init);
+			w.SendMessage (ebx, w.EM_SETSEL, 0, -1); 
+		endif;
+
+		w.SetFocus(ebx);
+		pop (ebx);
+
+	elseif (eax = w.WM_COMMAND) then
+		mov(wparam,eax);
+		if (eax = w.IDOK) then
+
+			w.GetDlgItemTextA (hwin, IDC_EDT_TARGET, &buffer, @elements (buffer)-1);
+			str.cpyz (&buffer, getStringRec.dest);
+			w.SendMessage(hwin,w.WM_CLOSE,1,0);		// return true in wparam
+			
+		elseif (eax = w.IDCANCEL) then
+			mov (0, (type byte buffer[0]));
+			w.SendMessage(hwin,w.WM_CLOSE,0,0);		// return false in wparam
+			
+		endif;
+
+	elseif (eax = w.WM_CLOSE) then
+		w.EndDialog(hwin,wparam);
+	endif;	
+	xor (eax, eax);
+end Proc_GetString;
+
+procedure getStringInput2 (title:string; dest:string);
+	var
+		s	:string;
+		
+begin getStringInput2;
+	//dbg.put ("getstring input");
+	mov (str.talloc (1024), s);
+	mov (title, eax);
+	mov (eax, getStringRec.title);
+	mov (s, eax);
+	mov (eax, getStringRec.dest);
+	mov (0, getStringRec.init);	
+	w.DialogBoxParam (hinst,val ID_GETSTRINGINPUT, hwnd, &Proc_GetString, 0);
+	if (eax) then
+		str.cpy (s, dest);
+	endif;
+	
+end getStringInput2;
+
+procedure getStringInput3 (title:string; initial:string; dest:string);
+	var
+		s	:string;
+		
+begin getStringInput3;
+	mov (str.talloc (1024), s);
+	push (title);
+	pop (getStringRec.title);
+	push (s);
+	pop (getStringRec.dest);
+	push (initial);
+	pop (getStringRec.init);
+	w.DialogBoxParam (hinst,val ID_GETSTRINGINPUT, hwnd, &Proc_GetString, 0);
+	if (eax) then
+		str.cpy (s, dest);
+	endif;
+	
+end getStringInput3;
+
+
+end HIDE_procs;

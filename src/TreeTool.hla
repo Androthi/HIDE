@@ -1,0 +1,695 @@
+unit TreeTool;
+
+#includeonce ("HIDE.hhf")
+//#includeonce	("hll.hhf")
+
+	?@nodisplay:=true;
+	?@align:=4;
+
+type
+	treeViewHandles_t:
+		record
+			base		:dword;
+			files		:dword;
+			includes	:dword;
+			sources		:dword;
+			resources	:dword;
+			extlink		:dword;
+			misc		:dword;
+			orphans		:dword;
+		endrecord;
+	
+storage	// internal variables
+	align(4);
+	handles			:treeViewHandles_t;
+	selType			:dword;
+	oldhtree		:dword;
+	selMem			:pointer to fList.fnode;
+	pview_curSel	:dword;
+
+	tvins	:w.TV_INSERTSTRUCT;
+	tvhtst	:w.TV_HITTESTINFO;
+	tvi		:w.TV_ITEM;
+	pt		:hide.point_t;
+	treebuffer	:byte[w.MAX_PATH];
+	pviewmenu	:dword;
+	align(4);	
+		
+const	// local constants
+
+	TREEICONS		:=10;		// number of icons in the TRV.bmp
+	IMG_FOLDER		:=0;
+	IMG_FILE		:=1;
+	IMG_RC			:=2;
+	IMG_TARGET		:=3;
+	IMG_PROGRAM		:=4;
+	IMG_HAMMER		:=5;
+	IMG_NOHAMMER	:=6;
+	IMG_NOTARGET	:=7;
+	IMG_UNIT		:=8;
+	IMG_BINARY		:=9;
+
+procedure projectview_checkUpdate (var fnode:fList.fnode);
+	var
+		tm		:qword;
+		changed	:BOOL;
+		
+begin projectview_checkUpdate;
+USE (EBX);
+	//dbg.put ("projectview_checkUpdate");
+	mov (false, changed);
+	mov (fnode, ebx);
+	xor (eax, eax);
+	if (listebx.relative > 0) then
+			
+		if( listebx.hwnd != 0 ) then
+			GetFileTime (listebx.relative, tm);
+			if (checkVarTimes (listebx.writetime, tm)) then
+				// some external program has modified this file!
+				// let the user know by changing the tree name.
+				//dbg.put ("file has changed!");
+				mov (true, changed);
+			else
+				mov (false, changed);
+			endif;
+			mov (listebx.treenode, eax);
+			mov (eax,tvi.hItem);
+			mov (w.TVIF_TEXT, tvi.imask);
+			mov (@size(treebuffer),tvi.cchTextMax);
+			str.cpy ("", strbuf);
+			if (changed) then
+				str.put (strbuf, "* ");
+			endif;
+			str.put2 (strbuf, listebx.id);
+			move (strbuf, tvi.pszText);
+			w.SendMessage (htreeview, w.TVM_SETITEM, 0, &tvi);
+		endif;
+	endif;
+	mov (changed, eax);
+	//dbg.put ("/projectview_checkUpdate");
+ENDUSE;	
+end projectview_checkUpdate;
+
+
+procedure projectview_checkUpdates; @noframe;
+begin projectview_checkUpdates;
+USE (ESI, EDI, EBX);
+	//dbg.put ("projectview_checkUpdates");
+	fileList.getHead();
+	mov (eax,ebx);
+	while (ebx) do
+		projectview_checkUpdate ([ebx]);
+		mov (listebx.next, ebx);
+	endwhile;
+	//dbg.put ("/projectview_checkUpdates");
+ENDUSE;
+ret();
+end projectview_checkUpdates;
+
+procedure TrvAddNode (hpar:dword; item:string; var node:tBaseList.baseNode; image:dword); @returns ("EAX");
+begin TrvAddNode;
+USE (EDX);	// preserve so that SendMessage doesn't thrash it
+	mov (hpar, eax);
+	mov (eax, tvins.hParent);
+	move (node, tvins.item.lParam);
+	mov (0, tvins.hInsertAfter);
+	mov (w.TVIF_TEXT | w.TVIF_PARAM | w.TVIF_IMAGE | w.TVIF_SELECTEDIMAGE,tvins.item.imask);
+	mov (item, eax);
+	mov (eax, tvins.item.pszText);
+	mov (image, eax);
+	mov (eax, tvins.item.iImage);
+	mov (eax, tvins.item.iSelectedImage);
+	w.SendMessage (htreeview, w.TVM_INSERTITEM, 0, &tvins);
+ENDUSE;
+end TrvAddNode;
+
+procedure TreeToolSetup;
+	var
+		count	:uns32;
+		
+	procedure projectview_readJob (var node:jList.jnode);
+	begin projectview_readJob;
+	USE (EBX, ESI, EDI);
+		///dbg.put ("projectview_readjob");
+		mem2.fillMem (&handles, @size(handles), 0);
+		mov (node, ebx);		
+		if (jobebx.ftype = jobtype_target) then
+			mov (&project.hpr, esi);
+			if (iniesi._readString (jobebx.id, "target", strbuf)) then
+				fileList.findJobRelative ([ebx], strbuf);
+			else
+				mov (NULL, eax);
+			endif;
+			
+			if (jobebx.inQueue) then
+				TrvAddNode (0, jobebx.id, [eax], IMG_TARGET);
+			else
+				TrvAddNode (0, jobebx.id, [eax], IMG_NOTARGET);
+			endif;
+			mov (eax, jobebx.treenode);
+			jmp done;	// no other things for targets
+			
+			
+		else
+			if (jobebx.inQueue) then
+				mov (IMG_HAMMER, eax);
+			else
+				mov (IMG_NOHAMMER, eax);
+			endif;
+			TrvAddNode (0, jobebx.id, [ebx], eax);
+			mov (eax, jobebx.treenode);
+		endif;
+		mov (eax, handles.base);
+		
+		if (jobebx.ftype = jobtype_misc) then
+	
+			TrvAddNode (handles.base, "Includes", NULL, IMG_FOLDER);
+			mov (eax, handles.includes);
+			TrvAddNode (handles.base, "Files", NULL, IMG_FOLDER);
+			mov (eax, handles.files);
+			
+		else
+			
+			TrvAddNode (handles.base, "Sources", NULL, IMG_FOLDER);
+			mov (eax, handles.sources);
+			TrvAddNode (handles.base, "Includes", NULL, IMG_FOLDER);
+			mov (eax, handles.includes);
+			TrvAddNode (handles.base, "Resources", NULL, IMG_FOLDER);
+			mov (eax, handles.resources);
+			TrvAddNode (handles.base, "Files", NULL, IMG_FOLDER);
+			mov (eax, handles.files);
+			//TrvAddNode (handles.base, "Linked Objects", NULL, IMG_FOLDER);
+			//mov (eax, handles.extlink);
+		endif;
+		
+
+		fileList.getHead();
+		mov (eax, esi);
+		while (esi) do
+			if (listesi.job = ebx) then
+				// job match, add this file to current job
+				mov (listesi.ftype, eax);
+				switch (eax)
+				
+				case (type_hla)
+					TrvAddNode (handles.sources, listesi.id, [esi], IMG_PROGRAM);
+					
+				case (type_unit)
+					TrvAddNode (handles.sources, listesi.id, [esi], IMG_UNIT);
+					
+				case (type_hhf)
+					TrvAddNode (handles.includes, listesi.id, [esi], IMG_FILE);
+
+				case (type_rc)
+					TrvAddNode (handles.resources, listesi.id, [esi], IMG_RC);
+				
+				case (type_bin)
+					TrvAddNode (handles.files, listesi.id, [esi], IMG_BINARY);
+				
+					
+				default
+					TrvAddNode (handles.files, listesi.id, [esi], IMG_FILE);
+					
+				endswitch;
+				mov (eax, listesi.treenode);
+			endif;
+			mov (listesi.next, esi);
+		endwhile;
+	
+		if (handles.files) then
+			w.SendMessage (htreeview, w.TVM_SORTCHILDREN, 0, handles.files);
+		endif;
+		if (handles.resources) then
+			w.SendMessage (htreeview, w.TVM_SORTCHILDREN, 0, handles.resources);
+		endif;
+		if (handles.includes) then
+			w.SendMessage (htreeview, w.TVM_SORTCHILDREN, 0, handles.includes);
+		endif;
+		if (handles.sources) then
+			w.SendMessage (htreeview, w.TVM_SORTCHILDREN, 0, handles.sources);
+		endif;
+
+		done:
+		//dbg.put ("/projectview_readjob");
+	ENDUSE;
+	end projectview_readJob;
+
+		
+begin	TreeToolSetup;
+	
+USE (ESI, EDI, EBX);
+	dbg.put("TreeToolSetup");
+	w.SendMessage(htreeview,w.TVM_DELETEITEM,0,w.TVI_ROOT);
+	
+	mem2.fillMem (&handles, @size (treeViewHandles_t), 0);
+	
+	if (project.isOpen) then
+		// work backwards towards front of list
+		// since new nodes are added to head of list
+		mov (&project.hpr, esi);
+		iniesi.getItemCount ("HPR Jobs");
+		mov (eax, count);
+		xor (ebx, ebx);
+		while (ebx < count) do
+			mov (&project.hpr, esi);
+			iniesi.readItem ("HPR Jobs", ebx, strbuf);
+			jobList.findID (strbuf);
+			projectview_readJob ([eax]);
+			inc (ebx);
+		endwhile;
+		
+		//dbg.put ("held jobs");
+		mov (&project.hpr, esi);
+		iniesi.getItemCount("Held Jobs");
+		mov (eax, count);
+		xor (ebx, ebx);
+		while (ebx < count) do
+			mov (&project.hpr, esi);
+			iniesi.readItem ("Held Jobs", ebx, strbuf);
+			jobList.findID (strbuf);
+			projectview_readJob ([eax]);
+			inc (ebx);
+		endwhile;
+	endif;
+	
+	//dbg.put ("getting orphans");
+	TrvAddNode (0, "orphans", NULL, IMG_FOLDER);
+	mov (eax, handles.orphans);
+	fileList.getHead();
+	mov (eax, ebx);
+	while (ebx) do
+		if (! listebx.isproject) then
+			if (listebx.ftype = type_bin) then
+				mov (IMG_BINARY, eax);
+			else
+				mov (IMG_FILE, EAX);
+			endif;
+			TrvAddNode (handles.orphans, listebx.id, [ebx], EAX);
+			mov (eax, listebx.treenode);
+		endif;
+		mov(listebx.next, ebx);
+	endwhile;
+	w.SendMessage (htreeview, w.TVM_SORTCHILDREN, 0, handles.orphans);
+done:
+	projectview_checkUpdates();
+ENDUSE;
+dbg.put ("/treetoolsetup");
+end 		TreeToolSetup;
+
+procedure Project_View (message:dword);
+	
+begin Project_View;
+
+	mov(message,eax);		
+	if (eax = DOCK_YES) then
+		w.GetWindowLong(htree,w.GWL_STYLE);
+		and(!(w.WS_SIZEBOX),eax);
+		w.SetWindowLong(htree,w.GWL_STYLE,eax);
+		w.SetParent(htree,hwnd);
+		mov(eax,oldhtree);
+		or(TREE_D,settings.winview);
+		
+	elseif (eax = DOCK_NO) then
+
+		mov (settings.panelactive, eax);
+		if (eax = htree) then
+			PanelFold();
+		endif;
+
+		w.SetParent(htree,NULL);
+		mov(0,oldhtree);
+		w.GetWindowLong(htree,w.GWL_STYLE);
+		or(w.WS_SIZEBOX,eax);
+		w.SetWindowLong(htree,w.GWL_STYLE,eax);
+		w.ShowWindow (htree, w.SW_SHOW);
+		and(!(TREE_D),settings.winview);
+	
+	elseif (eax = w.SW_HIDE) then
+		w.ShowWindow (htree, w.SW_HIDE);	
+    endif;
+    
+    w.SendMessage(hwnd,w.WM_SIZE,0,0);
+    w.SetFocus (hwnd);
+    
+end Project_View;
+
+
+procedure buildProjectViewMenu (var node:tBaseList.baseNode);
+begin buildProjectViewMenu;
+USE (ESI, EDI);
+	dbg.put ("buildProjectViewMenu");
+	if ( pviewmenu <> 0 ) then
+		w.DestroyMenu (pviewmenu);
+		mov (0, pviewmenu);
+	endif;
+
+	w.CreatePopupMenu();
+	mov (eax, pviewmenu);
+	
+	// default item
+	w.AppendMenu ( pviewmenu, w.MF_BYPOSITION | w.MF_ENABLED | w.MF_STRING,
+						IDM_PROJECT_MANAGER, "Project Manager...");
+	w.AppendMenu ( pviewmenu, w.MF_BYPOSITION | w.MF_ENABLED | w.MF_STRING,
+						IDM_PROJECT_JOBS, "Jobs Manager...");
+	
+	mov (node, ebx);
+	mov ( (type tBaseList.baseNode[ebx]).nodeID, eax);
+	if (eax = jnode_id) then
+		mov (node, eax);
+		if (jobeax.ftype != jobtype_misc) then
+			w.AppendMenu ( pviewmenu, w.MF_BYPOSITION | w.MF_ENABLED | w.MF_STRING,
+							PVIEW_REBUILDJOB, "Rebuild Job");
+			
+			mov (node, eax);
+			if (jobeax.ftype < 4) then
+				w.AppendMenu ( pviewmenu, w.MF_BYPOSITION | w.MF_ENABLED | w.MF_STRING,
+							PVIEW_RUN, "Run");
+				w.AppendMenu ( pviewmenu, w.MF_BYPOSITION | w.MF_ENABLED | w.MF_STRING,
+							PVIEW_RUNWITHDBG, "Run With Debug");
+			endif;
+		endif;
+		
+	elseif (eax = fnode_id) then
+		dbg.put("fnode_id");
+		mov (node, eax);
+		mov (listeax.ftype, eax);
+		switch (eax);
+			case (type_hla, type_rc, type_unit)
+					
+				w.AppendMenu ( pviewmenu, w.MF_BYPOSITION | w.MF_ENABLED | w.MF_STRING,
+						PVIEW_REBUILDFILE, "Rebuild File");
+				
+				mov (node, eax);
+				if (listeax.ftype = type_rc) then
+					w.AppendMenu ( pviewmenu, w.MF_BYPOSITION | w.MF_ENABLED | w.MF_STRING,
+								PVIEW_OPENWITHRESED, "Open With ResEd");
+				endif;		
+	
+			case (type_khelp)
+				w.AppendMenu ( pviewmenu, w.MF_BYPOSITION | w.MF_ENABLED | w.MF_STRING,
+								PVIEW_OPENWITHKHELP, "Open With kHelp");
+								
+				//w.AppendMenu ( pviewmenu, w.MF_BYPOSITION | w.MF_ENABLED | w.MF_STRING,
+				//				PVIEW_EDIT, "Edit Docs");
+
+			case (type_kmake)
+				w.AppendMenu ( pviewmenu, w.MF_BYPOSITION | w.MF_ENABLED | w.MF_STRING,
+								PVIEW_KMAKETARGET, "Execute Script");
+								
+				//w.AppendMenu ( pviewmenu, w.MF_BYPOSITION | w.MF_ENABLED | w.MF_STRING,
+				//				PVIEW_EDIT, "Edit Script");
+				
+			//case (action_executable)
+			//	w.AppendMenu ( pviewmenu, w.MF_BYPOSITION | w.MF_ENABLED | w.MF_STRING,
+			//					PVIEW_KMAKETARGET, "Execute Program");
+			//					
+			//	w.AppendMenu ( pviewmenu, w.MF_BYPOSITION | w.MF_ENABLED | w.MF_STRING,
+			//					PVIEW_EDIT, "Edit Program Arguments");
+								
+			case (type_hhf)
+				w.AppendMenu ( pviewmenu, w.MF_BYPOSITION | w.MF_ENABLED | w.MF_STRING,
+								PVIEW_SETFORWSCAN, "Dedicate to wscan");
+			
+		endswitch;
+		
+
+		mov (node, eax);
+			
+		push( eax );
+		
+		w.AppendMenu ( pviewmenu, w.MF_BYPOSITION | w.MF_ENABLED | w.MF_STRING,
+			PVIEW_SETTOOPEN, "Set Auto Open");
+			
+		pop( eax );
+
+		if( listeax.hwnd != 0 ) then
+		
+			w.AppendMenu ( pviewmenu, w.MF_BYPOSITION | w.MF_ENABLED | w.MF_STRING,
+			PVIEW_RELOAD, "Reopen File");
+				
+		endif;
+		
+
+		
+		hideini.readInt( "HIDE Settings", "Auto Dependencies" );
+		if( eax ) then
+		
+			mov (node, eax);
+			//dbg.put ("autodep for :", listeax.relative, nl, "=", eax);
+			mov (listeax.deps, eax);
+			if (eax) then
+				(type tList[eax]).getHead();
+				if (eax) then
+					w.AppendMenu ( pviewmenu, w.MF_BYPOSITION | w.MF_ENABLED | w.MF_STRING,
+					PVIEW_DEPENDENTS, "View Dependents");
+				endif;
+			endif;
+		endif; 
+
+	endif;
+	dbg.put ("/buildProjectViewMenu");
+ENDUSE;
+end buildProjectViewMenu;
+
+
+procedure Proc_ProjectView (lparam:dword; wparam:dword; umsg:uns32; hwin:dword);
+	var
+		chrg	:w.CHARRANGE;
+		himl	:dword;
+		hbmp	:dword;
+
+
+begin	Proc_ProjectView;
+
+	mov(umsg,eax);
+	cmp(eax,w.WM_NOTIFY);
+	je _notify;
+	cmp(eax,w.WM_COMMAND);
+	je _command;
+	cmp(eax,w.WM_SIZE);
+	je _size;
+	cmp(eax,w.WM_MOVING);
+	je _changing;
+	cmp(eax,w.WM_CLOSE);
+	je _close;
+	cmp(eax,w.WM_MOUSEACTIVATE);
+	je _activate;
+	cmp(eax,w.WM_INITDIALOG);
+	je _init;
+	cmp(eax,w.WM_DESTROY);
+	je _destroy;
+	jmp xProc_ProjectView;
+		
+	_changing:
+			cmp(oldhtree,0);
+			je xProc_ProjectView;
+			Project_View(DOCK_NO);
+			jmp xProc_ProjectView;
+		
+	_command:	
+			mov(wparam,eax);
+			mov(eax,edx);
+			shr(16,edx);
+			and($0ffff,eax);
+			
+			if (edx = w.BN_CLICKED) then
+				if (eax = anchor_btn) then
+					if (testz (TREE_D, settings.winview)) then
+						xor (TREE_A, settings.winview);
+						if (testnz (TREE_A, settings.winview)) then
+							mov (true, eax);
+						else
+							mov (false, eax);
+						endif;
+						
+						caption.CheckButton(hwin, anchor_btn, al);						
+					else
+						toOutput ("Use Anchor when window is undocked" nl
+							"To undock, drag by the title bar" nl);
+					endif;
+				endif;
+			endif;
+			jmp xProc_ProjectView;
+		
+	_notify:	
+			cmp(wparam,IDC_TRV);
+			jne xProc_ProjectView;
+			mov(lparam,edx);
+			mov((type w.NM_TREEVIEW [edx]).hdr.code,eax);
+			cmp(eax,w.NM_DBLCLK);
+			je _leftdoubleclick;
+			cmp(eax,w.TVN_SELCHANGEDA);
+			je _selchanged;
+			cmp(eax,w.NM_RCLICK);
+			je _rightclick;
+			
+			jmp xProc_ProjectView;
+		
+		_leftdoubleclick:
+				mov(selType,eax);
+				if (eax = IMG_FILE || eax = IMG_RC || eax = IMG_PROGRAM || eax = IMG_UNIT || eax = IMG_BINARY) then
+					if (! selectOpenMem (selMem)) then
+						hide_openNode( selMem );
+					endif;
+
+				elseif (eax = IMG_TARGET || eax = IMG_NOTARGET) then
+					mov (selMem, eax);
+					if ( eax = 0) then
+						toOutput ("No target file selected, add one using Project Manager" nl);
+					else
+						if (! selectOpenMem (selMem)) then
+							hide_openNode( selMem );
+						endif;
+					endif;
+				endif;
+				w.PostMessage(hwnd, w.WM_SETFOCUS, 0, 0);
+				jmp xProc_ProjectView;
+
+		_selchanged:
+			call _GetItem;
+			mov((type w.TV_ITEM [edx]).iImage,eax);
+			mov(eax,selType);
+			mov ((type w.TV_ITEM [edx]).lParam, eax);
+			mov (eax, selMem);
+			/*
+			 //debug code
+				mov (selType, eax);
+				if (eax = IMG_PROGRAM || eax = IMG_UNIT) then 
+					pushabi;
+					mov (selMem, ebx);
+					toOutput ("Dependencies of :", listebx.relative, nl);
+					mov (listebx.deps, esi);
+					(type tList[esi]).getHead();
+					mov (eax, ebx);
+					while (ebx) do
+						toOutput ( (type string (type tList.listNode [ebx]).value), nl);
+						mov ( (type tList.listNode[ebx]).next, ebx);
+					endwhile;
+					popabi;
+				endif;
+			
+			*/
+			jmp xProc_ProjectView;
+		
+		_rightclick:
+				w.GetCursorPos (tvhtst.pt);
+				w.ScreenToClient (htreeview, tvhtst.pt);
+				w.SendMessage(htreeview,w.TVM_HITTEST,0,&tvhtst);
+				mov(tvhtst.flags,eax);
+				and(w.TVHT_ONITEM,eax);
+				jz _exitrightclick;
+				mov(tvhtst.hItem,eax);
+				mov(eax,tvi.hItem);
+				mov(w.TVIF_HANDLE | w.TVIF_PARAM | w.TVIF_TEXT,tvi.imask);
+				
+				move( &treebuffer ,tvi.pszText);
+				mov(@size(treebuffer),tvi.cchTextMax);
+				
+				w.SendMessage(htreeview,w.TVM_SELECTITEM,w.TVGN_CARET,tvi.hItem);
+				w.SendMessage(htreeview,w.TVM_GETITEM,0,&tvi);
+				
+				str.cpyz (&treebuffer, strbuf);
+				dbg.put ("right click on ", strbuf);
+				mov (tvi.lParam, eax);
+				if (eax) then
+					mov (eax, pview_curSel);
+					buildProjectViewMenu ([eax]);
+					w.GetCursorPos(&pt);
+					w.TrackPopupMenu (pviewmenu, w.TPM_LEFTALIGN | w.TPM_RIGHTBUTTON, pt.x, pt.y, 0, hwnd, NULL);
+				endif; 
+
+			_exitrightclick:
+				jmp xProc_ProjectView;
+		
+	_size:
+		w.GetClientRect(hwin, &rect);
+		mov	(rect.bottom,eax);
+		sub	(rect.top,eax);
+		// eax = height
+		w.MoveWindow(htreeview,0,rect.top,rect.right,eax,true);
+		call _savepos;
+		w.InvalidateRect(htreeview,NULL,true);
+		jmp xProc_ProjectView;
+
+	_init:	
+		pushabi;
+		mov (hwin, eax);
+		mov (eax, htree);
+		w.ImageList_Create(16,16,w.ILC_COLOR8,TREEICONS,TREEICONS);
+		mov(eax,himl);
+		w.LoadBitmap(hinst,val IDB_TRVMAP);
+		mov(eax,hbmp);
+		w.ImageList_Add(himl,hbmp,NULL);
+		w.DeleteObject(hbmp);
+		w.GetDlgItem(hwin,IDC_TRV);
+		mov(eax,htreeview);
+		w.SendMessage(htreeview,w.TVM_SETIMAGELIST,0,himl);
+		if (testnz (TREE_D, settings.winview)) then
+			Project_View (DOCK_YES);
+		endif;
+		w.MoveWindow(hwin,settings.treewin.x,settings.treewin.y,settings.treewin.wt,settings.treewin.ht,true);
+		popabi;
+		jmp xProc_ProjectView;
+
+	_activate:
+			w.SetForegroundWindow(hwnd);
+			jmp xProc_ProjectView;
+		
+	_destroy:
+			call _savepos;
+			jmp xProc_ProjectView;
+		
+	_close:	
+		call _savepos;
+		Project_View( w.SW_HIDE);
+		if (testnz (TREE_D, settings.winview)) then
+			PanelFold();
+		    w.SendMessage(hwnd,w.WM_SIZE,0,0);
+		endif;
+		or (TREE_D, settings.winview);	// force docking
+		and (! TREE_A, settings.winview); // remove anchor
+
+			//float		
+		
+xProc_ProjectView:
+		xor(EAX,EAX);
+		exit Proc_ProjectView;
+		
+// internal procedures
+_GetItem:
+		lea(edx,(type w.NM_TREEVIEW [edx]).itemNew);
+		mov(w.TVIF_PARAM | w.TVIF_TEXT | w.TVIF_IMAGE,(type w.TV_ITEM [edx]).imask);
+		lea(eax,treebuffer);
+		mov(eax,(type w.TV_ITEM[edx]).pszText);
+		mov(@size(buffer),(type w.TV_ITEM [edx]).cchTextMax);
+		push(edx);
+		w.SendMessage(htreeview,w.TVM_GETITEM,0,edx);
+		pop(edx);
+		ret();
+
+_savepos:
+		w.GetWindowLong(hwin,w.GWL_STYLE);
+		test(w.WS_MAXIMIZE,eax);
+		jnz _setmax;
+		test(w.WS_MINIMIZE,eax);
+		jnz _retsavepos;
+		mov(false,settings.treewin.fmax);
+		w.GetWindowRect(hwin,&rect);
+		mov(rect.left,settings.treewin.x);
+		mov(rect.top,settings.treewin.y);
+		mov(rect.right,eax);
+		sub(rect.left,eax);
+		mov(eax,settings.treewin.wt);
+		mov(rect.bottom,eax);
+		sub(rect.top,eax);
+		mov(eax,settings.treewin.ht);
+		ret();
+	
+_setmax:	
+		mov(true,settings.treewin.fmax);
+_retsavepos:
+	ret();
+
+end Proc_ProjectView;
+	
+end TreeTool;

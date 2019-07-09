@@ -1,0 +1,30 @@
+HIDE Project Jobs
+
+Building HIDE
+	Make a duplicate of the HIDE folder and call it HIDE_WORK
+	HIDE_WORK should be located in the same location as the HIDE folder
+	Make menu commands build and run HIDE.exe in the HIDE_WORK folder
+
+	HIDE and HIDE projects should be placed in a path that does not
+	contain white spaces.
+
+Building the Lexer
+	If scanID.txt has changed, this executes the script to rebuild
+	genLexer.hhf and genLexer.hla
+	The lexer has multiple dependents, it is adviseable to rebuild the
+	entire HIDE job upon changes to scanID.txt to insure proper execution.
+
+
+HIDE
+	This builds the main IDE
+	
+	
+Output folder may be changed using Project Manager
+	
+Changes for next release version listed in "Docs\build.txt"
+
+
+See the notes panel for HIDE internals notes.
+Also scan source for "//>" comments to find areas that need expanding/work.
+
+See Notes window for more info.

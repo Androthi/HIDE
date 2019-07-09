@@ -1,0 +1,63 @@
+// future spot for hide error handler
+unit HIDEerrors;
+
+#includeonce ("HIDE.hhf")
+#includeonce ("memory.hhf")
+#includeonce ("stdout.hhf")
+
+?@nodisplay:=true;
+?@align:=4;
+
+
+procedure error.fatal(error_string:string);
+begin fatal;
+#if (os.win32)
+	w.MessageBox(NULL,error_string,"HIDE FATAL ERROR",w.MB_OK | w.MB_ICONERROR);
+#else
+	stdout.put ("HIDE FATAL ERROR",nl, $9, error_string, nl);
+#endif
+	or (1, eax);
+end fatal;
+
+procedure error.fileopenfailure(error_string:string);
+begin fileopenfailure;
+#if (os.win32)
+	w.MessageBox(NULL,error_string,"File Open Failure",w.MB_OK | w.MB_ICONWARNING);
+#else
+	stdout.put ("File Open Failure :", error_string, nl);
+#endif
+end fileopenfailure;
+
+procedure error.warning (error_string:string);
+begin warning;
+#if (os.win32)
+	w.MessageBox(NULL,error_string,"HIDE WARNING",w.MB_OK | w.MB_ICONWARNING);
+#else
+	stdout.put ("HIDE WARNING :", error_string, nl);
+#endif
+end warning;
+
+procedure error.syserror ( mid:dword);
+var
+	_buffer		:char [4096];
+
+begin error.syserror;
+	w.FormatMessage(w.FORMAT_MESSAGE_FROM_SYSTEM, NULL, mid, NULL, _buffer, 4096, NULL);
+	lea (eax, _buffer);
+	w.MessageBox(NULL, eax, "Error", w.MB_OK|w.MB_ICONEXCLAMATION);
+
+end error.syserror;
+
+
+procedure testalloc(amount:dword);
+begin testalloc;
+	try
+		clc();
+		mem.alloc(amount);
+	anyexception
+		error.fatal("Could not allocate enough memory");
+		stc();
+	endtry;
+end testalloc;
+
+end HIDEerrors;

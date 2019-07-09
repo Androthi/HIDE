@@ -1,0 +1,3 @@
+[BUILD]
+copy docs\HIDE.khelp %h\Documents\HIDE.khelp
+copy docs\Tools.khelp %h\Documents\Tools.khelp

@@ -1,0 +1,3 @@
+[BUILD]
+;@units\genLexer.obj src\scanID.txt
+gen src\scanID.txt

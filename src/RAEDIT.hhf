@@ -1,0 +1,743 @@
+const
+//Default colors
+DEFBCKCOLOR				:= $00C0F0F0;
+DEFTXTCOLOR				:= $00000000; 
+DEFSELBCKCOLOR			:= $00800000;
+DEFSELTXTCOLOR			:= $00FFFFFF;
+DEFCMNTCOLOR			:= $02008000;
+DEFSTRCOLOR				:= $00A00000;
+DEFOPRCOLOR				:= $000000A0;
+DEFHILITE1				:= $00F0C0C0;
+DEFHILITE2				:= $00C0F0C0;
+DEFHILITE3				:= $00C0C0F0;
+DEFSELBARCOLOR			:= $00C0C0C0;
+DEFSELBARPEN			:= $00808080;
+DEFLNRCOLOR				:= $00800000;
+DEFNUMCOLOR				:= $00808080;
+
+//Window styles
+STYLE_NOSPLITT			:= $001;			//No splitt button
+STYLE_NOLINENUMBER		:= $002;			//No linenumber button
+STYLE_NOCOLLAPSE		:= $004;			//No expand/collapse buttons
+STYLE_NOHSCROLL			:= $008;			//No horizontal scrollbar
+STYLE_NOVSCROLL			:= $010;			//No vertical scrollbar
+STYLE_NOHILITE			:= $020;			//No color hiliting
+STYLE_NOSIZEGRIP		:= $040;			//No size grip
+STYLE_NODBLCLICK		:= $080;			//No action on double clicks
+STYLE_READONLY			:= $100;			//Text is locked
+STYLE_NODIVIDERLINE		:= $200;			//Blocks are not divided by line
+STYLE_NOBACKBUFFER		:= $400;			//Drawing directly to screen DC
+STYLE_NOSTATE			:= $800;			//No state indicator
+STYLE_DRAGDROP			:= $1000;			//Drag & Drop support, app must load ole
+STYLE_SCROLLTIP			:= $2000;			// Scrollbar tool-tip
+STYLE_HILITECOMMENT		:= $4000;			// comments are hilited
+
+MODE_NORMAL				:= 0;				//Normal
+MODE_BLOCK				:= 1;				//Block select
+
+//Private edit messages
+REM_RAINIT				:= w.WM_USER+9999;	//wParam=0, lParam=pointer to controls DIALOG struct
+REM_BASE				:= w.WM_USER+1000;
+REM_SETHILITEWORDS		:= REM_BASE+0;		//wParam=Color, lParam=lpszWords
+REM_SETFONT				:= REM_BASE+1;		//wParam=nLineSpacing, lParam=lpRAFONT
+REM_GETFONT				:= REM_BASE+2;		//wParam=0, lParam=lpRAFONT
+REM_SETCOLOR			:= REM_BASE+3;		//wParam=0, lParam=lpRACOLOR
+REM_GETCOLOR			:= REM_BASE+4;		//wParam=0, lParam=lpRACOLOR
+REM_SETHILITELINE		:= REM_BASE+5;		//wParam=Line, lParam=Color
+REM_GETHILITELINE		:= REM_BASE+6;		//wParam=Line, lParam=0
+REM_SETBOOKMARK			:= REM_BASE+7;		//wParam=Line, lParam=Type
+REM_GETBOOKMARK			:= REM_BASE+8;		//wParam=Line, lParam=0
+REM_CLRBOOKMARKS		:= REM_BASE+9;		//wParam=0, lParam=Type
+REM_NXTBOOKMARK			:= REM_BASE+10;		//wParam=Line, lParam=Type
+REM_PRVBOOKMARK			:= REM_BASE+11;		//wParam=Line, lParam=Type
+REM_FINDBOOKMARK		:= REM_BASE+12;		//wParam=BmID, lParam=0
+REM_SETBLOCKS			:= REM_BASE+13;		//wParam=[lpLINERANGE], lParam=lpRABLOCKDEF
+REM_ISLINE				:= REM_BASE+14;		//wParam=Line, lParam=lpszDef
+REM_GETWORD				:= REM_BASE+15;		//wParam=BuffSize, lParam=lpBuff
+REM_COLLAPSE			:= REM_BASE+16;		//wParam=Line, lParam=lpRABLOCKDEF
+REM_COLLAPSEALL			:= REM_BASE+17;		//wParam=0, lParam=lpRABLOCKDEF
+REM_EXPAND				:= REM_BASE+18;		//wParam=Line, lParam=0
+REM_EXPANDALL			:= REM_BASE+19;		//wParam=0, lParam=0
+REM_LOCKLINE			:= REM_BASE+20;		//wParam=Line, lParam=TRUE/FALSE
+REM_ISLINELOCKED		:= REM_BASE+21;		//wParam=Line, lParam=0
+REM_HIDELINE			:= REM_BASE+22;		//wParam=Line, lParam=TRUE/FALSE
+REM_ISLINEHIDDEN		:= REM_BASE+23;		//wParam=Line, lParam=0
+REM_AUTOINDENT			:= REM_BASE+24;		//wParam=0, lParam=TRUE/FALSE
+REM_TABWIDTH			:= REM_BASE+25;		//wParam=nChars, lParam=TRUE/FALSE (Expand tabs)
+REM_SELBARWIDTH			:= REM_BASE+26;		//wParam=nWidth, lParam=0
+REM_LINENUMBERWIDTH		:= REM_BASE+27;		//wParam=nWidth, lParam=0
+REM_MOUSEWHEEL			:= REM_BASE+28;		//wParam=nLines, lParam=0
+REM_SUBCLASS			:= REM_BASE+29;		//wParam=0, lParam=lpWndProc
+REM_SETSPLIT			:= REM_BASE+30;		//wParam=nSplit, lParam=0
+REM_GETSPLIT			:= REM_BASE+31;		//wParam=0, lParam=0
+REM_VCENTER				:= REM_BASE+32;		//wParam=0, lParam=0
+REM_REPAINT				:= REM_BASE+33;		//wParam=0, lParam=TRUE/FALSE (Paint Now)
+REM_BMCALLBACK			:= REM_BASE+34;		//wParam=0, lParam=lpBmProc
+REM_READONLY			:= REM_BASE+35;		//wParam=0, lParam=TRUE/FALSE
+REM_INVALIDATELINE		:= REM_BASE+36;		//wParam=Line, lParam=0
+REM_SETPAGESIZE			:= REM_BASE+37;		//wParam=nLines, lParam=0
+REM_GETPAGESIZE			:= REM_BASE+38;		//wParam=0, lParam=0
+REM_GETCHARTAB			:= REM_BASE+39;		//wParam=nChar, lParam=0
+REM_SETCHARTAB			:= REM_BASE+40;		//wParam=nChar, lParam=nValue
+REM_SETCOMMENTBLOCKS	:= REM_BASE+41;		//wParam=lpStart, lParam=lpEnd
+REM_SETWORDGROUP		:= REM_BASE+42;		//wParam=0, lParam=nGroup (0-15)
+REM_GETWORDGROUP		:= REM_BASE+43;		//wParam=0, lParam=0
+REM_SETBMID				:= REM_BASE+44;		//wParam=nLine, lParam=nBmID
+REM_GETBMID				:= REM_BASE+45;		//wParam=nLine, lParam=0
+REM_ISCHARPOS			:= REM_BASE+46;		//wParam=CP, lParam=0, returns 1 if comment block, 2 if comment, 3 if string
+REM_HIDELINES			:= REM_BASE+47;		//wParam=nLine, lParam=nLines
+REM_SETDIVIDERLINE		:= REM_BASE+48;		//wParam=nLine, lParam=TRUE/FALSE
+REM_ISINBLOCK			:= REM_BASE+49;		//wParam=nLine, lParam=lpRABLOCKDEF
+REM_TRIMSPACE			:= REM_BASE+50;		//wParam=nLine, lParam=fLeft
+REM_SAVESEL				:= REM_BASE+51;		//wParam=0, lParam=0
+REM_RESTORESEL			:= REM_BASE+52;		//wParam=0, lParam=0
+REM_GETCURSORWORD		:= REM_BASE+53;		//wParam=BuffSize, lParam=lpBuff
+REM_SETSEGMENTBLOCK		:= REM_BASE+54;		//wParam=nLine, lParam=TRUE/FALSE
+REM_GETMODE				:= REM_BASE+55;		//wParam=0, lParam=0
+REM_SETMODE				:= REM_BASE+56;		//wParam=nMode, lParam=0
+REM_GETBLOCK			:= REM_BASE+57;		//wParam=0, lParam=lpBLOCKRANGE
+REM_SETBLOCK			:= REM_BASE+58;		//wParam=0, lParam=lpBLOCKRANGE
+REM_BLOCKINSERT			:= REM_BASE+59;		//wParam=0, lParam=lpText
+REM_LOCKUNDOID			:= REM_BASE+60;		//wParam=TRUE/FALSE, lParam=0
+REM_ADDBLOCKDEF			:= REM_BASE+61;		//wParam=0, lParam = lpRABLOCKDEF
+
+RA_COLLAPSE				:= 1;
+RA_EXPAND				:= 2;
+RA_EXPANDHIDDEN			:= 8;
+
+//Line hiliting
+STATE_HILITEOFF			:= 0;
+STATE_HILITE1			:= 1;
+STATE_HILITE2			:= 2;
+STATE_HILITE3			:= 3;
+STATE_HILITEMASK		:= 3;
+
+//Bookmarks
+/*	return value from REM_GETBOOKMARK:
+	0 = none
+	1 = minus sign
+	2 = plus sign
+	3 = blue square (normal bookmark)
+	4 = dark red circle
+	5 = light red circle
+	6 = dark blue circle
+	7 = red 'x' square
+	8 = white square down arrow
+	9 = white square up arrow
+*/
+
+STATE_BMOFF				:= $00;
+STATE_BM1				:= $10;
+STATE_BM2				:= $20;
+STATE_BM3				:= $30;
+STATE_BM4				:= $40;
+STATE_BM5				:= $50;
+STATE_BM6				:= $60;
+STATE_BM7				:= $70;
+STATE_BM8				:= $80;
+STATE_BMMASK			:= $0F0;
+
+//Line states
+STATE_LOCKED			:= $100;
+STATE_HIDDEN			:= $200;
+STATE_COMMENT			:= $400;
+STATE_DIVIDERLINE		:= $800;
+STATE_SEGMENTBLOCK		:= $1000;
+STATE_GARBAGE			:= $80000000;
+
+//Character table types
+CT_NONE					:= 0;
+CT_CHAR					:= 1;
+CT_OPER					:= 2;
+CT_HICHAR				:= 3;
+CT_CMNTCHAR				:= 4;
+CT_STRING				:= 5;
+CT_CMNTDBLCHAR			:= 6;
+
+type
+RAFONT: record
+	hFont		:dword;					//Code edit normal
+	hIFont	:dword;						//Code edit italics
+	hLnrFont	:dword;					//Line numbers
+endrecord;
+
+RACOLOR: record
+	bckcol	:dword;						//Back color
+	txtcol	:dword;						//Text color
+	selbckcol	:dword;					//Sel back color
+	seltxtcol	:dword;					//Sel text color
+	cmntcol	:dword;						//Comment color
+	strcol	:dword;						//String color
+	oprcol	:dword;						//Operator color
+	hicol1	:dword;						//Line hilite 1
+	hicol2	:dword;						//Line hilite 2
+	hicol3	:dword;						//Line hilite 3
+	selbarbck	:dword;					//Selection bar
+	selbarpen	:dword;					//Selection bar pen
+	lnrcol	:dword;						//Line numbers color
+	numcol	:dword;						//Numbers & hex color
+endrecord;
+
+RASELCHANGE: record
+	nmhdr		:w.NMHDR;
+	chrg		:w.CHARRANGE;			//Current selection
+	seltyp		:word;					//SEL_TEXT or SEL_OBJECT
+	line		:dword;					//Line number
+	cpLine		:dword;					//Character position of first character
+	lpLine		:dword;					//Pointer to line
+	nlines		:dword;					//Total number of lines
+	nhidden		:dword;					//Total number of hidden lines
+	fchanged	:dword;					//TRUE if changed since last
+	npage		:dword;					//Page number
+	nWordGroup	:dword;					//Hilite word group
+endrecord;
+
+const
+BD_NONESTING			:= $1;				//Set to true for non nested blocks
+BD_DIVIDERLINE		:= $2;				//Draws a divider line
+BD_INCLUDELAST		:= $4;				//lpszEnd line is also collapsed
+BD_LOOKAHEAD			:= $8;				//Look 500 lines ahead for the ending
+BD_SEGMENTBLOCK		:= $10;			//Segment block, collapse till next segmentblock
+
+
+type
+RABLOCKDEF: record
+	lpszStart	:dword;				//Block start
+	lpszEnd		:dword;				//Block end
+	lpszNot1	:dword;				//Dont hide line containing this or set to NULL
+	lpszNot2	:dword;				//Dont hide line containing this or set to NULL
+	flag		:dword;					
+endrecord;
+
+LINERANGE: record
+	lnMin		:dword;			//Starting line
+	lnMax		:dword;			//Ending line
+endrecord;
+
+BLOCKRANGE: record
+	lnMin		:dword;			// starting line
+	clMin		:dword;			// starting column
+	lnMax		:dword;			// ending line
+	clMax		:dword;			// ending column
+endrecord;
+
+	//RAEditClassName	:string := "RAEDIT";
+// when using dll
+//szClassName	:byte; @nostorage;
+//	byte "RAEDIT",0;
+// when using lib use this instead
+// szClassName	:byte; @nostorage;
+//			byte "MyRAEdit",0;
+
+
+/*
+RAEdit is an attemt to create a custom code edit control
+as a replacement for the richedit control.
+If it gets any good I will replace the richedit in RadASM.
+
+Features:
+---------
+
+- Syntax hiliting with colors, bold and italic.
+- Syntax word list with color and font options for each group.
+- Line hiliting.
+- Selection bar with optional line numbers.
+- Bookmarks.
+- Expand/collapse blocks.
+- Access to internal structures for fast on the fly code analysis/modify.
+- Unlimitted undo/redo, not lost on save.
+- EN_SELCHANGE reports selection, line number, line start character
+  position and a pointer to line structure for line analysis. No waste of
+  time to get these things.
+- Button in upper right corner is a splitter bar.
+- Buttons in lower left corner:
+   1. Show/hide line numbers.
+   2. Collapse all blocks
+   3. Expand all blocks
+
+Todo:
+-----
+
+- Speed optimizing block insert/delete
+
+Build.
+------
+To build the dll. use Release build.
+To build the library, use Debug build.
+
+Styles.
+-------
+
+STYLE_NOSPLITT
+STYLE_NOLINENUMBER
+STYLE_NOCOLLAPSE
+STYLE_NOHSCROLL
+STYLE_NOVSCROLL
+STYLE_NOHILITE
+STYLE_NOSIZEGRIP
+STYLE_NODBLCLICK
+STYLE_READONLY
+STYLE_NODIVIDERLINE
+STYLE_NOBACKBUFFER
+STYLE_NOSTATE
+STYLE_DRAGDROP
+STYLE_SCROLLTIP
+
+Messages:
+---------
+
+REM_SETHILITEWORDS
+wParam=Color
+lParam=lpszWords
+
+REM_SETFONT
+wParam=0
+lParam=lpRAFONT
+
+REM_GETFONT
+wParam=0
+lParam=lpRAFONT
+
+REM_SETCOLOR
+wParam=0
+lParam=lpRACOLOR
+
+REM_GETCOLOR
+wParam=0
+lParam=lpRACOLOR
+
+REM_SETHILITELINE
+wParam=Line
+lParam=nColor
+
+REM_GETHILITELINE
+wParam=Line
+lParam=0
+
+REM_SETBOOKMARK
+wParam=Line
+lParam=nType
+
+REM_GETBOOKMARK
+wParam=Line
+lParam=0
+
+REM_CLRBOOKMARKS
+wParam=0
+lParam=nType
+
+REM_NXTBOOKMARK
+wParam=Line
+lParam=nType
+
+REM_PRVBOOKMARK
+wParam=Line
+lParam=nType
+
+REM_FINDBOOKMARK
+wParam=BmID
+lParam=0
+
+REM_SETBLOCKS
+wParam=0
+lParam=lpRABLOCKDEF
+
+REM_ISLINE
+wParam=Line
+lParam=lpszDef
+
+REM_GETWORD
+wParam=BuffSize
+lParam=lpBuff
+
+REM_COLLAPSE
+wParam=Line
+lParam=lpRABLOCKDEF
+
+REM_COLLAPSEALL
+wParam=0
+lParam=lpRABLOCKDEF
+
+REM_EXPAND
+wParam=Line
+lParam=0
+
+REM_EXPANDALL
+wParam=0
+lParam=0
+
+REM_LOCKLINE
+wParam=Line
+lParam=TRUE/FALSE
+
+REM_ISLINELOCKED
+wParam=Line
+lParam=0
+
+REM_HIDELINE
+wParam=Line
+lParam=TRUE/FALSE
+
+REM_ISLINEHIDDEN
+wParam=Line
+lParam=0
+
+REM_AUTOINDENT
+wParam=0
+lParam=TRUE/FALSE
+
+REM_TABWIDTH
+wParam=nChars
+lParam=0
+
+REM_SELBARWIDTH
+wParam=nWidth
+lParam=0
+
+REM_LINENUMBERWIDTH
+wParam=nWidth
+lParam=0
+
+REM_MOUSEWHEEL
+wParam=nLines
+lParam=0
+
+REM_SUBCLASS
+wParam=0
+lParam=lpWndProc
+
+REM_SETSPLIT
+wParam=nSplit
+lParam=0
+
+REM_GETSPLIT
+wParam=0
+lParam=0
+
+REM_VCENTER
+wParam=0
+lParam=0
+
+REM_REPAINT
+wParam=0
+lParam=TRUE/FALSE (Paint Now)
+
+REM_BMCALLBACK
+wParam=0
+lParam=lpBmProc
+
+REM_READONLY
+wParam=0
+lParam=TRUE/FALSE
+
+REM_INVALIDATELINE
+wParam=Line
+lParam=0
+
+REM_SETPAGEBREAK
+wParam=nLines
+lParam=0
+
+REM_GETPAGEBREAK
+wParam=0
+lParam=0
+
+REM_GETCHARTAB
+wParam=nChar
+lParam=0
+
+REM_SETCHARTAB
+wParam=nChar
+lParam=nValue
+
+REM_SETCOMMENTBLOCKS
+wParam=lpStart
+lParam=lpEnd
+
+REM_SETWORDGROUP
+wParam=0
+lParam=nGroup (0-15)
+
+REM_GETWORDGROUP
+wParam=0
+lParam=0
+
+REM_SETBMID
+wParam=nLine
+lParam=nBmID
+
+REM_GETBMID
+wParam=nLine
+lParam=0
+
+REM_ISCHARPOS
+wParam=CP
+lParam=0
+returns:
+0 if normal
+1 if comment block
+2 if comment
+3 if string
+
+REM_HIDELINES
+wParam=nLine
+lParam=nLines
+
+REM_SETDIVIDERLINE
+wParam=nLine
+lParam=TRUE/FALSE
+
+REM_ISINBLOCK
+wParam=nLine
+lParam=lpRABLOCKDEF
+
+REM_TRIMSPACE
+wParam=nLine
+lParam=fLeft
+
+REM_SAVESEL
+wParam=0
+lParam=0
+
+REM_RESTORESEL
+wParam=0
+lParam=0
+
+REM_GETCURSORWORD
+wParam=BuffSize
+lParam=lpBuff
+
+REM_SETSEGMENTBLOCK
+wParam=nLine
+lParam=TRUE/FALSE
+
+EM_EXLINEFROMCHAR
+wParam=0
+lParam=cp
+
+EM_EXSETSEL
+wParam=0
+lParam=lpCHARRANGE
+
+EM_EXGETSEL
+wParam=0
+lParam=lpCHARRANGE
+
+EM_FINDTEXTEX
+wParam=Flags
+lParam=lpFINDTEXTEX
+
+EM_GETTEXTRANGE
+wParam=0
+lParam=lpTEXTRANGE
+
+EM_FINDWORDBREAK
+wParam=uFlags
+lParam=cp
+
+EM_CANREDO
+wParam=0
+lParam=0
+
+EM_REDO
+wParam=0
+lParam=0
+
+EM_HIDESELECTION
+wParam=TRUE/FALSE
+lParam=0
+
+EM_GETSELTEXT
+wParam=0
+lParam=lpBuff
+
+EM_CANPASTE
+wParam=CF_TEXT
+lParam=0
+
+EM_STREAMIN
+wParam=SF_TEXT
+lParam=lpStream
+
+EM_STREAMOUT
+wParam=SF_TEXT
+lParam=lpStream
+
+EM_CHARFROMPOS
+wParam=0
+lParam=lpPoint
+
+EM_POSFROMCHAR
+wParam=lpPoint
+lParam=cp
+
+EM_LINEFROMCHAR
+wParam=cp
+lParam=0
+
+EM_LINEINDEX
+wParam=line
+lParam=0
+
+EM_LINELENGTH
+wParam=cp
+lParam=0
+
+EM_GETLINE
+wParam=Line
+lParam=lpBuff
+
+EM_GETFIRSTVISIBLELINE
+wParam=0
+lParam=0
+
+EM_LINESCROLL
+wParam=cxScroll
+lParam=cyScroll
+
+EM_SCROLLCARET
+wParam=0
+lParam=0
+
+EM_SETSEL
+wParam=cpMin
+lParam=cpMax
+
+EM_GETSEL
+wParam=lpcpMin
+lParam=lpcpMax
+
+EM_GETMODIFY
+wParam=0
+lParam=0
+
+EM_SETMODIFY
+wParam=TRUE/FALSE
+lParam=0
+
+EM_REPLACESEL
+wParam=TRUE/FALSE
+lParam=lpText
+
+EM_GETLINECOUNT
+wParam=0
+lParam=0
+
+EM_GETRECT
+wParam=0
+lParam=lpRECT
+
+EM_CANUNDO
+wParam=0
+lParam=0
+
+EM_UNDO
+wParam=0
+lParam=0
+
+EM_EMPTYUNDOBUFFER
+wParam=0
+lParam=0
+
+WM_COPY
+wParam=0
+lParam=0
+
+WM_CUT
+wParam=0
+lParam=0
+
+WM_PASTE
+wParam=0
+lParam=0
+
+WM_CLEAR
+wParam=0
+lParam=0
+
+WM_SETTEXT
+wParam=0
+lParam=lpszText
+
+WM_GETTEXT
+wParam=cbBuff
+lParam=lpBuff
+
+WM_GETTEXTLENGTH
+wParam=0
+lParam=0
+
+KetilO
+*/
+
+
+//type
+//EDIT_CLASS:
+//	record
+//		hwnd		:dword;		//Handle of main window
+//		fstyle		:dword;		//Window style
+//		ID			:dword;		//Window ID
+//		hpar		:dword;		//Handle of parent window
+//		edta		:dword[12];	//RAEDT <>
+//		edtb		:dword[12];	//RAEDT <>
+//		hhscroll	:dword;		//Handle of horizontal scrollbar
+//		hgrip		:dword;		//Handle of sizegrip
+//		hnogrip		:dword;		//Handle of nosizegrip
+//		hsbtn		:dword;		//Handle of splitt button
+//		hlin		:dword;		//Handle of linenumber button
+//		hexp		:dword;		//Handle of expand button
+//		hcol		:dword;		//Handle of collapse button
+//		hsta		:dword;		//Handle of state window
+//		htt			:dword;		//Handle of tooltip
+//		fresize		:dword;		//Resize in action flag
+//		fsplitt		:dword;		//Splitt factor
+//		nsplitt		:dword;		//Splitt height
+//	
+//		hHeap		:dword[3];	//Handle of heap
+//		hLine		:dword;		//Handle of line pointer mem
+//		cbLine		:dword;		//Size of line pointer mem
+//		rpLine		:dword;		//Relative pointer into line pointer mem
+//		rpLineFree	:dword;		//Pointer to free line pointer
+//		hChars		:dword;		//Handle of character mem
+//		cbChars		:dword;		//Size of character mem
+//		rpChars		:dword;		//Relative pointer into character mem
+//		rpCharsFree	:dword;		//Relative pointer to free character
+//		hUndo		:dword;		//Handle of undo memory
+//		cbUndo		:dword;		//Size of undo memory
+//		rpUndo		:dword;		//Relative pointer to free (last)
+//		line		:dword;		//Linenumber
+//		cpLine		:dword;		//Character position for start of line
+//	
+//		rc			:hide.rect_t;		//Main rect
+//		selbarwt	:dword;		//Width of selection bar
+//		nlinenrwt	:dword;		//Initial width of linenumber bar
+//		linenrwt	:dword;		//Width of linenumber bar
+//		nScroll		:dword;		//Mouse wheel scroll lines
+//		nPageBreak	:dword;		//Page break
+//		cpMin		:dword;		//Selection min
+//		cpMax		:dword;		//Selection max
+//		fOvr		:dword;		//Insert / Overwrite
+//		nHidden		:dword;		//Number of hidden lines
+//		cpx			:dword;		//Scroll position
+//		focus		:dword;		//Handle of edit having focus
+//		fCaretHide	:dword;		//Caret is hidden
+//		fChanged	:dword;		//Content changed
+//		fHideSel	:dword;		//Hide selection
+//		fIndent		:dword;		//Auto indent
+//		clr			:RACOLOR;
+//		br			:dword[7];	//RABRUSH <?>
+//		nTab		:dword;		//Tab size
+//		fnt			:RAFONT;
+//		fntinfo		:dword[9];	//RAFONTINFO <?>
+//		lpBmCB		:dword;		//Bookmark paint callback
+//		nchange		:dword;		//Used by EN_SELCHANGE
+//		nlastchange	:dword;		//Used by EN_SELCHANGE
+//		nWordGroup	:dword;		//Hilite word group
+//		fExpandTab	:dword;		//TRUE/FALSE Epand tabs to spaces
+//		savesel		:w.CHARRANGE;
+//		htlt		:dword;		//Scroll tooltip
+//endrecord;
+//endtype;
+//
+//const		editeax	:text:="(type EDIT_CLASS [EAX])";
+

@@ -1,0 +1,1341 @@
+unit manager_unit;
+
+	#includeonce( "HIDE.hhf" )
+
+	?@nodisplay := true;
+	?@noalignstack := true;
+
+
+storage
+	optTab		:dword;
+	optEdit		:dword;
+	optCurrent	:dword;
+	optGeneral	:dword;
+	optSettings	:dword;
+	optThemes	:dword;
+	optEnv		:dword;
+	optProject	:dword;
+	optJobs		:dword;
+	
+	optTCI	:w.TC_ITEM;
+		
+	client_r:hide.rect_t;
+	work_r	:hide.rect_t;
+	
+	fnt		:w.CHOOSEFONT;
+	optBuffer	:tBuffer;
+	
+	count		:uns32;		// scrap variable
+	
+	newCodeFont		:boolean;
+	newLineFont		:boolean;
+	linksChanged	:boolean;
+	settingsChanged	:boolean;
+
+	align(4);
+	
+readonly
+
+		
+	zEnvHelp	:zstring :=
+		"Set custom paths or change default paths" nl
+		"HIDE macros are allowed here." nl
+		"%h = HIDE home path" nl
+		"%$ = current folder path" nl
+		"%p = Projects folder path"nl
+		"%s = current source file" nl
+		"%i = hlainc folder path" nl
+		"%l = hlalib folder path" nl
+		"%t = current temp folder path" nl
+		"%x = templates folder" nl
+		"%c = current project folder" nl nl
+		"Help -> Show Environment shows all the paths with the macros expansions.";
+		
+	zGeneralHelp	:zstring :=
+		"Settings chosen here apply to general HIDE" nl
+		"behavior independent from projects settings.";
+		
+	zSettingsHelp	:zstring :=
+		"These settings are for standard mode and" nl
+		"govern the initial settings of each newly" nl
+		"created project.";
+		
+		
+	zThemesHelp		:zstring :=
+		"Setup keywords and color schemes.  Save and" nl
+		"load desired theme colors.";
+		
+	zProjectHelp	:zstring :=
+		"Change settings and options for current project." nl
+		"These settings are common to all the project Jobs.";
+
+	zJobsHelp		:zstring :=
+		"Setup and maintain properties of Project Jobs.";
+		
+proc
+	
+	writeMessage :procedure( message:zstring );
+	begin writeMessage;
+		
+		w.SendMessage( optEdit, w.WM_SETTEXT, false, 0 );
+		w.SendMessage( optEdit, w.EM_REPLACESEL, 0, message );
+		w.SendMessage( optEdit, w.EM_SETSEL, 0, 0 );
+		w.SendMessage( optEdit, w.EM_SCROLLCARET, 0, 0 );
+		
+	end writeMessage;
+
+	
+	
+	setupForFont	:procedure( hwin:dword );
+	begin setupForFont;
+
+		mem2.fillMem( &fnt, @size(fnt), 0 );
+		mov( @size(fnt), fnt.lStructSize );
+		mov( hwin, fnt.hWndOwner );
+		mov( w.CF_SCREENFONTS | w.CF_EFFECTS | w.CF_INITTOLOGFONTSTRUCT, fnt.Flags );
+		mov( col.txtcol, fnt.rgbColors );
+		
+	end setupForFont;
+
+	
+	Proc_ManagerGen		:procedure( lparam:dword; wparam:dword; umsg:uns32; hwin:dword );
+	begin Proc_ManagerGen;
+		pushabi;
+
+		mov( umsg, eax );
+		if( eax = w.WM_INITDIALOG ) then
+			
+			move( hwin, optGeneral );
+
+			hideini.readInt( "HIDE Settings", "AutoUntitled" );
+			w.CheckDlgButton( hwin,IDC_MANAGERGEN_AUTOSAVE, eax );
+		
+			hideini.readInt( "HIDE Settings", "TopWindow" );
+			w.CheckDlgButton( hwin, IDC_MANAGERGEN_TOPWINDOW, eax );
+		
+			hideini.readInt( "HIDE Settings", "Restore Project" );
+			w.CheckDlgButton( hwin, IDC_MANAGERGEN_OPENLAST, eax );
+		
+			hideini.readInt( "HIDE Settings", "Standard Templates" );
+			w.CheckDlgButton( hwin, IDC_MANAGERGEN_USETPL, eax );
+		
+			hideini.readInt( "HIDE Settings", "Scan Properties" );
+			w.CheckDlgButton( hwin, IDC_MANAGERGEN_SCANPROP, eax );
+	
+			hideini.readInt( "HIDE Settings", "Highlight Line" );
+			w.CheckDlgButton( hwin, IDC_MANAGERGEN_HIGHLIGHT, eax );
+			
+			hideini.readInt( "HIDE Settings", "Show Divider" );
+			w.CheckDlgButton( hwin, IDC_MANAGERGEN_SHOWDIVIDER, eax );
+			
+			hideini.readInt( "HIDE Settings", "Highlight Comments" );
+			w.CheckDlgButton( hwin, IDC_MANAGERGEN_HILITECMNT, eax );
+
+			hideini.readInt( "HIDE Settings", "Show Line Numbers" );
+			w.CheckDlgButton( hwin, IDC_MANAGERGEN_SHOWLNNUM, eax );
+			
+			hideini.readInt( "HIDE Settings", "Auto Parenthesis" );
+			w.CheckDlgButton( hwin, IDC_MANAGERGEN_PAREN, eax );
+			
+			hideini.readInt( "HIDE Settings", "Auto HLA Structures" );
+			w.CheckDlgButton( hwin, IDC_MANAGERGEN_AUTOHLA, eax );
+			
+			hideini.readInt( "HIDE Settings", "Auto Dependencies" );
+			w.CheckDlgButton( hwin, IDC_MANAGERGEN_AUTODEPEND, eax );
+			
+			hideini.readInt( "HIDE Settings", "Keep Temp" );
+			w.CheckDlgButton( hwin, IDC_MANAGERGEN_KEEPTEMP, eax );
+			
+			hideini.readInt( "HIDE Settings", "Verbose HLA" );
+			w.CheckDlgButton( hwin, IDC_MANAGERGEN_VERBOSE, eax );
+			
+
+			or( 1, eax );
+			
+		elseif( eax = w.WM_COMMAND ) then
+			
+			mov( wparam, eax );
+			mov( eax,edx );
+			shr( 16, edx );
+			and( $0ffff, eax );
+			if( edx = w.BN_CLICKED ) then
+				
+				if( eax = IDC_MANAGERGEN_MAINFONT ) then
+					
+					setupForFont( hwin );
+					mov( &mainfont, fnt.lpLogFont);
+					if( w._ChooseFont( &fnt ) ) then
+						mov( true, newCodeFont );
+						
+					endif;
+					
+				elseif( eax = IDC_MANAGERGEN_LINEFONT ) then
+					
+					setupForFont( hwin );
+					mov( &linefont, fnt.lpLogFont );
+					if( w._ChooseFont( &fnt ) ) then
+						mov( true, newLineFont );
+					endif;
+					
+				endif;
+				
+			endif;
+			
+			or( 1, eax );
+
+		else
+			
+			xor( eax, eax );
+			
+		endif;
+
+		popabi;
+	end Proc_ManagerGen;
+
+
+	Proc_ManagerEnv		:procedure( lparam:dword; wparam:dword; umsg:uns32; hwin:dword );
+	begin Proc_ManagerEnv;
+		pushabi;
+		
+		mov( umsg, eax );
+		if( eax = w.WM_INITDIALOG ) then
+
+			move( hwin, optEnv );
+
+			if( hideini._readString( "HIDE Settings", "UserPath", strbuf) ) then
+				
+				w.SetDlgItemText( hwin, IDC_MANAGERENV_PATH, strbuf );
+				
+			endif;
+			
+			if( hideini._readString( "HIDE Settings", "ProjFold", strbuf) ) then
+				
+				w.SetDlgItemText( hwin, IDC_MANAGERENV_PROJECT, strbuf );
+			
+			endif;
+	
+			if( hideini._readString( "HIDE Settings", "debugger", strbuf) ) then
+		
+				w.SetDlgItemText( hwin, IDC_MANAGERENV_DEBUG, strbuf );	
+			
+			endif;
+	
+			if( hideini._readString( "Help", "1", strbuf) ) then
+				
+				w.SetDlgItemText( hwin, IDC_MANAGERENV_HELP, strbuf );		
+			
+			endif;
+	
+			hideini._readString( "HIDE Settings", "hlalib", strbuf );
+			w.SetDlgItemText( hwin, IDC_MANAGERENV_HLALIB, strbuf );
+	
+			hideini._readString( "HIDE Settings", "hlainc", strbuf );
+			w.SetDlgItemText( hwin, IDC_MANAGERENV_HLAINC, strbuf );
+	
+			hideini._readString( "HIDE Settings", "hlaopt", strbuf );
+			w.SetDlgItemText( hwin, IDC_MANAGERENV_HLAOPT, strbuf );
+		
+			or( 1, eax );
+			
+		else
+			
+			xor( eax, eax );
+			
+		endif;
+		
+		popabi;
+	end Proc_ManagerEnv;
+
+
+	updateSettingsLinks	:procedure { @noframe };
+	begin updateSettingsLinks;
+		pushad();
+		
+		w.SendDlgItemMessage( optSettings, IDC_MANAGERSET_LIST, w.LB_RESETCONTENT, 0, 0 );
+
+		hideini.getItemCount( "default libs" );
+		mov( eax, ebx );
+		xor( ecx, ecx );
+		while( ecx < ebx ) do
+			
+			iniesi.readItem( "default libs", ecx, strbuf );
+			push( ecx );
+			w.SendDlgItemMessage( optSettings, IDC_MANAGERSET_LIST, w.LB_ADDSTRING, 0, strbuf );
+		
+			w.GetDlgItem( optSettings, ID_HIDE_THREADSAFE );
+			mov( eax, edx );
+			
+			if( str.ieq( strbuf, "hlalib.lib" )) then
+				w.EnableWindow( edx, true );
+			elseif( str.ieq( strbuf, "hlalib_safe.lib" ) ) then
+				w.EnableWindow( edx, true );
+				w.CheckDlgButton( optSettings, ID_HIDE_THREADSAFE, w.BST_CHECKED );
+			endif;
+			pop( ecx );
+
+			inc( ecx );
+		endwhile;
+		
+		popad();
+		ret();
+	end updateSettingsLinks;
+		
+
+	Proc_ManagerSettings	:procedure( lparam:dword; wparam:dword; umsg:uns32; hwin:dword );
+	begin Proc_ManagerSettings;
+		pushabi;
+		
+		mov( umsg, eax );
+		
+		if( eax = w.WM_COMMAND ) then
+			
+			mov( wparam, eax );
+			mov( eax, edx );
+			shr( 16, edx );
+			and( $0ffff, eax );
+			if( edx = w.BN_CLICKED ) then
+				
+				mov( true, settingsChanged );
+				if( eax = ID_HIDE_GLOBALLINK ) then
+					
+					
+					saveAll();
+					w.DialogBoxParam( hinst, val ID_ADVANCEDLINK, hwin, &Proc_AdvancedLink, 0 );
+					
+					or( 1, eax );
+				
+				elseif( eax = ID_HIDE_THREADSAFE ) then
+				
+					// see if button is selected to safe or normal
+					// change to appropriate hlalib file in:
+					// joblist, project file and update link list
+							
+					if( w.IsDlgButtonChecked( hwin, ID_HIDE_THREADSAFE ) = w.BST_CHECKED ) then
+					
+						str.put( strbuf, "hlalib.lib" );
+						str.put( workpath, "hlalib_safe.lib" );
+						
+					else
+
+						str.put( strbuf, "hlalib_safe.lib" );
+						str.put( workpath, "hlalib.lib" );
+					
+						
+					endif;
+	
+					w.SendDlgItemMessage( hwin, IDC_MANAGERSET_LIST, w.LB_FINDSTRINGEXACT, -1, strbuf );
+					w.SendDlgItemMessage( hwin, IDC_MANAGERSET_LIST, w.LB_DELETESTRING, eax, 0 );
+					w.SendDlgItemMessage( hwin, IDC_MANAGERSET_LIST, w.LB_ADDSTRING, 0, workpath );
+					
+					mov( true, linksChanged );
+					
+				elseif( eax = IDC_MANAGERSET_ADDLINK ) then
+
+					InitOF( "Add a library or object for linking", "lib", type_lib );
+					if( GetOpenName() ) then
+						mov( eax, ebx );	// hla string on heap
+						filesys.extractFilename( ebx, ebx );
+						
+						w.SendDlgItemMessage( hwin, IDC_MANAGERSET_LIST, w.LB_FINDSTRINGEXACT, -1, ebx );
+						if( eax = w.LB_ERR ) then
+
+							w.SendDlgItemMessage( hwin, IDC_MANAGERSET_LIST, w.LB_ADDSTRING, 0, ebx );
+							mov( true, linksChanged );
+
+						endif;
+						
+						str.free( ebx );
+						
+					endif;
+					
+				elseif( eax = IDC_MANAGERSET_REMOVE ) then
+					
+					w.SendDlgItemMessage( hwin, IDC_MANAGERSET_LIST, w.LB_GETCURSEL, 0, 0 );
+					if( eax != w.LB_ERR ) then
+						
+						w.SendDlgItemMessage( hwin, IDC_MANAGERSET_LIST, w.LB_DELETESTRING, eax, 0 );
+						mov( true, linksChanged );
+
+					endif;
+					
+				else
+					
+					xor( eax, eax );
+					
+				endif;
+			
+			else
+				
+				xor( eax, eax );
+				
+			endif;
+			
+		elseif( eax = w.WM_NOTIFY ) then
+			
+			mov( true, settingsChanged );
+			
+		elseif( eax = w.WM_INITDIALOG ) then
+			
+			mov( hwin, eax );
+			mov( eax, optSettings );
+			
+			// Set range
+			w.SendDlgItemMessage( hwin, ID_HIDE_SPNTAB, w.UDM_SETRANGE, 0, $0001_000E );
+			movzx( settings.tab, eax );
+			w.SendDlgItemMessage( hwin, ID_HIDE_SPNTAB, w.UDM_SETPOS, 0, eax );
+			w.SendDlgItemMessage( hwin, ID_HIDE_SPNBACK, w.UDM_SETRANGE, 0, $0000_000A );
+			movzx( settings.backups, eax );
+			w.SendDlgItemMessage( hwin, ID_HIDE_SPNBACK, w.UDM_SETPOS, 0, eax );
+			
+			if ( testnz (opt_exptabs, settings.options)) then
+				mov (true, eax);
+			else
+				mov (false, eax);
+			endif;
+			w.CheckDlgButton(hwin,ID_HIDE_EXPTAB,eax);
+			
+			if (testnz (opt_indent, settings.options)) then
+				mov (true, eax);
+			else
+				mov (false, eax);
+			endif;
+			w.CheckDlgButton(hwin,ID_HIDE_AUTOIND,eax);
+		
+		
+			if (testnz (opt_console, settings.options)) then
+				mov (true, eax);
+			else
+				mov (false, eax);
+			endif;
+			w.CheckDlgButton(hwin,ID_HIDE_CONSOLE2OUT, eax);
+		
+		
+			if (testnz (opt_usedebuglib, settings.options)) then
+				mov (true, eax);
+			else
+				mov (false, eax);
+			endif;
+			w.CheckDlgButton (hwin, ID_HIDE_USEDEBUG, eax);
+			
+			if (testnz (opt_windows, settings.options)) then
+				mov (true, eax);
+			else
+				mov (false, eax);
+			endif;
+			w.CheckDlgButton (hwin, ID_HIDE_W, eax);
+			
+			if ( testnz (opt_threadsafe, settings.options)) then
+				mov (true, eax);
+			else
+				mov (false, eax);
+			endif;
+			w.CheckDlgButton( hwin, ID_HIDE_THREADSAFE, eax );	
+		
+			hideini.readInt ("HIDE Settings", "HLA Level");
+			add (IDC_RBN_HIGH, eax);
+			w.CheckDlgButton( hwin, eax, true );
+			
+			updateSettingsLinks();
+			
+			or( 1, eax );
+			
+		else
+			
+			xor( eax, eax );
+			
+		endif;
+	
+		popabi;
+	end Proc_ManagerSettings;
+	
+	updateFolders :procedure { @NOFRAME };
+	begin updateFolders;
+		
+		w.SendDlgItemMessage( optProject, IDC_MANAGERPROJ_FOLDERS, w.LB_RESETCONTENT, 0, 0);
+		
+		str.put( strbuf, project.id );
+		filesys.deleteExt( strbuf, strbuf );
+		w.SendDlgItemMessage( optProject, IDC_MANAGERPROJ_FOLDERS, w.LB_ADDSTRING, 0, strbuf );
+		w.SendDlgItemMessage( optProject, IDC_MANAGERPROJ_FOLDERS, w.LB_SETCURSEL, eax, 0 );
+		
+		// user folders
+		mov( &project.hpr, esi );
+		if( iniesi.getItemCount( "HPR Folders" )) then
+			mov( eax, count );
+			xor( ebx, ebx );
+			while( ebx < count ) do
+
+				iniesi.readItem( "HPR Folders", ebx, strbuf );
+				w.SendDlgItemMessage( optProject, IDC_MANAGERPROJ_FOLDERS, w.LB_ADDSTRING, 0, strbuf );
+				inc (ebx);
+				
+			endwhile;			
+		endif;
+
+		ret();
+	end updateFolders;
+
+	
+	Proc_ManagerProjOpt	:procedure( lparam:dword; wparam:dword; umsg:uns32; hwin:dword );
+	begin Proc_ManagerProjOpt;
+		
+		mov( umsg, eax );
+		if( eax = w.WM_COMMAND ) then
+			
+			mov( wparam, eax );
+			mov( eax, edx );
+			shr( 16, edx );
+			and( $0ffff, eax );
+			if( edx = w.BN_CLICKED ) then
+				
+				if( eax = IDC_MANAGERPROJ_RENAME ) then
+					//dbg.enters( "Rename Project" );
+					if( getStringInput( "Rename Project To", strbuf ) ) then
+						
+						// rename hpr
+						mov (&project.hpr, esi);
+						filesys.deleteExt( strbuf, strbuf );
+						str.put2 (strbuf, ".hpr");
+						iniesi.writeFileName( strbuf );
+						filesys.delete (project.id);
+						str.free( project.id );
+						str.a_cpy( strbuf );
+						mov( eax, project.id );
+						
+						// rename project folder
+						filesys.deleteExt( strbuf, strbuf );
+						str.cpy( project.folder, workpath );
+						filesys.extractPath( workpath, workpath );
+						str.put2( workpath, dirsep_c, strbuf );
+						filesys.cd( projectpath );
+						filesys.rename( project.folder, workpath );
+						str.free( project.folder );
+						str.a_cpy( workpath );
+						mov( eax, project.folder );
+						filesys.cd( project.folder );
+
+						w.SetDlgItemText( hwin, IDC_MANAGERPROJ_PATH, project.folder );
+						w.SetDlgItemText( hwin, IDC_MANAGERPROJ_NAME, project.id);
+
+						updateFolders();						
+
+						// update hlatmp environment
+
+						mov( &project.hpr, esi );
+						if( iniesi.readBool( "HPR Settings", "usetemp") ) then
+
+							str.put( workpath, project.folder, dirsep_c, "temp" );
+							env2.put( "hlatmp", workpath );
+						
+						endif;
+						
+					endif;
+					SetWindowCaption();
+					
+					//dbg.exits( "Rename Project" );
+					
+				elseif( eax = IDC_MANAGERPROJ_NEWFOLDER ) then
+					
+					writeMessage( "TODO: NEW FOLDER" );
+					if( getStringInput( "Create new Project folder", strbuf ) ) then
+						
+						if( filesys.exists( strbuf ) ) then
+							
+							writeMessage( "Folder already exists" );
+							
+						else
+							
+							filesys.mkdir( strbuf );
+							
+						endif;
+						
+						mov( &project.hpr, esi );
+						if( iniesi.findItem( "HPR Folders", strbuf ) = -1 ) then
+								
+							iniesi.writeItem( "HPR Folders", -1, strbuf );
+								
+						endif;
+							
+						updateFolders();
+						
+					endif;
+					
+					
+				elseif( eax = IDC_MANAGERPROJ_DELFOLDER ) then
+					
+					w.SendDlgItemMessage( hwin, IDC_MANAGERPROJ_FOLDERS, w.LB_GETCURSEL, 0, 0 );
+					w.SendDlgItemMessage( hwin, IDC_MANAGERPROJ_FOLDERS, w.LB_GETTEXT, eax, &buffer );
+					str.cpyz( &buffer, workpath );
+					if( w.RemoveDirectory (workpath) ) then
+
+						mov( &project.hpr, esi );
+						if( iniesi.findItem ("HPR Folders", workpath) != -1) then
+
+							iniesi.deleteItem( "HPR Folders", eax );
+							updateFolders();
+
+						endif;
+
+					else
+
+						writeMessage( "Unable to delete folder, make sure it's empty" );
+						
+					endif;
+					
+				elseif( eax = IDC_MANAGERPROJ_USETEMP ) then
+					
+					mov( &project.hpr, esi );
+					if( w.IsDlgButtonChecked( hwin, IDC_MANAGERPROJ_USETEMP ) ) then
+						iniesi.writeBool( "HPR Settings", "usetemp", true );
+						if( ! filesys.exists( "temp" ) ) then
+							
+							filesys.mkdir( "temp" );
+							
+						endif; 
+						
+						if( iniesi.findItem( "HPR Folders", "temp" ) = -1 ) then
+						
+							iniesi.writeItem( "HPR Folders", -1, "temp" );
+						
+						endif;
+						
+						str.put( workpath, project.folder, dirsep_c, "temp" );
+						env2.put( "hlatmp", workpath );
+
+					else
+							
+						iniesi.writeBool( "HPR Settings", "usetemp", false );
+						str.put( workpath, homepath, dirsep_c, "temp" );
+						env2.put( "hlatmp", workpath );
+						
+
+						// try to remove temp folder						
+						if( w.RemoveDirectory( "temp" ) ) then
+							
+							if( iniesi.findItem( "HPR Folders", "temp" ) != -1 ) then
+						
+								iniesi.deleteItem( "HPR Folders", eax );
+								
+							endif;
+							
+						else
+							
+							writeMessage( "Unable to remove temp folder, make sure it's empty" );
+							
+						endif;
+
+						
+					endif;
+					
+					updateFolders();
+					
+				elseif( eax = IDC_MANAGERPROJ_USEUNIT ) then
+
+					mov( &project.hpr, esi );
+					if( w.IsDlgButtonChecked( hwin, IDC_MANAGERPROJ_USEUNIT ) ) then
+
+						iniesi.writeBool( "HPR Settings", "useunits", true );						
+						if( ! filesys.exists( "units" ) ) then
+							filesys.mkdir( "units" );
+						endif;
+						
+						if( iniesi.findItem( "HPR Folders", "units" ) = -1 ) then
+
+							iniesi.writeItem( "HPR Folders", -1, "units" );
+							
+						endif;
+
+					else
+	
+						iniesi.writeBool( "HPR Settings", "useunits", false );
+
+						// try to remove units folder						
+						if( w.RemoveDirectory( "units" ) ) then
+							
+							if( iniesi.findItem( "HPR Folders", "units" ) != -1 ) then
+						
+								iniesi.deleteItem( "HPR Folders", eax );
+								
+							endif;
+							
+						else
+							
+							writeMessage( "Unable to remove units folder, make sure it's empty" );
+							
+						endif;
+							
+					endif;
+					
+					updateFolders();
+					
+				elseif( eax = IDC_MANAGERPROJ_USEBAK ) then
+					
+					mov( &project.hpr, esi );
+					if( w.IsDlgButtonChecked( hwin, IDC_MANAGERPROJ_USEBAK ) ) then
+
+						iniesi.writeBool( "HPR Settings", "useback", true );						
+						if( ! filesys.exists( "bak" ) ) then
+							filesys.mkdir( "bak" );
+						endif;
+						
+						if( iniesi.findItem( "HPR Folders", "bak" ) = -1 ) then
+
+							iniesi.writeItem( "HPR Folders", -1, "bak" );
+							
+						endif;
+
+					else
+	
+						iniesi.writeBool( "HPR Settings", "useback", false );
+
+						// try to remove units folder						
+						if( w.RemoveDirectory( "bak" ) ) then
+							
+							if( iniesi.findItem( "HPR Folders", "bak" ) != -1 ) then
+						
+								iniesi.deleteItem( "HPR Folders", eax );
+								
+							endif;
+							
+						else
+							
+							writeMessage( "Unable to remove bak folder, make sure it's empty" );
+							
+						endif;
+							
+					endif;
+					
+					updateFolders();
+					
+				endif;
+
+
+
+			
+			elseif( edx = w.LBN_SELCHANGE ) then
+				
+				if( eax = IDC_MANAGERPROJ_FOLDERS ) then
+					
+					w.SendDlgItemMessage( hwin, IDC_MANAGERPROJ_FOLDERS, w.LB_GETCURSEL, 0, 0 );
+					w.SendDlgItemMessage( hwin, IDC_MANAGERPROJ_FOLDERS, w.LB_GETTEXT, eax, &buffer );
+					str.cpyz( &buffer, workpath );
+					str.cpy( project.id, strbuf );
+					filesys.deleteExt( strbuf, strbuf );
+					if( ! str.eq (workpath, strbuf )) then
+
+						// not root folder, so activate delete button
+						w.GetDlgItem( hwin, IDC_MANAGERPROJ_DELFOLDER );
+						w.EnableWindow( eax, true );
+						
+					else
+						
+						w.GetDlgItem( hwin, IDC_MANAGERPROJ_DELFOLDER );
+						w.EnableWindow( eax, false );
+
+					endif;
+
+				endif;
+			
+			endif;
+			or( 1, eax );
+			
+		elseif( eax = w.WM_INITDIALOG ) then
+			
+			move( hwin, optProject );
+			w.SetDlgItemText( hwin, IDC_MANAGERPROJ_PATH, project.folder );
+			w.SetDlgItemText( hwin, IDC_MANAGERPROJ_NAME, project.id);
+			
+			// Set range
+			w.SendDlgItemMessage( hwin, IDC_MANAGERPROJ_UDTABS, w.UDM_SETRANGE, 0, $0001_000E );
+			movzx( project.tab, eax );
+			w.SendDlgItemMessage( hwin, IDC_MANAGERPROJ_UDTABS, w.UDM_SETPOS, 0, eax );
+			w.SendDlgItemMessage( hwin, IDC_MANAGERPROJ_UDBAKS, w.UDM_SETRANGE, 0, $0000_000A );
+			movzx( project.backups, eax );
+			w.SendDlgItemMessage( hwin, IDC_MANAGERPROJ_UDBAKS, w.UDM_SETPOS, 0, eax );
+			
+			if( bitSet( opt_exptabs, project.options )) then
+				mov( true, eax );
+			else
+				mov( false, eax );
+			endif;
+			w.CheckDlgButton( hwin, IDC_MANAGERPROJ_EXPTABS, eax );
+			
+			if( bitSet( opt_indent, project.options )) then
+				mov( true, eax );
+			else
+				mov( false, eax );
+			endif;
+			w.CheckDlgButton( hwin, IDC_MANAGERPROJ_AUTOIND, eax );
+
+			mov( &project.hpr, esi );	
+			if( iniesi.readBool( "HPR Settings", "usetemp") ) then
+				w.CheckDlgButton( hwin, IDC_MANAGERPROJ_USETEMP, true );
+			endif;
+			
+			if( iniesi.readBool( "HPR Settings", "useunits") ) then
+				w.CheckDlgButton( hwin, IDC_MANAGERPROJ_USEUNIT, true );
+			endif;
+			
+			if( iniesi.readBool( "HPR Settings", "useback" ) ) then
+				w.CheckDlgButton( hwin, IDC_MANAGERPROJ_USEBAK, true );
+			endif;
+
+
+			updateFolders();
+
+			or( 1, eax );
+			
+		else
+			
+			xor( eax, eax );
+			
+		endif;
+			
+		
+	end Proc_ManagerProjOpt;
+	
+	saveSettings	:procedure;
+	begin saveSettings;
+		dbg.put("saveSettings");
+		pushad();
+		
+		mov( 0, buffer[0] );
+		
+		//==========================================================
+		// save general settings
+		//==========================================================
+		
+		w.IsDlgButtonChecked( optGeneral, IDC_MANAGERGEN_AUTOSAVE );
+		hideini.writeInt( "HIDE Settings", "AutoUntitled", eax );
+		
+		w.IsDlgButtonChecked( optGeneral, IDC_MANAGERGEN_TOPWINDOW );
+		hideini.writeInt( "HIDE Settings", "TopWindow", eax );
+		if( eax ) then
+			w.SetWindowPos(hwnd,w.HWND_TOPMOST,0,0,0,0,3);						
+		else
+			w.SetWindowPos(hwnd,w.HWND_NOTOPMOST,0,0,0,0,3);
+		endif;
+		
+		w.IsDlgButtonChecked( optGeneral, IDC_MANAGERGEN_OPENLAST );
+		hideini.writeInt( "HIDE Settings", "Restore Project", eax );
+		
+		w.IsDlgButtonChecked( optGeneral, IDC_MANAGERGEN_USETPL );
+		hideini.writeInt( "HIDE Settings", "Standard Templates", eax );
+		
+		w.IsDlgButtonChecked( optGeneral, IDC_MANAGERGEN_SCANPROP );
+		hideini.writeInt( "HIDE Settings", "Scan Properties", eax );
+
+		w.IsDlgButtonChecked( optGeneral, IDC_MANAGERGEN_HIGHLIGHT );
+		hideini.writeInt( "HIDE Settings", "Highlight Line", eax );
+
+		w.IsDlgButtonChecked( optGeneral, IDC_MANAGERGEN_SHOWDIVIDER );
+		hideini.writeInt( "HIDE Settings", "Show Divider", eax );
+		
+		w.IsDlgButtonChecked( optGeneral, IDC_MANAGERGEN_HILITECMNT );
+		hideini.writeInt( "HIDE Settings", "Highlight Comments", eax );
+		
+		w.IsDlgButtonChecked( optGeneral, IDC_MANAGERGEN_SHOWLNNUM );
+		hideini.writeInt( "HIDE Settings", "Show Line Numbers", eax );
+		
+		w.IsDlgButtonChecked( optGeneral, IDC_MANAGERGEN_PAREN );
+		hideini.writeInt( "HIDE Settings", "Auto Parenthesis", eax );
+		
+		w.IsDlgButtonChecked( optGeneral, IDC_MANAGERGEN_AUTOHLA );
+		hideini.writeInt( "HIDE Settings", "Auto HLA Structures", eax );
+		
+		w.IsDlgButtonChecked( optGeneral, IDC_MANAGERGEN_AUTODEPEND );
+		hideini.writeInt( "HIDE Settings", "Auto Dependencies", eax );
+		
+		w.IsDlgButtonChecked( optGeneral, IDC_MANAGERGEN_KEEPTEMP );
+		hideini.writeInt( "HIDE Settings", "Keep Temp", eax );
+		
+		w.IsDlgButtonChecked( optGeneral, IDC_MANAGERGEN_VERBOSE );
+		hideini.writeInt( "HIDE Settings", "Verbose HLA", eax );
+
+		if( newCodeFont ) then
+			
+			w.DeleteObject( hmainfont );
+			mov( mainfont.lfItalic, al );
+			push( eax );
+			w.CreateFontIndirect( &mainfont );
+			mov( eax, hmainfont );
+			w.DeleteObject( hitalic );
+			mov( true, mainfont.lfItalic );
+			w.CreateFontIndirect( &mainfont );
+			mov( eax, hitalic );
+			pop( eax );
+			mov( al, mainfont.lfItalic );
+			mov( fnt.rgbColors, col.txtcol );
+			mov( curnode, eax );
+			if( eax ) then
+				w.SendMessage( listeax.hwnd, REM_SETCOLOR, 0, &col );
+			endif;
+			setFormatAll();
+			
+			hideini.writeBin( "Fonts", "code", &mainfont, @size(mainfont) );
+			hideini.writeBin( "Colors", "col", &col,@size(col) );
+			
+		endif;
+
+		if( newLineFont ) then
+			w.DeleteObject( hlinefont );
+			w.CreateFontIndirect( &linefont );
+			mov( eax, hlinefont );
+			mov( fnt.rgbColors,col.lnrcol );
+			mov( curnode, eax );
+			if( eax ) then
+				w.SendMessage( listeax.hwnd, REM_SETCOLOR, 0, &col );
+			endif;
+			
+			setFormatAll();
+
+			hideini.writeBin( "Fonts", "line", &linefont, @size(linefont) );
+			hideini.writeBin( "Colors","col",&col, @size(col) );
+
+		endif;
+		
+		//==========================================================
+		// save environment settings
+		//==========================================================
+		
+		if( w.GetDlgItemTextA( optEnv, IDC_MANAGERENV_PATH, &buffer, @size(buffer) )) then
+
+			str.cpyz( &buffer, strbuf );
+			hideini.writeString( "HIDE Settings", "UserPath", strbuf );
+			expandPathMacs( strbuf, strbuf );
+			str.put2( strbuf, ';', homepath, dirsep_c, "bin:" );
+			env2.put( "PATH", strbuf );
+			
+		else
+			
+			hideini.deleteKey( "HIDE Settings","UserPath" );
+			
+		endif;
+		
+			
+		if( w.GetDlgItemTextA( optEnv, IDC_MANAGERENV_PROJECT, &buffer, @size(buffer) )) then
+
+			str.cpyz( &buffer, strbuf );
+			hideini.writeString( "HIDE Settings", "ProjFold", strbuf );
+			expandPathMacs( strbuf, strbuf );
+			str.cpy( strbuf, projectpath );
+			
+		else
+
+			hideini.deleteKey( "HIDE Settings", "ProjFold" );
+			str.put( projectpath, homepath, dirsep_c, "Projects" );
+
+		endif;
+
+		if( w.GetDlgItemTextA( optEnv, IDC_MANAGERENV_DEBUG, &buffer, @size(buffer) )) then
+
+			str.cpyz( &buffer, strbuf );
+			hideini.writeString( "HIDE Settings", "debugger", strbuf );
+
+		else
+			
+			hideini.deleteKey( "HIDE Settings", "debugger" );
+			
+		endif;
+
+		if( w.GetDlgItemTextA( optEnv, IDC_MANAGERENV_HELP, &buffer, @size(buffer) )) then
+
+			str.cpyz( &buffer, strbuf );
+			hideini.writeString( "Help", "1", strbuf );
+
+		else
+			
+			hideini.writeString( "Help", "1", "" );
+			
+		endif;
+			
+		if( w.GetDlgItemTextA( optEnv, IDC_MANAGERENV_HLALIB, &buffer, @size(buffer) )) then
+
+			str.cpyz( &buffer, strbuf );
+			hideini.writeString( "HIDE Settings", "hlalib", strbuf );
+			expandPathMacs( strbuf, strbuf );
+			env2.put( "hlalib", strbuf );
+			
+		else
+			
+			str.put( strbuf, homepath, dirsep_c, "hlalib" );
+			hideini.writeString( "HIDE Settings", "hlalib", strbuf );
+			env2.put( "hlalib", strbuf );
+			
+		endif;
+
+		if( w.GetDlgItemTextA ( optEnv, IDC_MANAGERENV_HLAINC, &buffer, @size(buffer) )) then
+
+			str.cpyz( &buffer, strbuf );
+			hideini.writeString( "HIDE Settings", "hlainc", strbuf );
+			expandPathMacs( strbuf, strbuf );
+			env2.put( "hlainc", strbuf );
+		
+		else
+			
+			str.put( strbuf, homepath, dirsep_c, "hlainc" );
+			hideini.writeString( "HIDE Settings", "hlainc", strbuf );
+			env2.put( "hlainc", strbuf );
+		
+		endif;
+		
+ 		w.GetDlgItemTextA( optEnv, IDC_MANAGERENV_HLAOPT, &buffer, @size(buffer) );
+		str.cpyz( &buffer, strbuf );
+		hideini.writeString( "HIDE Settings", "hlaopt", strbuf );
+		expandPathMacs( strbuf, strbuf );
+		env2.put( "hlaopt", strbuf );
+
+		
+		//==========================================================
+		// save colors and themes settings
+		//==========================================================
+		
+		keywordsUpdate( optThemes );
+		
+
+		//==========================================================
+		// save project settings
+		//==========================================================
+		
+		if( project.isOpen ) then
+			
+			mov( 0, project.options );
+
+			w.GetDlgItemInt( optProject, IDC_MANAGERPROJ_TABS, null, false );
+			mov( al, project.tab );
+			
+			w.GetDlgItemInt( optProject, IDC_MANAGERPROJ_BAKS, null, false );
+			mov( al, project.backups );
+			
+			if( w.IsDlgButtonChecked( optProject, IDC_MANAGERPROJ_EXPTABS ) ) then
+				or( opt_exptabs, project.options );
+			endif;
+			
+			if( w.IsDlgButtonChecked( optProject, IDC_MANAGERPROJ_AUTOIND ) ) then
+				or( opt_indent, project.options );
+			endif;
+
+			mov( &project.hpr, esi );
+			iniesi.write( project.id );
+			
+			TreeToolSetup();
+
+		endif;
+		
+		//==========================================================
+		// save standard mode settings
+		//==========================================================
+		
+		if( settingsChanged ) then
+			dbg.put("settigs changed ");
+			
+			// save standard settings
+			mov( 0, settings.options );
+		
+			w.GetDlgItemInt( optSettings, ID_HIDE_TABSIZE, null, false );
+			mov( al, settings.tab );
+			
+			w.GetDlgItemInt( optSettings, ID_HIDE_BACKUPS, null, false );
+			mov( al, settings.backups );
+			
+			if( w.IsDlgButtonChecked( optSettings, ID_HIDE_EXPTAB ) ) then
+				or( opt_exptabs, settings.options );
+			endif;
+			
+			if( w.IsDlgButtonChecked( optSettings, ID_HIDE_AUTOIND ) ) then
+				or( opt_indent, settings.options );
+			endif;
+	
+			if( w.IsDlgButtonChecked( optSettings, ID_HIDE_CONSOLE2OUT ) ) then
+				or( opt_console, settings.options );
+			endif;
+	
+			if( w.IsDlgButtonChecked( optSettings, ID_HIDE_USEDEBUG ) ) then
+				or( opt_usedebuglib, settings.options );
+			endif;
+	
+			if( w.IsDlgButtonChecked( optSettings, ID_HIDE_W ) ) then
+				or( opt_windows, settings.options );
+			endif;
+			
+			if( w.IsDlgButtonChecked( optSettings, IDC_RBN_HIGH) ) then
+				mov( level_high, eax );
+			elseif( w.IsDlgButtonChecked( optSettings, IDC_RBN_MEDIUM ) ) then
+				mov( level_medium, eax );
+			elseif( w.IsDlgButtonChecked( optSettings, IDC_RBN_LOW ) ) then
+				mov( level_low, eax );
+			elseif( w.IsDlgButtonChecked( optSettings, IDC_RBN_MACHINE ) ) then
+				mov( level_machine, eax );
+			endif;
+			hideini.writeInt( "HIDE Settings", "HLA Level", eax );
+			
+			if( w.IsDlgButtonChecked( optSettings, ID_HIDE_THREADSAFE ) ) then
+				or( opt_threadsafe, settings.options );
+			endif;
+			
+			if( linksChanged ) then
+				
+				optBuffer.create();
+				w.SendDlgItemMessage( optSettings, IDC_MANAGERSET_LIST, w.LB_GETCOUNT, 0, 0 );
+				mov( eax, ebx );
+				xor( ecx, ecx );
+				while( ecx < ebx ) do
+					
+					push( ecx );
+					w.SendDlgItemMessage( optSettings, IDC_MANAGERSET_LIST, w.LB_GETTEXT, ecx, strbuf );
+					mov( strbuf, ecx );
+					mov( eax, (type str.strRec[ecx]).length );
+					pop( ecx );
+					optBuffer.insert( strbuf, nl );
+					inc( ecx );
+					
+				endwhile;
+				
+				hideini.writeBufSection( "default libs", optBuffer );
+				optBuffer.destroy();
+				 
+			endif;
+			movzx( settings.tab, eax );
+			hideini.writeUns( "HIDE Settings", "tab", eax );
+			movzx( settings.backups, eax );
+			hideini.writeUns( "HIDE Settings", "backups", eax );
+			hideini.writeHex( "HIDE Settings", "options", settings.options );
+			
+			
+		endif;
+		
+		hideini.writeFileName( configmain );		
+		
+		w.SendMessage( hwnd, HIDE_TOGGLEDEBUG, 0, 0 );		
+		prop_reset();
+		setFormatAll();
+		
+		popad();
+	end saveSettings;
+
+
+	displayTool	:procedure( window:dword );
+	begin displayTool;
+		
+		mov( window, eax );
+
+		switch( eax );
+		
+		case( manager_general )
+			
+			writeMessage( zGeneralHelp );
+			
+			w.MoveWindow( optGeneral, client_r.x, client_r.y, client_r.width, client_r.height, false );
+			w.ShowWindow( optCurrent, w.SW_HIDE );
+			w.ShowWindow( optGeneral, w.SW_SHOW );
+			mov( optGeneral, eax );
+			mov( eax, optCurrent );
+			
+		
+		case( manager_env )
+			
+			writeMessage( zEnvHelp );
+			
+			w.MoveWindow( optEnv, client_r.x, client_r.y, client_r.width, client_r.height, false );
+			w.ShowWindow( optCurrent, w.SW_HIDE );
+			w.ShowWindow( optEnv, w.SW_SHOW ); 
+			mov( optEnv, eax );
+			mov( eax, optCurrent );
+			
+		case( manager_settings )
+			
+			writeMessage( zSettingsHelp );
+			
+			w.MoveWindow( optSettings, client_r.x, client_r.y, client_r.width, client_r.height, false );
+			w.ShowWindow( optCurrent, w.SW_HIDE );
+			w.ShowWindow( optSettings, w.SW_SHOW ); 
+			mov( optSettings, eax );
+			mov( eax, optCurrent );
+		
+		case( manager_themes )
+			
+			writeMessage( zThemesHelp );
+
+			w.MoveWindow( optThemes, client_r.x, client_r.y, client_r.width, client_r.height, false );
+			w.ShowWindow( optCurrent, w.SW_HIDE );
+			w.ShowWindow( optThemes, w.SW_SHOW ); 
+			mov( optThemes, eax );
+			mov( eax, optCurrent );
+			
+		case( manager_project )
+		
+			writeMessage( zProjectHelp );
+
+			w.MoveWindow( optProject, client_r.x, client_r.y, client_r.width, client_r.height, false );
+			w.ShowWindow( optCurrent, w.SW_HIDE );
+			w.ShowWindow( optProject, w.SW_SHOW ); 
+			mov( optProject, eax );
+			mov( eax, optCurrent );
+		
+		case( manager_jobs )
+
+			writeMessage( zJobsHelp );
+
+			w.MoveWindow( optJobs, client_r.x, client_r.y, client_r.width, client_r.height, false );
+			w.ShowWindow( optCurrent, w.SW_HIDE );
+			w.ShowWindow( optJobs, w.SW_SHOW ); 
+			mov( optJobs, eax );
+			mov( eax, optCurrent );
+			
+		endswitch;
+
+		
+	end displayTool;
+
+	Proc_HIDEManager	:procedure( lparam:dword; wparam:dword; umsg:uns32; hwin:dword );
+	begin Proc_HIDEManager;
+		pushabi;
+
+		mov( umsg, eax );
+		if( eax = w.WM_INITDIALOG ) then
+			
+			mov( false, linksChanged );
+			mov( false, settingsChanged );
+			mov( false, newCodeFont );
+			mov( false, newLineFont );
+
+			w.GetDlgItem( hwin, IDC_MANAGERTAB );
+			mov( eax, optTab );
+			w.GetDlgItem( hwin, IDC_MANAGEREDIT );
+			mov( eax, optEdit );
+			
+			w.CreateDialogParam( hinst, val ID_MANAGERENV, hwin, &Proc_ManagerEnv, false );
+			w.CreateDialogParam( hinst, val ID_MANAGERGEN, hwin, &Proc_ManagerGen, false );
+			w.CreateDialogParam( hinst, val ID_KEYWORDS, hwin, &Proc_KeyWords, false );
+			mov( eax, optThemes );
+			w.CreateDialogParam( hinst,val ID_MANAGERSET, hwin, &Proc_ManagerSettings, false );
+			
+			if( project.isOpen ) then
+				w.CreateDialogParam( hinst, val ID_MANAGERPROJ, hwin, &Proc_ManagerProjOpt, false );
+				
+				w.CreateDialogParam( hinst, val ID_MANAGERJOBS, hwin, &Proc_JobsManager, false );
+				mov( eax, optJobs );
+			endif;
+			
+			// fill the tab tool
+			mov( w.TCIF_TEXT, optTCI.imask );
+			mov(30, optTCI.cchTextMax );
+
+			move( zGeneral, optTCI.pszText );
+			w.SendMessage( optTab, w.TCM_INSERTITEM, manager_general, &optTCI );
+
+			move( zEnvironment, optTCI.pszText );
+			w.SendMessage( optTab, w.TCM_INSERTITEM, manager_env, &optTCI );
+			move( zSettings, optTCI.pszText );
+			
+			w.SendMessage( optTab, w.TCM_INSERTITEM, manager_settings, &optTCI );
+			
+			move( zThemes, optTCI.pszText );
+			w.SendMessage( optTab, w.TCM_INSERTITEM, manager_themes, &optTCI );
+
+			// project related settings should always be below standard
+			// related settings
+			if( project.isOpen ) then
+				
+				move( zProject, optTCI.pszText );
+				w.SendMessage( optTab, w.TCM_INSERTITEM, manager_project, &optTCI );
+			
+				move( zJobs, optTCI.pszText );
+				w.SendMessage( optTab, w.TCM_INSERTITEM, manager_jobs, &optTCI );
+				
+			endif;
+			
+			w.SendMessage( optTab, w.TCM_SETCURSEL, lparam, 0 );
+			
+			w.GetClientRect( hwin, &client_r );
+			w.GetWindowRect( optTab, &work_r );
+			mov( work_r.right, eax );
+			sub( work_r.left, eax );
+			add( eax, client_r.left );
+			
+			w.GetWindowRect( optEdit, &work_r );
+			mov( work_r.bottom, eax );
+			sub( work_r.top, eax );
+			sub( eax, client_r.height );
+			
+			
+			mov( 0, optCurrent );
+			displayTool( lparam );
+			
+			or( 1, eax );
+			
+		elseif( eax = w.WM_COMMAND ) then
+			
+			mov( wparam, eax );
+			mov( eax,edx );
+			shr( 16, edx );
+			and( $0ffff, eax );
+			if( edx = w.BN_CLICKED ) then
+				
+				if( eax = w.IDOK ) then
+					
+					//dbg.put( "OK" );
+					
+					saveSettings();
+					w.SendMessage( hwin, w.WM_CLOSE, 0, 0 );
+					or( 1, eax );
+				
+				elseif( eax = w.IDCANCEL ) then
+					
+					//dbg.put( "CANCEL" );
+					
+					w.SendMessage( hwin, w.WM_CLOSE, 0, 0 );
+					or( 1, eax );
+					
+				else
+					
+					xor( eax, eax );
+					
+				endif;
+			
+			else
+				
+				xor( eax, eax );
+				
+			endif;
+	
+
+		elseif( eax = w.WM_NOTIFY ) then
+		
+			mov( lparam, eax );
+			mov( (type w.NMHDR [eax]).hwndFrom, eax );
+			if( eax = optTab ) then
+				
+				w.SendMessage( optTab, w.TCM_GETCURSEL, 0,0 );
+				if( eax != -1 ) then
+					
+					displayTool( eax );
+					
+				endif;
+				
+			endif;
+			
+			or( 1, eax );
+			
+		elseif( eax = w.WM_SETFOCUS ) then
+			
+			w.SetFocus (hwin);
+
+		elseif( eax = w.WM_CLOSE ) then
+			
+			w.EndDialog( hwin, NULL );
+			or( 1, eax );
+
+		else
+			
+			sub( eax, eax );
+			
+		
+		endif;
+		
+		popabi;
+	end Proc_HIDEManager;
+
+	
+
+end manager_unit;

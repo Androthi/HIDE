@@ -1,0 +1,1029 @@
+/*
+
+	adapted to HLA from C code by
+	Bernd Kastenholtz
+
+	**updates
+	8.27.2009
+		fixed caption.CheckButton not addressing properly	/sk
+
+*/
+
+
+unit CaptionButtonUnit;
+	
+#includeonce("stdlib.hhf")
+#includeonce("win_inc.hhf")
+#includeonce("macros/macros.hhf")
+#if (os.win32)
+
+	#includeonce("hide\dbgwin.hhf")
+#endif
+#includeonce("macros/demomacros.hhf")
+
+namespace caption;
+	procedure InsertButton(hwnd:dword; uCmd:dword; nBorder:dword; hBmp_normal:dword; hBmp_pushed:dword; hBmp_hover:dword; 
+								hBmp_checked:dword; hBmp_disabled:dword; hInst:dword;lptstr:dword); @external("CAPTION_INSERTBUTTION");
+	procedure RemoveButton(hwnd :dword); @external("CAPTION_REMOVEBUTTON");
+	procedure CheckButton(hwnd:dword; uCmd:dword; bCheck:boolean); @external("CAPTION_CHECKBUTTON");
+end caption;
+
+#macro return (_value_);
+	#if(_value_ = 0)
+		xor(eax, eax);
+	#else
+		mov(_value_, eax);
+	#endif
+#endmacro;
+
+#macro returnExit(_value_, _proc_);
+	return(_value_)
+	exit _proc_
+#endmacro;
+
+#macro LOWORD(_param_);
+	returns({
+		mov(_param_, eax); 
+		and($FFFF, eax);
+	}, "eax")
+#endmacro
+
+#macro HIWORD(_param_);
+	returns({
+		mov(_param_, eax); 
+		shr(16, eax);
+	}, "eax")
+#endmacro
+
+#macro MINUS(_var_);
+	returns({
+		xor(eax, eax);
+		sub(_var_, eax);
+		}, "eax")
+#endmacro
+
+#macro DIV2(_var_);
+	if(testnz($80000000, eax)) then
+		inc(eax);
+		not(eax);		
+		shr(1, eax);
+		not(eax);
+	else
+		shr(1, eax);
+	endif;
+#endmacro
+
+#macro GETTOP(_id_);
+	pop(_id_);push(_id_);
+#endmacro
+
+const
+	MAX_TITLE_BUTTONS :=	8;
+	B_EDGE			  :=	2;	
+	B_TOP_EDGE 		  := 	3;
+	
+	OK 				  := 	0;
+	FAIL 			  := 	1;
+	
+	CustCaptEAX :text := "(type CustomCaption[eax])";	
+	CaptButEBX  :text := "(type CaptionButton[ebx])";
+	
+	CAPTION_BTN_NORMAL		:= 0;
+	CAPTION_BTN_PUSHED		:= 1;
+	CAPTION_BTN_HOVER		:= 2;
+	CAPTION_BTN_CHECKED		:= 3;
+	CAPTION_BTN_DISABLED	:= 4;
+		
+type 
+	CaptionButton : record
+		uCmd 		 :dword;	//command to send when clicked
+		nRightBorder :dword;	//Pixels between this button and buttons to the right
+		hBmp_normal	 :dword;	//Bitmap to display
+		hBmp_pushed	 :dword;
+		hBmp_hover	 :dword;
+		hBmp_checked :dword;
+		hBmp_disabled:dword;
+		lptstr		 :dword;
+		status		 :dword;
+		
+		fPressed 	 :boolean;	//Private.
+	endrecord;
+	
+	CustomCaption : record
+		buttons 		:CaptionButton[MAX_TITLE_BUTTONS];
+		nNumButtons 	:dword;
+		fMouseDown		:boolean;
+		wpOldProc		:dword;
+		iActiveButton	:dword;
+		hwndTool 		:dword;
+		hInst			:dword;
+		nBorder			:dword;
+	endrecord;
+	
+	procedure GetCustomCaption(hwnd :dword);@returns("EAX");@forward;
+	procedure GetRightEdgeOffset(CustomCaption :dword; hwnd :dword);@returns("EAX");@forward;
+	procedure CalcTopEdge(hwnd :dword);@returns("EAX");@forward;
+	procedure CalcRightEdge(hwnd :dword);@returns("EAX");@forward;
+
+			
+static 
+	szPropName : string := "CustomCaptionSubclassPtr";
+	rect :w.RECT;
+	
+		
+///////////////////////////////////////////////////////////////////////////////
+// - ArrayButton
+//
+procedure ArrayButton;@noframe;
+begin ArrayButton;
+	lea(ebx, CustCaptEAX.buttons);
+	mov(@size(CaptionButton), eax);
+	mul(ecx);
+	add(eax, ebx);
+	ret();
+end ArrayButton;
+
+
+///////////////////////////////////////////////////////////////////////////////
+// - GetCustomCaption
+//
+procedure GetCustomCaption(hwnd :dword);
+begin GetCustomCaption;
+	w.GetProp(hwnd, szPropName);
+end GetCustomCaption;
+
+	
+///////////////////////////////////////////////////////////////////////////////
+// - RedrawNC
+//
+procedure RedrawNC(hwnd :dword);
+begin RedrawNC;
+	w.SetWindowPos(hwnd,0,0,0,0,0, 
+			w.SWP_NOMOVE | 
+			w.SWP_NOSIZE | 
+			w.SWP_NOZORDER | 
+			w.SWP_NOACTIVATE | 
+			w.SWP_DRAWFRAME);
+end RedrawNC;
+		
+		
+///////////////////////////////////////////////////////////////////////////////
+// - CalcTopEdge
+//
+procedure CalcTopEdge(hwnd :dword);
+begin CalcTopEdge;
+
+	//The system maintains a minimum and maximum tracking size for a window 
+	//of the WS_THICKFRAME style; 
+	//a window with this style has a sizing border. 
+	//The minimum tracking size is the smallest window size you can produce 
+	//by dragging the window's sizing border. 
+	//Similarly, the maximum tracking size is the largest window size 
+	//you can produce by dragging the sizing border.	
+	if(testnz( w.WS_THICKFRAME, w.GetWindowLong(hwnd, w.GWL_STYLE) )) then
+		//The thickness of the sizing border around the perimeter of a window 
+		//that can be resized, in pixels. 
+		//SM_CYSIZEFRAME is the height of the vertical border		
+		w.GetSystemMetrics(w.SM_CYSIZEFRAME);
+	else
+		//The thickness of the frame around the perimeter 
+		//of a window that has a caption but is not sizable, in pixels.
+		//SM_CYFIXEDFRAME is the width of the vertical border
+		w.GetSystemMetrics(w.SM_CYFIXEDFRAME);
+	endif;	
+
+end CalcTopEdge;
+
+
+///////////////////////////////////////////////////////////////////////////////
+// - CalcRightEdge
+//
+procedure CalcRightEdge(hwnd :dword);
+begin CalcRightEdge;
+
+	if(testnz( w.WS_THICKFRAME, w.GetWindowLong(hwnd, w.GWL_STYLE) )) then
+		w.GetSystemMetrics(w.SM_CXSIZEFRAME);
+	else
+		w.GetSystemMetrics(w.SM_CXFIXEDFRAME);
+	endif;
+
+end CalcRightEdge;
+ 
+ 
+///////////////////////////////////////////////////////////////////////////////
+// - GetRightEdgeOffset
+//
+//	Return the starting position of the first inserted button.
+//	We need to take into account the size of the close button,
+//	The minimize, maximize buttons etc
+//
+//	-------------------------------------------------\
+//                                        [-][+] [X] |
+//                                       ^
+//                                       |
+//                   Return is pos       |--- Ret  --|
+//
+procedure GetRightEdgeOffset(CustomCaption :dword; hwnd :dword);
+var
+	dwStyle :dword;
+	dwExStyle :dword;
+	nButSize :dword;
+	nSysButSize :dword;
+	
+begin GetRightEdgeOffset;
+//dbg.put("GetRightEdgeOffset");
+
+	assign(	dwStyle 	= 	w.GetWindowLong(hwnd, w.GWL_STYLE), 
+			dwExStyle 	= 	w.GetWindowLong(hwnd, w.GWL_EXSTYLE),
+			nButSize 	= 	0 );
+	
+	if(testnz(w.WS_EX_TOOLWINDOW, dwExStyle)) then
+		assign(	nSysButSize 	= 	sub(B_EDGE, w.GetSystemMetrics(w.SM_CXSMSIZE)));
+
+		if(testnz(w.WS_SYSMENU, dwStyle)) then
+			assign(	nButSize 	= 	add(nSysButSize, mov(B_EDGE, eax))	);				
+		endif;
+		
+		add(nButSize, CalcRightEdge(hwnd));
+		
+//dbg.put("Leave  EXIT GetRightEdgeOffset");		
+		exit GetRightEdgeOffset;
+	else
+		assign(	nSysButSize 	=	sub(B_EDGE, w.GetSystemMetrics(w.SM_CXSIZE))	);
+		
+		// Window has Close [X] button. This button has a 2-pixel
+		// border on either size
+		if(testnz(w.WS_SYSMENU, dwStyle)) then
+			add(add(nSysButSize, mov(B_EDGE, eax)), 
+				nButSize);			
+		endif;
+		
+		// If either of the minimize or maximize buttons are shown,
+		// Then both will appear (but may be disabled)
+		// This button pair has a 2 pixel border on the left
+		if( testnz(w.WS_MINIMIZEBOX | w.WS_MAXIMIZEBOX, dwStyle) ) then						
+			add(add(B_EDGE, shl(1, mov(nSysButSize, eax))), 
+				nButSize);
+		// A window can have a question-mark button, but only
+		// if it doesn't have any min/max buttons
+		elseif(testnz(w.WS_EX_CONTEXTHELP, dwExStyle)) then							
+			add(add(nSysButSize, mov(B_EDGE, eax)), 
+				nButSize);
+		endif;
+		// Now calculate the size of the border
+		add(nButSize, CalcRightEdge(hwnd));	
+//dbg.put("Leave EXIT2 GetRightEdgeOffset");			
+		exit GetRightEdgeOffset;
+		
+	endif;
+//dbg.put("Leave GetRightEdgeOffset");
+end GetRightEdgeOffset;
+
+
+///////////////////////////////////////////////////////////////////////////////
+// - GetButtonRect
+//
+procedure GetButtonRect(ctp:dword; hwnd:dword; idx:dword; var rect:w.RECT; fWindowRelative:boolean);
+var
+	cxBut :dword;
+	cyBut :dword;
+	re_start :dword;	
+const
+	rctEBX : text := "(type w.RECT[ebx])";
+	
+begin GetButtonRect;
+//dbg.put("GetButtonRect");
+	if( testnz(w.WS_EX_TOOLWINDOW, w.GetWindowLong(hwnd, w.GWL_EXSTYLE)) ) then	
+		assign(	cxBut = w.GetSystemMetrics(w.SM_CXSMSIZE),
+				cyBut = w.GetSystemMetrics(w.SM_CYSMSIZE));
+	else
+		assign( cxBut = w.GetSystemMetrics(w.SM_CXSIZE),
+				cyBut = w.GetSystemMetrics(w.SM_CYSIZE));
+	endif;
+	
+	// right-edge starting point of inserted buttons
+	assign(re_start = GetRightEdgeOffset(ctp, hwnd));
+
+	w.GetWindowRect(hwnd, rect);
+	
+	if(fWindowRelative) then		
+		mov(rect, ebx);						
+		w.OffsetRect(rect, MINUS(#(rctEBX.left)#), MINUS(#(rctEBX.top)#));
+	endif;
+	
+	//Find the correct button - but take into
+	//account all other buttons.
+	for(xor(ecx, ecx); ecx <= idx; inc(ecx)) do
+		//re_start += ctp->buttons[i].nRightBorder + cxBut - B_EDGE;
+		mov(ctp, eax);
+		ArrayButton();  
+		add(sub(B_EDGE, add(cxBut, mov(CaptButEBX.nRightBorder, eax))), re_start);
+	endfor;
+
+	mov(rect, ebx);	
+	mov(sub(re_start, mov(rctEBX.right, eax)), 
+		rctEBX.left );	
+	
+	mov(add(rctEBX.top, add(CalcTopEdge(hwnd), mov(B_TOP_EDGE , eax))), 
+		rctEBX.top);
+		
+	mov(sub(B_EDGE, add(rctEBX.left, mov(cxBut, eax))), 
+		rctEBX.right);
+	
+	mov(add(rctEBX.top, sub(shl(1, mov(B_EDGE , ecx)), mov(cyBut, eax))), 
+		rctEBX.bottom);
+//dbg.put("Leave GetButtonRect");
+end GetButtonRect;
+
+
+///////////////////////////////////////////////////////////////////////////////
+// - Caption_NCHitTest
+//
+procedure Caption_NCHitTest(ctp :dword; hwnd :dword; wParam :dword; lParam :dword);
+var
+	pt :w.POINT;
+	numButtons : dword;;
+static
+	rect :w.RECT;
+	
+begin Caption_NCHitTest;
+//dbg.put("Caption_NCHitTest");
+	assign(	pt.x = LOWORD(lParam),			
+		   	pt.y = HIWORD(lParam));
+		   	
+	mov(ctp, eax);	
+	push(w.CallWindowProc(CustCaptEAX.wpOldProc, hwnd, w.WM_NCHITTEST, wParam, lParam));
+	
+	//If the mouse is in the caption, then check to
+	//see if it is over one of our buttons
+	if(eax == w.HTCAPTION) then
+		assign(	
+				eax = ctp,
+				numButtons = CustCaptEAX.nNumButtons ); 
+		
+		for(mov(0, ecx); ecx < numButtons; inc(ecx)) do
+					
+			push (ecx);
+			GetButtonRect(ctp, hwnd, ecx, &rect, false);
+
+			w.InflateRect(&rect, 0, B_EDGE);
+
+			//If the mouse is in any custom button, then
+			//We need to override the default behaviour.
+			if(w.PtInRect(&rect, pt)) then				
+				pop (ecx);
+//dbg.put("Leave EXIT Caption_NCHitTest");				
+				returnExit(w.HTBORDER, Caption_NCHitTest);
+			endif;	
+				
+			pop(ecx);
+			
+		endfor;
+	endif;
+	
+	pop (eax);
+//dbg.put("Leave Caption_NCHitTest");
+end Caption_NCHitTest;
+
+
+///////////////////////////////////////////////////////////////////////////////
+// - CenterBitmap
+//
+//	If hBitmap is MONOCHROME then 
+//	whites will be drawn transparently, 
+//  blacks will be drawn normally
+//	So, it will look just like a caption button
+//
+//	If hBitmap is > 2 colours, then no transparent
+//  drawing will take place....i.e. DIY!
+//
+procedure CenterBitmap(hdc :dword; rc :dword; hBitmap :dword);
+static
+	bm :w.BITMAP;
+	rcDest : w.RECT;
+var
+	dCx :dword;
+	dCy :dword;
+	delta :w._SIZE;
+	p :w.POINT;
+	memdc :dword;
+	hOldBM :dword;
+	colorOld :dword;
+begin CenterBitmap;
+//dbg.put("CenterBitmap");
+	USE(eax, ebx, ecx);
+	
+	if(hBitmap = NULL) then
+		jmp done;
+	endif;	
+
+	// center bitmap in caller's rectangle   
+	w.GetObject(hBitmap, @size(bm), &bm); 
+			
+	mov(rc, ebx);
+
+	push(sub((type w.RECT [ebx]).left, mov((type w.RECT [ebx]).right, eax))); //save rc.right - rc.left
+	sub(bm.bmWidth, eax);
+	DIV2(eax);
+	assign(delta.x = eax);
+	
+	sub((type w.RECT [ebx]).top, mov((type w.RECT [ebx]).bottom, eax));
+	sub(bm.bmHeight, eax);
+	DIV2(eax);
+	mov(eax, delta.y);
+	
+	pop(eax); // restore rc.right - rc.left
+	if(eax > bm.bmWidth) then
+		w.SetRect([ebx], //&rcDest,
+					add(delta.x, mov((type w.RECT [ebx]).left, ecx)), 
+					add(delta.y, mov((type w.RECT [ebx]).top, ecx)), 
+					0,0);
+				
+		assign(	#((type w.RECT [ebx]).right)# = add(bm.bmWidth, mov(rcDest.left, eax)),
+				#((type w.RECT [ebx]).bottom)# = add(bm.bmHeight, mov(rcDest.top, eax)),
+				p.x = 0,	
+				p.y = 0	);
+	else		
+		assign(	p.x = MINUS(delta.x),		
+				p.y = MINUS(delta.y));		
+	endif;
+	// select checkmark into memory DC
+	assign(	memdc = w.CreateCompatibleDC(hdc),
+			hOldBM = w.SelectObject(memdc, hBitmap),
+			
+			// set BG color based on selected state 
+			colorOld = w.SetBkColor(hdc, w.GetSysColor(w.COLOR_3DFACE)));
+			
+	w.BitBlt(hdc, (type w.RECT [ebx]).left, (type w.RECT [ebx]).top ,
+			sub((type w.RECT [ebx]).left, mov((type w.RECT [ebx]).right, ecx)), 
+			sub((type w.RECT [ebx]).top, mov((type w.RECT [ebx]).bottom, ecx)), 
+			memdc, p.x, p.y, w.SRCCOPY);
+			
+	// restore
+	w.SetBkColor(hdc, colorOld);
+	w.SelectObject(memdc, hOldBM);
+	w.DeleteDC(memdc);
+	done:
+	ENDUSE;
+//dbg.put("Leave CenterBitmap");
+end CenterBitmap;
+
+
+///////////////////////////////////////////////////////////////////////////////
+// - CreateTooltip
+//
+procedure CreateTooltip(ctp :dword; var CB :CaptionButton; hwnd :dword; idx :dword);
+static
+	ti :w.TOOLINFO;
+	nBorder :dword;
+	
+begin CreateTooltip;
+	USE(eax, ebx, ecx);
+
+	mov(hwnd, ti.hWnd);
+	mov(@size(w.TOOLINFO), ti.cbSize);
+	mov(idx, ti.uId);
+	// close the tooltip, and delete it
+	mov(ctp, eax);
+	w.SendMessage(CustCaptEAX.hwndTool, w.TTM_POP , 0, 0);
+	mov(ctp, eax);
+	w.SendMessage(CustCaptEAX.hwndTool, w.TTM_DELTOOL, 0, &ti);
+	
+	//set new tooltip parameters
+	
+	mov(@size(w.TOOLINFO), ti.cbSize);
+	mov(w.TTF_SUBCLASS,	ti.uFlags );
+	mov(ctp, eax);
+    mov(CustCaptEAX.hInst, ti.hInst);
+    mov(CustCaptEAX.nBorder, nBorder);
+     
+    mov(hwnd, ti.hWnd);
+	mov(idx, ti.uId);
+	mov(CB, eax);
+	mov((type CaptionButton[ebx]).lptstr, ti.lpszText);
+	
+	GetButtonRect(ctp, hwnd, idx, &rect, true);
+	mov(rect.left, eax);
+	sub(3, eax);
+	
+	sub(nBorder, eax);
+	mov(eax, ti._rect.left); 
+	
+	mov(-20, ti._rect.top);
+	
+	mov(rect.right, eax);
+	sub(3, eax);
+	sub(nBorder, eax);
+	mov(eax, ti._rect.right);
+	
+	mov(0, ti._rect.bottom);
+	   
+	//	 SEND AN ADDTOOL MESSAGE TO THE TOOLTIP CONTROL WINDOW
+	mov(ctp, eax); 
+	w.SendMessage(CustCaptEAX.hwndTool, w.TTM_ADDTOOL, 0, &ti);
+	ENDUSE;	
+end CreateTooltip;
+
+
+///////////////////////////////////////////////////////////////////////////////
+// - Caption_NCPaint
+//
+procedure Caption_NCPaint(ctp :dword; hwnd :dword; hrgn :dword);
+var
+	fRegionOwner:boolean;
+	i 			:dword;
+	numButtons 	:dword;	
+	hrgn1 		:dword;
+	hdc 		:dword;
+	uButType	:dword;
+static
+	rect1 :w.RECT;
+begin Caption_NCPaint;
+//dbg.put("Caption_NCPaint");
+	mov(false, fRegionOwner);
+	w.GetWindowRect(hwnd, &rect);
+	
+	//Create a region which covers the whole window. This
+	//must be in screen coordinates
+	if(hrgn == 1 || hrgn == 0)  then	
+		assign (hrgn 		 = w.CreateRectRgnIndirect(&rect), 
+				fRegionOwner = true );
+	endif;
+	
+	// Clip our custom buttons out of the way...
+	assign(	eax = ctp,	
+			numButtons = CustCaptEAX.nNumButtons); 
+	
+	for(xor(ecx, ecx); ecx < numButtons; inc(ecx)) do
+		//Get button rectangle in screen coords
+		push(ecx);
+		GetButtonRect(ctp, hwnd, ecx, &rect1, false);
+		assign(	hrgn1 = w.CreateRectRgnIndirect(&rect1) );
+
+		//Cut out a button-shaped hole
+		w.CombineRgn(hrgn, hrgn, hrgn1, w.RGN_XOR);
+
+		w.DeleteObject(hrgn1);
+		
+		pop(ecx);
+	endfor;
+	
+	//
+	//	Call the default window procedure with our modified window region!
+	//	(REGION MUST BE IN SCREEN COORDINATES)
+	//
+	mov(ctp, eax);	
+	w.CallWindowProc(CustCaptEAX.wpOldProc, hwnd, w.WM_NCPAINT, hrgn, 0);
+	
+	//
+	//	Now paint our custom buttons in the holes that are
+	//	left by our clipping. All drawing in the Non-client area
+	//  is window-relative (Not in screen coords)
+	//
+	assign(	hdc =	w.GetWindowDC(hwnd) );
+	
+	// Draw buttons in a loop 
+	for(xor(ecx,ecx); ecx < numButtons; inc(ecx)) do	
+		
+		push(ecx);
+		
+		//Get Button rect in window coords		
+		GetButtonRect(ctp, hwnd, ecx, &rect1, true);
+		
+		GETTOP(ecx); 
+		mov(ctp, eax);	
+		ArrayButton();
+		push(ebx);
+		
+		assign(	uButType = 	w.DFCS_BUTTONPUSH );
+
+		if(CaptButEBX.fPressed) then										
+			w.DrawFrameControl(hdc, &rect1, w.DFC_BUTTON,  or(w.DFCS_PUSHED, mov(uButType, eax)));
+		else
+			w.DrawFrameControl(hdc, &rect1, w.DFC_BUTTON, uButType);
+		endif;
+	
+		//Now draw the bitmap!
+		w.InflateRect(&rect1, -1, -1);
+		dec(rect1.right);
+		dec(rect1.bottom);
+		
+		GETTOP(ebx);
+		if(CaptButEBX.fPressed) then
+			w.OffsetRect(&rect1, 1, 1);
+		endif;
+		
+		pop(ebx);	
+		
+// !!!!!! choose right bitmap
+		if(CaptButEBX.status == CAPTION_BTN_NORMAL) then
+			mov(CaptButEBX.hBmp_normal, eax);
+		elseif(CaptButEBX.status == CAPTION_BTN_PUSHED) then
+			mov(CaptButEBX.hBmp_pushed, eax);
+		elseif(CaptButEBX.status == CAPTION_BTN_HOVER) then
+			mov(CaptButEBX.hBmp_hover, eax);
+		elseif(CaptButEBX.status == CAPTION_BTN_CHECKED) then
+			mov(CaptButEBX.hBmp_checked, eax);
+		elseif(CaptButEBX.status == CAPTION_BTN_DISABLED) then
+			mov(CaptButEBX.hBmp_disabled, eax);
+		endif;
+		CenterBitmap(hdc, &rect1, eax);
+		
+		pop(ecx);
+		CreateTooltip(ctp, CaptButEBX, hwnd, ecx);
+	endfor;
+	
+	w.ReleaseDC(hwnd, hdc);
+	
+	if(fRegionOwner) then
+		w.DeleteObject(hrgn);
+	endif;
+	
+	return(OK);
+	
+//dbg.put("Leave Caption_NCPaint");
+end Caption_NCPaint;
+
+
+///////////////////////////////////////////////////////////////////////////////
+// - Caption_Wrapper
+//
+//
+//	This is a generic message handler used by WM_SETTEXT and WM_NCACTIVATE.
+//	It works by turning off the WS_VISIBLE style, calling
+//	the original window procedure, then turning WS_VISIBLE back on.
+//
+//	This prevents the original wndproc from redrawing the caption.
+//	Last of all, we paint the caption ourselves with the inserted buttons
+//
+procedure Caption_Wrapper(ctp :dword; hwnd :dword; msg :dword; wParam :dword; lParam :dword);
+begin Caption_Wrapper;
+//dbg.put("Caption_Wrapper");
+	push(w.GetWindowLong(hwnd, w.GWL_STYLE));
+	
+	//Turn OFF WS_VISIBLE, so that WM_NCACTIVATE does not
+	//paint our window caption...
+	w.SetWindowLong(hwnd, w.GWL_STYLE, and(not(mov(w.WS_VISIBLE, ebx)), eax));
+	
+	//Do the default thing...
+	mov(ctp, eax);	
+	w.CallWindowProc(CustCaptEAX.wpOldProc, hwnd, msg, wParam, lParam);
+	
+	//Restore the original style
+	pop(ebx);
+	push(eax); // save return value of wpOldProc 
+	w.SetWindowLong(hwnd, w.GWL_STYLE, ebx);
+	
+	//Paint the whole window frame + caption
+	Caption_NCPaint(ctp, hwnd, 1);
+	
+	pop(eax);
+//dbg.put("Leave Caption_Wrapper");
+end Caption_Wrapper;
+
+
+///////////////////////////////////////////////////////////////////////////////
+// - Caption_NCActivate
+//
+procedure Caption_NCActivate(ctp :dword; hwnd :dword; wParam :dword; lParam :dword);
+begin Caption_NCActivate;
+	Caption_Wrapper(ctp, hwnd, w.WM_NCACTIVATE, wParam, lParam);
+end Caption_NCActivate;
+
+
+///////////////////////////////////////////////////////////////////////////////
+// - Caption_SetText
+//
+procedure Caption_SetText(ctp :dword; hwnd :dword; wParam :dword; lParam :dword);
+begin Caption_SetText;
+	Caption_Wrapper(ctp, hwnd, w.WM_SETTEXT, wParam, lParam);
+end Caption_SetText;
+
+
+///////////////////////////////////////////////////////////////////////////////
+// - Caption_NCLButtonDown
+//
+procedure Caption_NCLButtonDown(ctp :dword; hwnd :dword; msg:dword; wParam :dword; lParam :dword);
+var
+	pt :w.POINT;
+	numButtons : dword;
+begin Caption_NCLButtonDown;
+//dbg.put("Caption_NCLButtonDown");
+	assign(	pt.x = LOWORD(lParam),			
+		   	pt.y = HIWORD(lParam));
+		   	
+	//If mouse has been clicked in caption
+	//(Note: the NCHITTEST handler changes HTCAPTION to HTBORDER
+	//       if we are over an inserted button)
+	if(wParam == w.HTBORDER) then
+		
+		assign(	eax 		= ctp,
+				numButtons 	= CustCaptEAX.nNumButtons ); 
+		for(xor(ecx,ecx); ecx < numButtons; inc(ecx)) do
+			push(ecx);
+			GetButtonRect(ctp, hwnd, ecx, &rect, false);
+			w.InflateRect(&rect, 0, 2);
+			
+			//if clicked in a custom button
+			if(w.PtInRect(&rect, pt)) then
+				assign(	eax = ctp, 
+						CustCaptEAX.iActiveButton 	= pop(ecx), 
+						CustCaptEAX.fMouseDown 		= true	);								
+				ArrayButton();  
+				assign(	CaptButEBX.fPressed = true	);
+				
+				w.SetCapture(hwnd);				
+				RedrawNC(hwnd);		
+//dbg.put("Leave EXIT Caption_NCLButtonDown");					
+				returnExit(0, Caption_NCLButtonDown);
+			endif;
+			
+			pop(ecx);
+		endfor;
+	endif;
+	
+	mov(ctp, eax);	
+	w.CallWindowProc(CustCaptEAX.wpOldProc, hwnd, msg, wParam, lParam);
+	
+//dbg.put("Leave Caption_NCLButtonDown");
+end Caption_NCLButtonDown;
+
+
+///////////////////////////////////////////////////////////////////////////////
+// - Caption_LButtonUp
+//
+//		Left-button UP. Coords are CLIENT relative
+//
+procedure Caption_LButtonUp(ctp :dword; hwnd :dword; wParam :dword; lParam :dword);
+static
+	pt :w.POINT;
+begin Caption_LButtonUp;
+
+	assign(	pt.x = LOWORD(lParam),			
+		   	pt.y = HIWORD(lParam));
+
+	w.ClientToScreen(hwnd, &pt);
+	and($FFFF, pt.y);
+	
+	mov(ctp, eax);
+	if(CustCaptEAX.fMouseDown) then		
+		w.ReleaseCapture();
+		mov(ctp, eax);
+		GetButtonRect(ctp, hwnd, CustCaptEAX.iActiveButton, &rect, false);
+		w.InflateRect(&rect, 0, 2);
+		
+		assign(	eax = ctp,
+				ecx = CustCaptEAX.iActiveButton	);		
+		ArrayButton();  
+		
+		push(ebx);
+		
+		//if clicked in a custom button
+		if(w.PtInRect(&rect, pt)) then			
+			GETTOP(ebx);	
+			mov(CaptButEBX.uCmd, eax);
+//dbg.put("uCmd ", eax);			
+			mov(pt.y, ecx);
+			shl(16, ecx);		
+			or(pt.x, ecx);
+			w.SendMessage(hwnd, w.WM_COMMAND, eax, ecx);
+		endif;
+		
+		pop(ebx);
+		assign(	CaptButEBX.fPressed = false,
+		
+				eax = ctp,
+				CustCaptEAX.fMouseDown = false	);
+		
+		RedrawNC(hwnd);
+		
+//dbg.put(" Leave EXIT Caption_LButtonUp");		
+		returnExit(OK, Caption_LButtonUp);
+	endif;
+	
+	mov(ctp, eax);	
+	w.CallWindowProc(CustCaptEAX.wpOldProc, hwnd, w.WM_LBUTTONUP, wParam, lParam);
+//	dbg.put("Leave Caption_LButtonUp");
+end Caption_LButtonUp;
+
+
+///////////////////////////////////////////////////////////////////////////////
+// - Caption_MouseMove
+//
+procedure Caption_MouseMove(ctp :dword; hwnd :dword; wParam :dword; lParam :dword);
+var
+	pt :w.POINT;
+begin Caption_MouseMove;
+//dbg.put("Caption_MouseMove");	
+
+	assign(	pt.x = LOWORD(lParam),			
+		   	pt.y = HIWORD(lParam));
+	lea(eax, pt);
+	w.ClientToScreen(hwnd, [eax]);
+	
+	mov(ctp, eax);
+	if(CustCaptEAX.fMouseDown) then
+		GetButtonRect(ctp, hwnd, CustCaptEAX.iActiveButton, &rect, false);
+		w.InflateRect(&rect, 0, 2);					
+		
+		assign (	eax = ctp,
+					ecx = CustCaptEAX.iActiveButton );
+		ArrayButton();  	
+		
+		if(w.PtInRect(&rect, pt) ) then			
+			assign ( CaptButEBX.fPressed = false );
+			RedrawNC(hwnd);			
+		endif;
+	endif;	
+//dbg.put("Leave Caption_MouseMove");
+end Caption_MouseMove;
+
+
+///////////////////////////////////////////////////////////////////////////////
+// - NewWndProc
+//
+//		Replacement window procedure
+procedure NewWndProc( lParam :dword; wParam :dword; msg:dword; hwnd :dword);
+var
+	ctp 	:pointer to CustomCaption;	
+begin NewWndProc;
+	
+	assign(	ctp = GetCustomCaption(hwnd) );
+
+	if (msg = w.WM_NCDESTROY) then
+		mem.free(ctp);			
+		exit NewWndProc;		
+	elseif(msg = w.WM_NCHITTEST) then
+		Caption_NCHitTest(ctp, hwnd, wParam, lParam);
+		exit NewWndProc;		
+	elseif(msg = w.WM_NCACTIVATE) then
+		Caption_NCActivate(ctp, hwnd, wParam, lParam);
+		exit NewWndProc;		
+	elseif(msg = w.WM_SETTEXT) then
+		Caption_SetText(ctp, hwnd, wParam, lParam);
+		exit NewWndProc;		
+	elseif(msg = w.WM_NCPAINT) then
+		Caption_NCPaint(ctp, hwnd, wParam);
+		exit NewWndProc;		
+	elseif(msg = w.WM_NCLBUTTONDBLCLK) then
+		Caption_NCLButtonDown(ctp, hwnd, msg, wParam, lParam);
+		exit NewWndProc;		
+	elseif(msg = w.WM_NCLBUTTONDOWN) then
+		Caption_NCLButtonDown(ctp, hwnd, msg, wParam, lParam);
+		exit NewWndProc;		
+	elseif(msg = w.WM_LBUTTONUP) then
+		Caption_LButtonUp(ctp, hwnd, wParam, lParam);
+		exit NewWndProc;		
+	elseif(msg = w.WM_MOUSEMOVE) then
+		Caption_MouseMove(ctp, hwnd, wParam, lParam);
+		exit NewWndProc;		
+	endif;
+			
+	//call the old window procedure
+	mov(ctp, eax);
+	w.CallWindowProc(CustCaptEAX.wpOldProc, hwnd, msg, wParam, lParam);
+
+end NewWndProc;
+
+
+//////////////////////////////////////////////////////////////////////////////
+// - CheckButton
+//
+// Set status of button uCmd to CAPTION_BTN_CHECKED if bCheck = true
+// else to CAPTION_BTN_NORMAL
+//
+procedure caption.CheckButton(hwnd:dword; uCmd:dword; bCheck:boolean);
+var
+	nNumButtons :dword;
+	custcap		:dword;
+	
+begin CheckButton;
+	USE(EAX, EBX, ECX);
+
+		GetCustomCaption(hwnd);
+		if( eax == NULL) then
+			jmp done;
+		endif;
+		
+		mov(CustCaptEAX.nNumButtons, nNumButtons);
+		mov(eax, custcap );
+		
+		for(mov(0,ecx); ecx < nNumButtons; inc(ecx)) do 	
+			USE(ecx);
+			ArrayButton();
+			ENDUSE;
+			if (mov(CaptButEBX.uCmd, eax) == uCmd) then
+				if(bCheck) then
+					mov(CAPTION_BTN_CHECKED, CaptButEBX.status);
+				else
+					mov(CAPTION_BTN_NORMAL,  CaptButEBX.status);
+				endif;
+				break;
+			endif;
+			mov( custcap, eax ); // renew the address!
+		endfor;
+		RedrawNC(hwnd);
+	done:
+	ENDUSE;
+//dbg.put("/checkbutton");
+end CheckButton;
+
+
+//////////////////////////////////////////////////////////////////////////////
+// - InsertButton
+//
+//		Insert a button into specified window's titlebar
+//
+procedure caption.InsertButton(hwnd:dword; uCmd:dword; nBorder:dword; 
+								hBmp_normal:dword; hBmp_pushed:dword; hBmp_hover:dword; 
+								hBmp_checked:dword; hBmp_disabled:dword;
+								hInst:dword; lptstr:dword);
+var
+	ctp : pointer to CustomCaption;
+	hdc : dword;
+static
+	rect2 :w.RECT;
+begin InsertButton;
+//dbg.put("InsertButton");
+	USE(ebx, ecx);
+		assign(ctp = GetCustomCaption(hwnd));
+	
+		if( ctp == NULL) then		
+			assign(
+				//allocate memory for our subclass information
+				ctp = mem.alloc(@size(CustomCaption)),
+				
+				CustCaptEAX.nNumButtons = 0,
+				CustCaptEAX.fMouseDown 	= false,
+				CustCaptEAX.hInst		= hInst,
+				CustCaptEAX.nBorder		= nBorder );
+			
+			// assign ctp to the window
+			w.SetProp(hwnd, szPropName, ctp);
+		
+			assign(	ebx = ctp,
+					(type CustomCaption[ebx]).wpOldProc = 
+							w.SetWindowLong(hwnd, w.GWL_WNDPROC, &NewWndProc) );
+			/* CREATE A TOOLTIP WINDOW */
+    		mov(w.CreateWindowEx(NULL, //w.WS_EX_TOPMOST,
+        		w.TOOLTIPS_CLASS,
+        		NULL,
+        		w.TTS_ALWAYSTIP  | w.WS_POPUP | w.TTS_NOPREFIX  ,		
+        		w.CW_USEDEFAULT,
+        		w.CW_USEDEFAULT,
+        		w.CW_USEDEFAULT,
+        		w.CW_USEDEFAULT,
+        		NULL, //hwnd,
+        		NULL,
+        		hInst,
+        		NULL), (type CustomCaption[ebx]).hwndTool);
+        
+		endif;
+		
+		assign(	eax =	ctp,			
+				ecx = 	CustCaptEAX.nNumButtons );	
+		inc( CustCaptEAX.nNumButtons );
+		
+		ArrayButton();
+		dbg.put ("button address = ", ebx );
+		
+		assign(	CaptButEBX.hBmp_normal	 = 	hBmp_normal,
+				CaptButEBX.hBmp_pushed	 = 	hBmp_pushed,
+				CaptButEBX.hBmp_hover	 = 	hBmp_hover,
+				CaptButEBX.hBmp_checked	 = 	hBmp_checked,
+				CaptButEBX.hBmp_disabled = 	hBmp_disabled,
+				
+				CaptButEBX.nRightBorder =	nBorder,
+				CaptButEBX.uCmd 		=	uCmd,
+				CaptButEBX.fPressed 	= 	false,
+				CaptButEBX.lptstr		= 	lptstr,
+				CaptButEBX.status		= 	CAPTION_BTN_NORMAL);		
+	ENDUSE;
+
+	return(OK);
+//dbg.put("Leave InsertButton");
+end InsertButton;
+
+
+///////////////////////////////////////////////////////////////////////////////
+// - RemoveButton
+//
+//		Remove the last inserted button from window's titlebar
+//
+procedure caption.RemoveButton(hwnd :dword);
+begin RemoveButton;
+	
+	if(GetCustomCaption(hwnd) = NULL) then
+		returnExit(FAIL, RemoveButton);
+	endif;
+		
+	if(CustCaptEAX.nNumButtons > 0) then
+		dec(CustCaptEAX.nNumButtons);
+		RedrawNC(hwnd);
+	endif;
+	
+	return(OK);
+end RemoveButton;
+
+
+end CaptionButtonUnit;

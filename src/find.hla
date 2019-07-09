@@ -1,0 +1,702 @@
+unit findunit;
+#includeonce	("HIDE.hhf")
+
+?@nodisplay:=true;
+?@align:=4;
+
+// rewrite find format.  all files no longer open in memory
+
+storage
+	align(4);
+
+	start_file		:pointer to fList.fnode;
+	start_job		:dword;
+	current_pos		:uns32;
+	endsel			:uns32;
+	ft				:w.FINDTEXTEX;
+	doneSearch		:BOOL;
+	isFound			:BOOL;
+	
+
+const
+	finditems_c		:= 4;		// increase this as more findscope is added
+	findcurrent_c	:= 0;
+	findall_c		:= 1;
+	findproject_c	:= 2;
+	findjob_c		:= 3;
+	
+	
+readonly
+	Replace	:str.constant("Replace ...");
+
+
+procedure find_nextScope; @returns ("EAX"); @noframe;
+begin find_nextScope;
+	mov (project.findscope, eax);
+	inc (eax);
+	if (eax = finditems_c) then
+		mov (0, eax);
+	endif;
+	mov (eax, project.findscope);
+	ret();
+end find_nextScope;
+
+
+procedure resetFind; @noframe;
+begin resetFind;
+//	dbg.put ("resetFind");
+	mov (curnode, eax);
+	mov (eax, start_file);
+	if (eax) then
+		move (listeax.job, start_job);
+	endif;
+	
+	if (testnz (w.FR_DOWN, project.findflags)) then
+		mov (0, ft.chrg.cpMin);
+		mov (-1, ft.chrg.cpMax);
+	else
+		mov (-1, ft.chrg.cpMin);
+		mov (0, ft.chrg.cpMax);
+	endif;
+	
+//	dbg.put ("/resetFind");
+	ret();
+end resetFind;
+
+
+procedure find_getNextFile (var current:fList.fnode); @returns ("EAX");
+begin find_getNextFile;
+USE (ESI, EDI);
+	dbg.put ("find_getNextFile");
+	if (doneSearch) then
+		mov (false, doneSearch);
+		xor (eax, eax);
+	else
+	
+		mov (current, eax);
+		next:
+		mov (listeax.next, eax);
+		if (! eax) then
+			fileList.getHead();
+		endif;
+
+		mov (listeax.ftype, edi);
+		if (edi = type_bin) then
+			jmp next;
+		endif; 
+		
+		mov (start_file, ecx); 
+		
+		if (eax = start_file) then
+			mov (true, doneSearch);
+			jmp l0;
+		endif;
+		
+		mov (project.findscope, esi);
+		if (esi = findproject_c) then
+			if (! listeax.isproject) then
+				jmp next;
+			endif;
+		elseif (esi = findjob_c) then
+			mov (start_job, esi);
+			if ( listeax.job != esi) then
+				jmp next;
+			endif;
+		endif;
+
+		l0:
+		push( eax );
+		if( ! listeax.hwnd ) then
+			RAEdit_loadFileLight( [eax] );
+		endif;
+		pop( eax );
+		
+		mov (listeax.hwnd, esi);
+		push (eax);
+		w.SendMessage (esi, w.EM_SETSEL, 0, 0);
+		pop (eax); 
+		mov (0, ft.chrg.cpMin);
+		mov (-1, ft.chrg.cpMax);
+	endif;
+	done:
+ENDUSE;
+end find_getNextFile;
+
+procedure find_getPrevFile (var current:fList.fnode); @returns ("EAX");
+begin find_getPrevFile;
+USE (ESI);
+	dbg.put ("find_getPrevFile");
+	if (doneSearch) then
+		mov (false, doneSearch);
+		xor (eax, eax);
+	else
+	
+		mov (current, eax);
+		prev:
+		mov (listeax.prev, eax);
+		if (! eax) then
+			fileList.getTail();
+		endif;
+		mov (listeax.ftype, ecx);
+		if (ecx = type_bin) then
+			jmp prev;
+		endif; 
+		
+		if (eax = start_file) then
+			dbg.put ("prev: doneSearch");
+			mov (true, doneSearch);
+			jmp l0;
+		endif;
+		
+		mov (project.findscope, esi);
+		if (esi = findproject_c) then
+			if (! listeax.isproject) then
+				jmp prev;
+			endif;
+		elseif (esi = findjob_c) then
+			mov (start_job, esi);
+			if ( listeax.job != esi) then
+				jmp prev;
+			endif;
+		endif;
+		
+		l0:
+		push( eax );
+		if( ! listeax.hwnd ) then
+			RAEdit_loadFileLight( [eax] );
+		endif;
+		pop( eax );
+		
+		dbg.put ("prev: ", listeax.fullname );
+		
+		mov (listeax.hwnd, esi);
+		push (eax);
+		w.SendMessage (esi, w.EM_SETSEL, -1, -1);
+		pop (eax); 
+
+		mov (-1, ft.chrg.cpMin);
+		mov (0, ft.chrg.cpMax);
+
+	endif;
+	done:
+	dbg.put ("/find_getPrevFile");
+ENDUSE;
+end find_getPrevFile;
+
+
+procedure find_next; @noframe;
+begin find_next;
+	pushabi;
+	if (start_file = 0) then
+		resetFind();
+	endif;
+
+	zstr.len (&findbuff);
+	if (! eax) then
+		jmp done;
+	endif;
+	mov	(&findbuff, ft.lpstrText);
+
+	mov (curnode, ebx);
+		
+	w.SendMessage (listebx.hwnd, w.EM_GETSEL, &current_pos, &endsel);
+	mov (current_pos, eax);
+	if (eax <> endsel) then
+		mov (endsel, eax);
+		inc (eax);
+	endif;
+	mov (eax, ft.chrg.cpMin);
+	mov (-1, ft.chrg.cpMax);
+
+	mov (project.findflags, eax);
+	or (w.FR_DOWN, eax);
+	mov (eax, esi);
+
+	findAgain:
+		w.SendMessage (listebx.hwnd, w.EM_FINDTEXTEX, esi, &ft);
+		if (eax = -1) then
+			// reached end of file, get next file or ask for continuing.
+			dbg.put ("eof");
+			
+			// if this node is not in the tab tool, then it was temporary and we need
+			// to distroy it.
+			
+			if( ! tabtool_isOpen( [ebx] )) then
+				w.DestroyWindow( listebx.hwnd );
+				mov( 0, listebx.hwnd );
+			endif;
+
+			mov (false, isFound);
+			
+			mov (project.findscope, eax);
+			if (eax > 0 ) then
+				if (find_getNextFile([ebx])) then
+					mov (eax, ebx);
+					jmp findAgain;
+				endif;
+				
+			endif;
+			toOutput ("Search complete" nl);
+			resetFind();
+			
+		else
+			// in case a new window was searched, this will show it
+			dbg.put ("found");
+			mov (true, isFound);
+			
+			if (! tabtool_isOpen ([ebx]) ) then
+				hide_selectNode( [ebx] );
+			elseif( ebx != curnode ) then
+				selectOpenMem( [ebx] );
+			endif;
+			
+			w.SendMessage( listebx.hwnd, w.EM_EXSETSEL, 0, &ft.chrgText);
+			w.SendMessage( listebx.hwnd, REM_VCENTER,0,0);
+			w.SendMessage( listebx.hwnd, w.EM_SCROLLCARET,0,0);
+		endif;
+
+	done:	
+	if (hfind) then
+		w.SetFocus (hfind);
+	else
+		w.SetFocus (hwnd);
+	endif;
+	
+
+	popabi;
+	ret();
+end find_next;
+
+procedure find_prev; @noframe;
+begin find_prev;
+	pushabi;
+	if (start_file = 0) then
+		resetFind();
+	endif;
+
+	zstr.len (&findbuff);
+	if (! eax) then
+		jmp done;
+	endif;
+	mov	(&findbuff, ft.lpstrText);
+
+	mov (curnode, ebx);
+	
+	w.SendMessage (listebx.hwnd, w.EM_GETSEL, &current_pos, &endsel);
+	mov (current_pos, eax);
+	if (eax <> endsel) then
+		mov (current_pos, eax);
+		if (! eax) then
+			jmp prevfind;
+		endif;
+		dec (eax);
+	endif;
+
+	mov (eax, ft.chrg.cpMin);
+	mov (0, ft.chrg.cpMax);
+
+	mov (project.findflags, eax);
+	and (!w.FR_DOWN, eax);
+	mov (eax, esi);
+
+	findAgain:
+		w.SendMessage (listebx.hwnd, w.EM_FINDTEXTEX, esi, &ft);
+		if (eax = -1) then
+			// reached end of file, get next file or ask for continuing.
+			//dbg.put ("bof");
+			prevfind:
+
+			if( ! tabtool_isOpen( [ebx] )) then
+				w.DestroyWindow( listebx.hwnd );
+				mov( 0, listebx.hwnd );
+			endif;
+
+			mov (false, isFound);
+
+			mov (project.findscope, eax);
+			if (eax > 0 ) then
+				if (find_getPrevFile([ebx])) then
+					mov (eax, ebx);
+					jmp findAgain;
+				endif;
+				
+			endif;
+			toOutput ("Search complete" nl);
+			resetFind();
+
+		else
+			// in case a new window was searched, this will show it
+			dbg.put ("found");
+			mov (true, isFound);
+
+			if (! tabtool_isOpen ([ebx]) ) then
+				hide_selectNode( [ebx] );
+			elseif( ebx != curnode ) then
+				selectOpenMem( [ebx] );
+			endif;
+
+			
+			w.SendMessage( listebx.hwnd, w.EM_EXSETSEL, 0, &ft.chrgText);
+			w.SendMessage( listebx.hwnd, REM_VCENTER,0,0);
+			w.SendMessage( listebx.hwnd, w.EM_SCROLLCARET,0,0);
+		endif;
+	
+	if (hfind) then
+		w.SetFocus (hfind);
+	else
+		w.SetFocus (hwnd);
+	endif;
+	
+	done:
+	popabi;
+	ret();
+end find_prev;
+
+procedure find_replaceAll;
+
+	var
+		replacecnt	:uns32;
+	
+	procedure replaceAll;
+		// file node in EBX
+		// replaces all in one node
+		
+		var
+			cleanup		:dword;
+			replacecnt	:uns32;
+			
+	begin replaceAll;
+		dbg.put ("replacing in :", listebx.id);
+		
+		mov( 0, replacecnt );
+		if( ! listebx.hwnd ) then
+			RAEdit_loadFileLight( [ebx] );
+			mov( true, cleanup );
+		else
+			mov( false, cleanup );
+		endif;
+		
+		w.SendMessage (listebx.hwnd, w.EM_SETSEL, 0, 0);
+		mov (project.findflags, esi);
+		or (w.FR_DOWN, esi);
+		mov (0, ft.chrg.cpMin);
+		mov (-1, ft.chrg.cpMax);
+		
+		next:
+		
+		w.SendMessage (listebx.hwnd, w.EM_FINDTEXTEX, esi, &ft);
+		if (eax != -1) then
+			//dbg.put ("esi = ", esi);
+			
+			dbg.put ("cleanup = ", cleanup );
+			if( cleanup ) then
+				mov( false, cleanup );
+				hide_selectNode( [ebx] );
+			endif;
+			
+			w.SendMessage( listebx.hwnd, w.EM_EXSETSEL, 0, &ft.chrgText);
+			w.SendMessage( listebx.hwnd, w.EM_REPLACESEL, true, &replacebuf);
+			inc (replacecnt);
+			zstr.len (&replacebuf);
+			//dbg.put ("len = ", eax, nl, "cpMin = ", ft.chrgText.cpMin);
+			add (ft.chrgText.cpMin, eax);
+			mov (eax, ft.chrg.cpMin);
+			mov (eax, ft.chrgText.cpMax);
+			mov (eax, ft.chrgText.cpMin);
+			w.SendMessage (listebx.hwnd, w.EM_EXSETSEL, 0, &ft.chrgText);
+			//dbg.put ("after = ", ft.chrgText.cpMin, "  ", ft.chrgText.cpMax);
+			jmp next;
+		endif;
+		
+		if( cleanup ) then
+			w.DestroyWindow ( listebx.hwnd );
+			mov( 0, listebx.hwnd );
+		endif;
+		
+		mov( replacecnt, eax );
+		
+	end replaceAll;
+	
+
+begin find_replaceAll;
+	dbg.separator;
+	dbg.put ("find_replaceAll");
+	
+USE (EBX, ESI);
+	resetFind();
+	mov (0, replacecnt);
+	zstr.len (&findbuff);
+	if (! eax) then
+		jmp done;
+	endif;
+	mov	(&findbuff, ft.lpstrText);
+	mov (curnode, ebx);
+
+	fileList.getHead();
+	mov (eax, ebx);
+	mov (project.findscope, eax);
+	if (eax = findall_c) then
+		dbg.put ("findall_c");
+		while (ebx) do
+			mov (listebx.ftype, eax);
+			if( eax != type_bin ) then
+				replaceAll();
+				add( eax, replacecnt );
+			endif;
+			mov (listebx.next, ebx);
+		endwhile;
+
+	elseif (eax = findproject_c) then
+		
+		dbg.put ("findproject_c");
+
+		while (ebx) do
+			mov (listebx.ftype, eax);
+			if( eax != type_bin ) then
+				if (listebx.isproject) then
+					replaceAll();
+				endif;
+			endif;
+			mov (listebx.next, ebx);
+		endwhile;
+	
+	elseif (eax = findjob_c) then
+
+		dbg.put ("findjob_c");
+		mov (start_job, esi);
+
+		while (ebx) do
+			mov (listebx.ftype, eax);
+			if( eax != type_bin ) then
+				if (listebx.job = esi) then
+					replaceAll();
+				endif;
+			endif;
+			mov (listebx.next, ebx);
+		endwhile;
+		
+	elseif (eax = findcurrent_c) then
+		mov (curnode, ebx);
+		replaceAll();
+	endif;
+	done:
+	toOutput (nl "Replaced :", replacecnt, nl);
+ENDUSE;
+
+end find_replaceAll;
+
+
+procedure setupFind; @noframe;
+begin setupFind;
+	resetFind();
+	ret();
+end setupFind;
+
+procedure Proc_FindDlg (lParam:dword; wParam:dword; uMsg:uns32; hWin:dword);
+
+	var		
+		hCtl	:dword;
+	
+	procedure scopeSetCheck; @noframe;
+	begin scopeSetCheck;
+	
+		w.GetDlgItem (ebp::hWin, IDC_SCOPE);
+		mov (eax, ebx);
+		mov (project.findscope, eax);
+		if (eax = findall_c) then
+			w.SetWindowText (ebx, "All Files");
+		elseif (eax = findproject_c ) then
+			w.SetWindowText (ebx, "In Project");
+		elseif (eax = findjob_c) then
+			w.SetWindowText (ebx, "Active Job");
+		else
+			w.SetWindowText (ebx, "Active File");
+		endif;
+		ret();
+	end scopeSetCheck;
+
+begin	Proc_FindDlg;
+	pushabi;
+	mov(uMsg,eax);
+	
+	if (eax = w.WM_INITDIALOG) then
+		
+		mov	(hWin, eax);
+		mov	(eax,hfind);
+		
+		resetFind();
+		
+		// if true, activate Replace field
+		if(lParam) then
+			mov	(w.BN_CLICKED, eax);
+			shl	(16, eax);
+			or	(IDC_BTN_REPLACE, eax);
+			w.PostMessage(hWin, w.WM_COMMAND, eax,0);
+		endif;
+		
+		w.SendDlgItemMessage(hWin,IDC_FINDTEXT,w.EM_LIMITTEXT,255,0);
+		w.SendDlgItemMessage(hWin,IDC_FINDTEXT,w.WM_SETTEXT,0, &findbuff);
+		w.SendDlgItemMessage(hWin,IDC_REPLACETEXT,w.EM_LIMITTEXT,255,0);
+		w.SendDlgItemMessage(hWin,IDC_REPLACETEXT,w.WM_SETTEXT,0, &replacebuf);
+
+		scopeSetCheck();
+		
+		if (testnz (w.FR_MATCHCASE, project.findflags)) then
+			w.CheckDlgButton(hWin,IDC_CHK_MATCHCASE,w.BST_CHECKED);
+		endif;
+		
+		if (testnz (w.FR_WHOLEWORD, project.findflags)) then
+			w.CheckDlgButton(hWin,IDC_CHK_WHOLEWORD,w.BST_CHECKED);
+		endif;
+		
+		if (testnz (w.FR_DOWN, project.findflags)) then
+			w.CheckDlgButton(hWin, IDC_RBN_DOWN, w.BST_CHECKED);
+		else
+			w.CheckDlgButton(hWin, IDC_RBN_UP, w.BST_CHECKED);
+		endif;
+		
+		if (curnode = 0) then
+			w.GetDlgItem (hWin, w.IDOK);
+			w.EnableWindow (eax, false);
+			w.GetDlgItem (hWin, IDC_BTN_REPLACE);
+			w.EnableWindow (eax, false);
+			w.GetDlgItem (hWin, IDC_BTN_REPLACEALL);
+			w.EnableWindow (eax, false);
+		endif;
+//		dbg.put ("/init find");
+		
+	elseif (eax = w.WM_COMMAND) then
+		mov	(wParam, eax);
+		mov	(eax,edx);
+		shr	(16,edx);
+		and	($ffff,eax);
+		if (edx = w.BN_CLICKED) then
+			if(eax = w.IDOK) then
+				
+				if (testnz (w.FR_DOWN, project.findflags)) then
+					find_next();
+				else
+					find_prev();
+				endif;
+			
+			elseif(eax = w.IDCANCEL) then
+
+				w.SendMessage(hWin,w.WM_CLOSE,NULL,NULL);
+
+			elseif(eax = IDC_BTN_REPLACE) then
+
+				w.GetDlgItem(hWin, IDC_BTN_REPLACEALL);
+				mov	(eax, hCtl);
+				w.IsWindowEnabled(hCtl);
+				if(!eax) then
+					
+					w.EnableWindow(hCtl,true);
+					w.SetWindowText(hWin,&Replace);
+					w.GetDlgItem(hWin,IDC_REPLACESTATIC);
+					w.ShowWindow(eax,w.SW_SHOWNA);
+					w.GetDlgItem(hWin,IDC_REPLACETEXT);
+					w.ShowWindow(eax,w.SW_SHOWNA);
+					
+				else
+					if (isFound) then
+						// at this point, text is selected already
+						mov (curnode, ebx);
+						w.SendMessage(listebx.hwnd,w.EM_EXGETSEL,0,&ft.chrg);
+						w.SendMessage( listebx.hwnd, w.EM_REPLACESEL,true, &replacebuf);
+
+						// if search is down, adjust past the replaced text so
+						// we don't enter infinite replacement loop
+						if (testnz (w.FR_DOWN, project.findflags)) then
+							mov (ft.chrg.cpMax, eax);
+							inc (eax);
+							mov (eax, ft.chrg.cpMax);
+							mov (eax, ft.chrg.cpMin);
+							w.SendMessage(listebx.hwnd,w.EM_EXSETSEL,0, &ft.chrg);
+							find_next();
+						else
+							dec (ft.chrg.cpMin);
+							move (ft.chrg.cpMin, ft.chrg.cpMax);
+							w.SendMessage(listebx.hwnd,w.EM_EXSETSEL,0, &ft.chrg);
+							find_prev();
+						endif;						
+					endif;
+					w.SetFocus(hfind);
+				endif;
+
+			elseif (eax = IDC_BTN_REPLACEALL) then
+				
+				find_replaceAll();
+			
+			elseif (eax = IDC_RBN_DOWN) then
+				
+				or (w.FR_DOWN, project.findflags);
+				mov (-1, ft.chrg.cpMax);
+				inc (ft.chrg.cpMin);
+				
+				
+			elseif (eax = IDC_RBN_UP) then
+			
+				and (! w.FR_DOWN, project.findflags);
+				mov (0, ft.chrg.cpMax);
+				
+			elseif (eax = IDC_SCOPE) then
+				
+				w.SendDlgItemMessage (hWin, IDC_SCOPE, w.BM_GETCHECK, 0, 0);
+				find_nextScope();
+				scopeSetCheck();			
+				resetFind();
+
+			elseif (eax = IDC_CHK_MATCHCASE) then
+
+				if (w.IsDlgButtonChecked(hWin, IDC_CHK_MATCHCASE)) then
+					or (w.FR_MATCHCASE, project.findflags);
+				else
+					and(! w.FR_MATCHCASE, project.findflags);
+				endif;
+				resetFind();
+				
+			elseif (eax = IDC_CHK_WHOLEWORD) then
+
+				if (w.IsDlgButtonChecked(hWin, IDC_CHK_WHOLEWORD)) then
+					or (w.FR_WHOLEWORD, project.findflags);
+				else
+					and(! w.FR_WHOLEWORD, project.findflags);
+				endif;
+				resetFind();
+				
+			endif;
+			
+			
+		elseif (edx = w.EN_CHANGE) then
+			if (eax = IDC_FINDTEXT) then
+
+				w.SendDlgItemMessage(hWin, eax, w.WM_GETTEXT, @size(findbuff),&findbuff);
+				resetFind();
+
+			elseif (eax = IDC_REPLACETEXT) then
+
+				w.SendDlgItemMessage(hWin, eax, w.WM_GETTEXT, @size(replacebuf), &replacebuf);
+				resetFind();
+
+			endif;
+		endif;
+
+	elseif (eax = w.WM_ACTIVATE) then
+
+		w.SetFocus(hfind);
+
+	elseif (eax = w.WM_CLOSE) then
+
+		w.DestroyWindow(hfind);
+		mov	(0,hfind);
+		w.SetFocus (hwnd);
+	else
+		mov	(false, eax);
+		jmp _exitProc_FindDlg;
+	endif;
+	mov	(true, eax);
+_exitProc_FindDlg:
+	popabi;
+end Proc_FindDlg;
+
+end findunit;

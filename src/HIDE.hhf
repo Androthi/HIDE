@@ -1,0 +1,288 @@
+const
+
+	version	:string := "HIDE 1.6.0 hla 2.16/stdlib 8.0";
+
+
+	#includeonce	("os.hhf")
+	#includeonce	("src/win_inc.hhf")
+	#includeonce	("src/raedit.hhf")
+	#includeonce	("src/RAHexEd.hhf")
+	#includeonce	("hide/graphicex_lib.hhf")
+	
+	#if (os.win32)
+	
+		#includeonce	("hide/dbgwin.hhf")
+		
+	#else
+		
+		// just so sources will compile in linux
+		namespace dbg;
+			#macro put(args[]);
+			#endmacro
+			#macro separator; #endmacro
+			#macro cls; #endmacro
+			#macro putz (_arg_); #endmacro
+			
+		end dbg;
+	#endif
+	#includeonce	("strings.hhf")
+	#includeonce	("tables.hhf") 
+	#includeonce	("hide/hidelib.hhf")
+	#includeonce	("macros/macros.hhf")
+
+const
+		
+	nUserColors		:= 16;
+
+namespace hide;
+	type
+		point_t:
+			record
+				x	:dword;
+				y	:dword;
+			endrecord;
+			
+		rect_t:
+			record
+				union
+					left	:uns32;
+					x		:uns32;
+				endunion;
+				union
+					top		:uns32;
+					y		:uns32;
+				endunion;
+				union
+					right	:uns32;
+					width	:uns32;
+				endunion;
+				union
+					bottom	:uns32;
+					height	:uns32;
+				endunion;
+			endrecord;
+	endtype;
+	
+	
+end hide;
+	
+#include	("src/types.hhf")
+#include	("src/externals.hhf")
+
+
+const
+	#include ("res/rsrc.hhf")
+	
+	bufesi	:text := "(type tBuffer[esi])";
+	bufedx	:text := "(type tBuffer[edx])";
+	
+	PROJECT_MENU_START		:= 1500;
+		PVIEW_REBUILDJOB	:= PROJECT_MENU_START +1;
+		PVIEW_RUN			:= PROJECT_MENU_START +2;
+		PVIEW_RUNWITHDBG	:= PROJECT_MENU_START +3;
+		PVIEW_REBUILDFILE	:= PROJECT_MENU_START +4;
+		PVIEW_KMAKETARGET	:= PROJECT_MENU_START +5;
+		PVIEW_OPENWITHRESED	:= PROJECT_MENU_START +6;
+		PVIEW_OPENWITHKHELP	:= PROJECT_MENU_START +7;
+		PVIEW_OPENASHEX		:= PROJECT_MENU_START +8;
+		PVIEW_SETTOOPEN		:= PROJECT_MENU_START +9;
+		PVIEW_SETFORWSCAN	:= PROJECT_MENU_START +10;
+		PVIEW_RELOAD		:= PROJECT_MENU_START +11;
+		PVIEW_DEPENDENTS	:= PROJECT_MENU_START +12;
+		PVIEW_RUNEXECUTABLE	:= PROJECT_MENU_START +13;
+		PVIEW_EDIT			:= PROJECT_MENU_START +14;
+	PROJECT_MENU_END		:= 1600;
+
+	RECENT_MENU_START		:= PROJECT_MENU_END;
+		RECENT_1			:= RECENT_MENU_START +1;
+		RECENT_2			:= RECENT_MENU_START +2;
+		RECENT_3			:= RECENT_MENU_START +3;
+		RECENT_4			:= RECENT_MENU_START +4;
+		RECENT_5			:= RECENT_MENU_START +5;
+		RECENT_6			:= RECENT_MENU_START +6;
+		RECENT_7			:= RECENT_MENU_START +7;
+		RECENT_8			:= RECENT_MENU_START +8;
+		RECENT_9			:= RECENT_MENU_START +9;
+		RECENT_10			:= RECENT_MENU_START +10;
+	RECENT_MENU_END			:= 1700;
+	USER_MENU_START			:= RECENT_MENU_END;
+	USER_MENU_END			:= USER_MENU_START + 100;
+		
+		
+	// used for status window messages
+	STATUS_PARTS		:=5;
+	STATUS_POSITION		:=0;
+	STATUS_INS			:=STATUS_POSITION+1;
+	STATUS_PROJ			:=STATUS_INS+1;
+	STATUS_DBG			:=STATUS_PROJ+1;
+	STATUS_INFO			:=STATUS_DBG+1;
+
+	
+	// used in updateDisplay procedure
+	update_general	:= 0;
+	update_selection:= 1;
+	update_hexed	:= 2;
+	
+	TABHT				:= 22;
+	TOOLHT				:= 24;
+	RESIZEHT			:= 2;
+	DOUBLESLASH			:= 5555;
+
+	// status bar and tool bar IDs
+	IDC_SBR	:= 1003;
+	IDC_TBR	:= 1002;
+
+	mclear_c	:= 1;	// clear output
+	
+	// command - used in MakeProc
+	mbuild_c		:= 0;	// send build command
+	mbuildall_c		:= 1;	// send build-all command
+	mbuildone_c		:= 2;	// send build current command
+	mbuildonejob_c	:= 3;
+	mrebuildonejob_c:= 4;	// send a rebuild currend job command
+	mtestbuild_c	:= 5;	// send test build command
+	mobject_c		:= 6;	// compile to object files only
+	mhla_c			:= 7;	// compile useing hla
+	
+	// link - used in MakeProc
+	mnforce_c	:= 0;
+	mforce_c	:= 1;
+
+	// used for converting hla to source formats.	
+	mhlabe_c	:= 0;
+	mmasm_c		:= 1;
+	mfasm_c		:= 2;
+	mnasm_c		:= 3;
+	mgas_c		:= 4;
+	
+	// hla levels - used for builds, corresponds with strings
+	level_high		:= 0;
+	level_medium	:= 1;
+	level_low		:= 2;
+	level_machine	:= 3;
+	
+	// winview settings	
+	dummy_sym_0038938 := @{0};	// required or HLA linux can't find next symbol
+	TOOL	:= @{0};
+	STATUS	:= @{1};
+	OUTPUT	:= @{2};
+	NOTES_A	:= @{3};	// depricated  -- change to scripts window in the future
+	PROP_A	:= @{4};
+	VSPLIT	:= @{5};
+	NOTES_D	:= @{6};	// depricated  -- change to scripts window in the future
+	HSPLIT	:= @{7};
+	OUTPUT_D:= @{8};
+	TREE_D	:= @{9};
+	PROP_D	:= @{10};
+	TREE_A	:= @{11};
+
+
+	// used for side panel	
+	panel_closed	:=0;
+	panel_project	:=1;
+	panel_prop		:=2;
+	panel_notes		:=3;	// depricated  -- change to scripts window in the future
+		
+	anchor_btn		:= 10;
+	output_btn		:= 11;
+	notes_btn		:= 12;
+		
+	enum0
+	(	// docking window messages
+		DOCK_TEST,	// phased out, but must remain at this position
+		DOCK_YES,
+		DOCK_NO
+	);
+
+	// Private messages
+	HIDE_BASE			:=w.WM_USER+2000;
+	HIDE_TOGGLEOUTPUT	:=HIDE_BASE+1;		// wParam=0, lParam=n	0 > n = start close output delay timer 
+	HIDE_TOGGLEDEBUG		:=HIDE_BASE+2;		// wParam=0, lParam=0
+	HIDE_SETSTATUS		:=HIDE_BASE+3;		// wParam=item index,	lParam=pointer to string
+	HIDE_SETINSERTMODE	:=HIDE_BASE+4;		// wParam=0, lParam=0   updates status bar INS/OVR display based on edit setting
+	
+	// some general string sized
+	pathsize_c		:= 300;
+	worksize_c		:= 4096;
+	mastersize_c	:= $10000;
+
+	#if (os.win32)	
+		dirsep_c		:= '\';
+		obj_c			:= ".obj";
+		lib_c			:= ".lib";
+		exe_c			:= ".exe";
+	#elseif (os.linux)
+		dirsep_c		:= '/';
+		obj_c			:= ".o";
+		lib_c			:= ".a";
+		exe_c			:= "";
+	#endif
+	dll_c				:= ".dll";
+	
+	// relates to string array
+	nJobTypes				:= 5;
+		jobtype_program		:= 0;
+		jobtype_target		:= 1;
+		jobtype_dll			:= 2;
+		jobtype_library		:= 3;
+		jobtype_misc		:= 4;
+	
+	
+	// relates to string array
+	nFileTypes				:=9;
+		type_hla		:= 0;		// main hla source file
+		type_unit		:= 1;		// hla unit with separate compilation
+		type_hhf		:= 2;		// header file
+		type_rc			:= 3;		// resource file
+		type_khelp		:= 4;		// khelp document file
+		type_def		:= 5;		// dll definition file
+		type_bin		:= 6;		// binary file
+		type_misc		:= 7;		// misc file
+		type_kmake		:= 8;		// kmake file
+		
+	
+	// file types not coverd above,
+	// these are not counted in string array
+	// but used for file filters
+	type_all		:= 1000;
+	type_proj		:= 1001;
+	type_template	:= 1002;
+	type_lib		:= 1003;	
+		
+	// HIDE manager init values
+	manager_general		:= 0;
+	manager_env			:= 1;
+	manager_settings	:= 2;
+	manager_themes		:= 3;
+	manager_project		:= manager_themes+1;
+	manager_jobs		:= manager_project+1;
+	//manager_test		:= manager_jobs+1;
+
+
+	// various options
+	// deprications and 'moved' are
+	// free spaces
+	opt_console		:= @{0};	// console to output
+	opt_auto		:= @{1};	// auto structure complete -- moved
+	opt_hiliteline	:= @{2};	// hilite carot line -- moved
+	opt_hilitecmnts	:= @{3};	// hilite comments -- moved
+	opt_divideline	:= @{4};	// divider line -- moved
+	opt_exptabs		:= @{5};	// expand tabs
+	opt_indent		:= @{6};	// auto indent
+	opt_usestdtpl	:= @{7};	// use standard templates -- moved
+	opt_showlines	:= @{8};	// activate line number panel -- moved
+	opt_autoparen	:= @{9};	// auto parenthesis complete -- moved
+	opt_keeptemp	:= @{10};	// keep temporary files -- moved
+	opt_usedebuglib	:= @{11};	// link in debuglib.lib
+	opt_verbose		:= @{12};	// verbose output -- moved
+	opt_windows		:= @{13};	// compile to windows GUI PE
+	opt_autodep		:= @{14};	// automatically check dependencies -- moved
+	opt_extfasm		:= @{15};	// depricated -- free space
+	opt_scanprops	:= @{16};	// used to scan or skip scan properties list -- moved
+	opt_threadsafe	:= @{17};	// used to link in thread safe standard library
+
+	// hide modes, not really used
+	mode_gui		:= 0;		// normal operation
+	mode_build		:= 1;		// no gui - just build project
+	mode_buildall	:= 2;		// no gui - just build all project	
+

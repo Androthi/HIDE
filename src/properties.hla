@@ -1,0 +1,2130 @@
+/*
+	This unit controls the "Properties" window of HIDE
+
+	-keep track of window position
+	-scan project files for keywords, sort procedures, variables,
+	 etc, by type so that user can easily find the location of
+	 declaration.
+
+*/
+
+unit Properties;
+
+#includeonce ("HIDE.hhf")
+#includeonce	("memory.hhf")
+#includeonce	("genLexer.hhf")
+
+?@nodisplay:=true;
+?@align:=4;
+
+
+const
+	
+	enum0
+	(	// property toolbar buttons
+		propview_project,
+		propview_job,
+		propview_current,
+		propview_open,
+		propview_includes,
+		propview_externals
+	);
+	
+storage
+	align(4);
+	prop_bitmap				:w.TBADDBITMAP;
+	hproptool				:dword;
+	hpropcombo				:dword;
+	hproplist				:dword;
+	oldhprop				:dword;
+
+	prop_displaymode		:dword;
+
+	scanNode				:pointer to fList.fnode;
+	propNode				:pointer to propNode_t; // pointer to last propNode symbol
+	linebuffer				:byte[100];
+
+	align(4);
+	
+
+static
+	mainBegin				:str.strvar (100);
+	scan_4_file			:boolean:= false;
+
+
+readonly
+	align(4);
+	npropbtns	:dword	:=6;		// increase as more buttons are added
+	propbtns	:w.TBBUTTON; @nostorage;
+			w.TBBUTTON
+				w.TBBUTTON:[propview_project, propview_project, w.TBSTATE_ENABLED, w.TBSTYLE_BUTTON, 0, 0],
+				w.TBBUTTON:[propview_job, propview_job, w.TBSTATE_ENABLED, w.TBSTYLE_BUTTON, 0, 0],
+				w.TBBUTTON:[propview_current, propview_current, w.TBSTATE_ENABLED, w.TBSTYLE_BUTTON, 0, 0],
+				w.TBBUTTON:[propview_open, propview_open, w.TBSTATE_ENABLED, w.TBSTYLE_BUTTON, 0, 0],
+				w.TBBUTTON:[propview_includes, propview_includes, w.TBSTATE_ENABLED, w.TBSTYLE_BUTTON, 0, 0],
+				w.TBBUTTON:[propview_externals, propview_externals, w.TBSTATE_ENABLED, w.TBSTYLE_BUTTON, 0, 0];
+				
+	align (4);
+	// as per property toolbar buttons above
+	propbtn_strings	:string[] :=
+		[
+			"All Project",
+			"Active Job",
+			"Current File",
+			"Open Files",
+			"Include Files",
+			"External"
+		];
+
+procedure prop_freeMem (var node:fList.fnode);
+
+	procedure destroy_property_tbl; @noframe;
+	begin destroy_property_tbl;
+		USE (EDX);
+		if (ebx) then
+			mov ( tablenodeebx.Value, edx);
+
+			if (propedx.typestr > 0) then
+				str.free (propedx.typestr);
+			endif;
+			if (mem.isInHeap (edx)) then
+				mem.free (edx);
+			endif;				
+		endif;
+		ENDUSE;
+		ret();	
+	end destroy_property_tbl;
+
+begin prop_freeMem;
+	USE (ESI, EDI, EBX);
+
+	//dbg.enters( "prop_freeMem" );
+	mov (node, eax);
+	mov (listeax.props, esi);
+	if (esi) then
+		tableesi.destroy (&destroy_property_tbl);
+		mov (node, eax);
+		mov (0, listeax.props);
+	endif;
+	
+	mov (listeax.props_ext, esi);
+	if (esi) then
+		tableesi.destroy (&destroy_property_tbl);
+		mov (node, eax);
+		mov (0, listeax.props_ext);
+	endif;
+	
+	mov (listeax.deps, esi);
+	push( eax );
+	(type tList[esi]).destroy();
+	tList.create();
+	pop( eax );
+	mov (esi, listeax.deps);
+	
+	//dbg.exits( "prop_freeMem" );
+	ENDUSE;
+end prop_freeMem;
+
+
+procedure saveToken (var save:save_t);
+begin saveToken;
+USE(EBX);
+	mov (save, ebx);
+	mov (esi, (type save_t[ebx]).cursor);
+	move (genLine, (type save_t[ebx]).line);
+ENDUSE;
+end saveToken;
+
+procedure restoreToken (var save:save_t);
+begin restoreToken;
+USE (EBX);
+	mov (save, ebx);
+	mov ( (type save_t[ebx]).cursor, esi);
+	mov ( (type save_t[ebx]).line, genLine);
+ENDUSE;
+end restoreToken;
+
+procedure findToken ( toFind:dword);
+begin findToken;
+	forever
+		genLex (esi);
+		breakif (eax = gen_eof || eax = toFind || eax = gen_error);
+	endfor;
+end findToken;
+
+procedure checkInclude (src:dword in esi); @returns ("EAX"); @noframe;
+begin checkInclude;
+	genLex (esi);
+	if (eax = tkn_include || eax = tkn_includeonce) then
+		or (1, eax);
+	else
+		xor (eax, eax);
+	endif;
+	ret();
+end checkInclude;
+
+
+procedure findEnd ( toFind:dword; opensWith:dword);
+var
+	state	:uns32;
+
+begin findEnd;
+	mov (1, state);
+	forever
+		genLex (esi);
+		if (eax = toFind) then
+			
+			dec (state);
+			breakif (@z);
+			
+		elseif (eax = opensWith) then
+			
+			inc (state);
+			
+		elseif (eax = gen_eof || eax = gen_error) then
+			
+			break;
+			
+		endif;
+	endfor;
+end findEnd;
+
+
+procedure getEOI (src:dword in esi); @noframe;
+begin getEOI;
+	// parse to the next ';'
+	USE (EBX, EDI);
+		forever
+			genLex (esi);
+			breakif (eax = gen_eof || eax = gen_semicolon || eax = gen_error);
+		endfor;
+	ENDUSE;
+	ret();
+end getEOI;
+
+
+procedure peek (src:dword in esi); @noframe;
+	// returns:
+	// next token in EAX
+	// preserves ESI position in lexer and current line
+begin peek;
+USE (EBX, ESI);
+	pushd (genLine);
+	genLex (esi);
+	pop (genLine);
+ENDUSE;
+ret();	
+end peek;
+
+procedure prop_processBookmark( src:dword in esi );
+
+	var
+		curprop	:pointer to propNode_t;
+
+begin prop_processBookmark;
+	
+	// at this point, esi points to just beyond "//bm=" to the
+	// start of the bookmark ID.
+	// get the ID, add it's position to the list and advance ESI to the next line.
+	
+	//dbg.put ("prop_processBookmark");
+
+	genLex( esi );
+	//dbg.put ("found bm, genLex = ", eax);
+	if( eax != gen_id) then
+		jmp moveToEOL;
+	endif;
+	
+	USE (ESI);
+		mov (scanNode, eax);
+		mov (listeax.props, esi);
+		tableesi.getNode (genID);
+	ENDUSE;
+	mov (eax, ebx);
+	if( tablenodeebx.Value !=0 ) then
+		jmp moveToEOL;
+	endif;
+		
+	mem.zalloc ( @size(propNode_t));
+	mov (eax, curprop);
+	mov (eax, tablenodeebx.Value);
+	mov (eax, edx);
+	move (scanNode, propedx.fnode);
+	mov (genLine, propedx.line);
+	mov (id_bookmark, propedx.ptype);
+	
+	// advance to EOL
+	moveToEOL:
+	while ( esi < genEOF && (type byte[esi]) <> $a) do
+		inc (esi);
+	endwhile;
+	inc (esi);
+	inc (genLine);
+
+	//dbg.put ("/prop_processBookmark");	
+end prop_processBookmark;
+
+
+procedure prop_parseInclude (src:dword in esi);
+
+	procedure recursiveScan (var node:fList.fnode);
+		var
+			buf		:tBuffer;
+			lindex	:dword;
+			
+	begin recursiveScan;
+	USE (ESI, EDI, EBX);
+		// first, add this node to scanNode's dependency list.
+		mov (scanNode, ebx);
+		mov (listebx.deps, esi);
+		mov (node, ebx);
+		//dbg.put ("appending to list :", listebx.relative);
+		//there is potential for infinite loop... make sure to add only once
+		if ( !(type tList[esi]).findValue (listebx.relative)) then
+			(type tList[esi]).appendValue (listebx.relative);
+		endif;
+		
+		
+		if (listebx.ftype = type_hla || listebx.ftype = type_unit ||
+			listebx.ftype = type_hhf) then
+			
+			// load file and scan it for more includes
+			//dbg.put ("searching in :", listeax.fullname);
+			buf.create_file(listebx.relative);
+			while (bufesi.isearchf ("#include")) do
+				bufesi.searchf ("""");
+				inc (eax);
+				mov (eax, lindex);
+				bufesi.right (1);
+				bufesi.searchf ("""");
+				bufesi.extract (lindex, eax, strbuf);
+				str.trim (strbuf);
+				
+				//dbg.put ("innerscan found include: ", strbuf);
+
+				USE (ESI, EDI);
+					if (fileList.findFullname (strbuf) || fileList.findID (strbuf)) then
+						recursiveScan ([eax]);
+					else
+						xor (eax, eax); 
+					endif;
+				ENDUSE;
+			endwhile;
+
+			buf.destroy();
+		endif;
+	ENDUSE;
+	end recursiveScan;
+	
+	procedure convert_path (src:string);
+	begin convert_path;
+		USE (ESI);
+			mov (src, esi);
+			dec (esi);
+			forever
+				inc (esi);
+				mov ([esi], al);
+				breakif (!al);
+				if (al = '/' || al = '\') then
+					mov (dirsep_c, al);
+					mov (al, [esi]);
+				endif;
+			endfor;
+		ENDUSE;
+	end convert_path;
+
+
+begin prop_parseInclude;
+	
+	push( esi );
+	hideini.readInt( "HIDE Settings", "Auto Dependencies" );
+	pop( esi );
+	if( eax ) then
+		
+		mov (scanNode, eax);
+		//dbg.put ("prop_parseInclude :", listeax.relative);
+
+		if (listeax.ftype = type_hla || listeax.ftype = type_unit) then
+			// scan only hla code files
+			genLex (esi);
+			if (eax = gen_lparen) then
+				genLex (esi);
+				convert_path (genID);
+				// see if the file is a part of the project
+				USE (ESI, EDI);
+					if (fileList.findFullname (genID)) then
+					elseif (fileList.findID (genID)) then
+					else
+						xor (eax, eax); 
+					endif;
+				ENDUSE;
+				if (eax) then
+					//dbg.put ("include : ", listeax.relative);
+					recursiveScan ([eax]);
+				endif;
+				or (-1, eax);	// return >1 or scanner will fail
+			endif;
+		endif;
+	
+	else
+		
+		or( -1, eax );
+		
+	endif;
+	
+end prop_parseInclude;
+
+
+proc
+	formatString	:procedure( src : string; dst:string );
+	begin formatString;
+		
+		USE( ESI, EDI );
+		mov( src, esi );
+		// convert all tabs/cr/lf to spaces
+		forever
+			mov( [esi], al );
+			test( al, al );
+			breakif( @z );
+			if( al = stdio.tab ) then
+				mov( ' ', (type byte[esi]) );
+			elseif( al = stdio.cr ) then
+				mov( ' ', (type byte[esi]) );
+			elseif( al = stdio.lf ) then
+				mov( ' ', (type byte[esi]) );
+			endif;
+			inc( esi );
+		endfor;
+		
+		// copy string to dest, removing access spaces
+		mov( src, esi );
+		mov( dst, edi );
+		push( edi );
+		forever
+			mov( [esi], al );
+			test(al, al);
+			breakif( @z );
+			if( al = ' ') then
+				if( (type byte [esi+1]) = ' ' ) then
+					add( 2, esi );
+					continue;
+				endif;
+			endif;
+			mov( al, [edi] );
+			inc( edi );
+			inc( esi );
+		endfor;
+		mov( #0, (type byte[edi]) );
+		pop( eax );
+		sub( eax, edi );
+		mov( edi, (type str.strRec[eax]).length );
+		
+		ENDUSE;
+		
+	end formatString;
+
+	checkExternal :procedure {@noframe};
+	begin checkExternal;
+		
+		checkext:
+		peek( esi );
+		if( eax = tkn_external || eax = tkn_forward ) then
+
+			genLex( esi );
+			getEOI( esi );
+			mov( true, eax );
+			
+		elseif( eax = gen_atsign ) then
+			
+			genLex( esi );
+			genLex( esi );
+			if( eax = tkn_external || eax = tkn_forward ) then
+				
+				getEOI( esi );
+				mov( true, eax );
+				
+			else
+				
+				jmp checkext;
+
+			endif;
+			
+		else
+			
+			mov( false, eax );
+			
+		endif;
+
+		ret();
+	end checkExternal;
+
+
+procedure prop_parseVariable (src:dword in esi; isType:byte);
+	var
+		tkn		:save_t;
+		curprop	:pointer to propNode_t;
+		curtable:pointer to table;
+		isext	:BOOL;
+		line	:dword;
+		startID	:dword;
+		endID	:dword;
+
+begin prop_parseVariable;
+	//dbg.put ("parseVariable :", (type char[esi]) );
+	xor (eax, eax);
+	mov (eax, curprop);
+	mov (eax, isext);
+	
+	forever
+		saveToken (tkn);
+		genLex (esi);
+		switch (eax);
+		
+		case (gen_colon)
+			//dbg.put ("label = ", genID);
+			str.cpy (genID, strbuf);
+			move (genLine, line);
+			mov (edi, startID);
+			getEOI (esi);
+			mov (esi, endID);
+			
+			// check for external
+			checkExternal();
+			mov( eax, isext );
+			
+			// now check to see if symbol is already defined
+			mov (scanNode, eax);
+			if (isext) then
+				mov (listeax.props_ext, curtable);
+			else
+				mov (listeax.props, curtable);
+			endif;
+
+			USE (ESI, EDI);
+				mov (curtable, esi);
+				tableesi.getNode (strbuf); 
+			ENDUSE;
+			mov (eax, ebx);
+			if (tablenodeebx.Value = 0 ) then
+					
+				// from here, it could be constant with '=' or
+				// a type class
+				
+				mem.zalloc ( @size(propNode_t));
+				mov (eax, curprop);
+				mov (eax, tablenodeebx.Value);
+				mov (eax, edx);
+				
+				USE (ESI, EDI);
+					mov (endID, esi);
+					mov (startID, edi);
+					sub (edi, esi);
+					if (esi > 80) then
+						mov (80, esi);
+					endif;
+					add (edi, esi);
+					genExtract();
+				ENDUSE;
+				//dbg.put ("var type = ", genID);
+				formatString( genID, strbuf );
+				str.a_cpy (strbuf);
+				mov (eax, propedx.typestr);
+				move (scanNode, propedx.fnode);
+				move (line, propedx.line);
+				mov (isType, al);
+				mov (al, propedx.ptype);
+			endif;
+			
+		case (gen_eof, gen_error)
+			break;
+			
+		case (gen_pound)
+			if (checkInclude(esi)) then
+				prop_parseInclude (esi);
+				breakif (eax = gen_error);
+			else
+				restoreToken (tkn);
+				or (-1, eax);	// not error or eof!
+				break;
+			endif;
+			
+		case (tkn_begin, tkn_static, tkn_readonly, tkn_const, tkn_storage, tkn_type,
+				tkn_procedure, tkn_proc, tkn_iterator, tkn_method, tkn_var, tkn_val)
+			// restore the token and leave
+			restoreToken (tkn);
+			break;
+			
+		case( gen_bookmark)
+			prop_processBookmark( esi );
+			
+		endswitch;
+	endfor;
+	//dbg.put ("/parseVariable");
+end prop_parseVariable;
+
+procedure prop_parseProc (src:dword in esi);
+
+	var
+		curprop		:pointer to propNode_t;
+		tkn			:save_t;
+		startID		:dword;
+		endID		:dword;
+		curtable	:pointer to table;
+		line		:dword;
+		isext		:BOOL;
+
+begin prop_parseProc;
+	//dbg.put("prop_parseProc");
+	//xor (eax, eax);
+	//mov (eax, curprop);
+	//mov (eax, isext);	// used for @external and @forward
+	
+	// proc section:
+	// id : type <(parameters)>; <options>;
+	
+	forever
+		saveToken( tkn );
+		mov( genLine, line );
+		mov( false, isext );
+		genLex( esi );
+		switch( eax );
+		
+		case (gen_colon)
+			//dbg.put ("label = ", genID);
+
+			str.cpy (genID, strbuf);	// strbuf = procedure id
+			
+			// identifies procedure, iterator, etc.
+			genLex( esi );
+			
+			// there can be optional paramters or procedure options here
+			// find start and end of typestr
+			peek (esi);
+			if (eax = gen_lparen) then
+				// we have parameters
+				genLex (esi);
+				mov (esi, startID);
+				findToken (gen_rparen);
+				if (eax != gen_eof || eax != gen_error) then
+					mov (esi, endID);
+				else
+					jmp done; // we have some kind of source error, ignore this
+				endif;
+			else
+				// no parameters
+				xor (eax, eax);
+				mov (eax, startID);
+				mov (eax, endID);
+			endif;
+			getEOI (esi);	// this will also consume any options in braces {} of new style procs
+			
+			peek (esi);
+			if (eax = gen_atsign || eax = tkn_external || eax = tkn_forward) then
+				
+				mov( true, isext );
+				getEOI (esi);
+
+			endif;
+
+			// search the symbol list
+			mov (scanNode, eax);
+			if (isext) then
+				mov (listeax.props_ext, curtable);
+				//dbg.put("***external table");
+			else
+				mov (listeax.props, curtable);
+				//dbg.put("***props table");
+			endif;
+			
+			USE (ESI, EDI);
+				mov (curtable, esi);
+				//dbg.put("looking for:", strbuf );
+				tableesi.getNode (strbuf);
+			ENDUSE;
+			mov (eax, ebx);
+			
+			//dbg.put("node:", tablenodeebx.Value);
+			// if unique, allocate memory and enter into symbol space
+			if (tablenodeebx.Value = 0) then
+		
+				//dbg.put ("new node :", strbuf);
+				mem.zalloc ( @size(propNode_t));
+				mov (eax, curprop);
+				mov (eax, tablenodeebx.Value);
+				mov (eax, edx);
+			
+				USE (ESI, EDI);
+					mov (endID, esi);
+					mov (startID, edi);
+					sub (edi, esi);
+					if (esi) then
+						if (esi > 80) then
+							mov (80, esi);
+						endif;
+						add (edi, esi);
+						
+						// strip nl from genID
+						mov (genID, edx);
+						str.trim (edx);
+						mov ([edx], al);
+						xor (ecx, ecx);
+						while (al) do
+							if (al = $0a) then
+								str.delete (genID, ecx, 2);
+							elseif (al = $09) then
+								// change tabs to spaces
+								mov ($20, (type byte [edx]) );
+							endif;
+							inc (ecx);
+							inc (edx);
+							mov ([edx], al);
+						endwhile;
+						//dbg.put ("extract :", edi, " : ", esi);
+						genExtract();
+						//dbg.put ("got :", genID);
+					else
+						str.cpy ("", genID);
+					endif;
+				ENDUSE;
+				
+				mov (curprop, edx);
+				formatString( genID, strbuf );
+				str.a_cpy (strbuf);
+				mov (eax, propedx.typestr);
+				move (scanNode, propedx.fnode);
+				move (line, propedx.line);  //dbg.put ("line = ", line );
+				mov (id_procedure, al);
+				mov (al, propedx.ptype);
+			endif;
+			
+			// at this point, we may have begin procbody... end;
+			// we have to skip over procedure body and scan for other procedures.
+			// there can be confusion here since lexer might think it's the program begin
+			peek( esi );
+			if( eax = tkn_begin ) then
+				saveToken( tkn );
+				genLex( esi ); // eat begin
+				genLex( esi ); // get label
+				if( str.eq ( genID, strbuf ) ) then
+					// we have procedure body, find the end
+					findToken (tkn_end);
+					if (eax = gen_eof || eax = gen_error) then
+						jmp done; // we have some kind of source error, ignore this
+					endif;
+					
+					// everything OK, eat semicolon and continue.
+					getEOI( esi );
+				
+				else
+					// it's probably program begin... restore token and exit
+					restoreToken( tkn );
+					break;
+				endif;
+			endif;
+
+		case (tkn_begin, tkn_static, tkn_readonly, tkn_const, tkn_storage, tkn_type,
+				tkn_procedure, tkn_proc, tkn_iterator, tkn_method, tkn_var, tkn_val,
+				tkn_endclass, gen_eof)
+			
+			// restore the token and leave
+			restoreToken (tkn);
+			break;
+
+		endswitch;
+	endfor;
+	
+	done:
+	//dbg.put("/prop_parseProc");	
+end prop_parseProc;
+
+
+procedure prop_parseProcedure (src:dword in esi);
+	@alignstack;
+var
+	curprop		:pointer to propNode_t;
+	tkn			:save_t;
+	startID		:dword;
+	endID		:dword;
+	curtable	:pointer to table;
+	line		:dword;
+	isext		:BOOL;
+
+begin prop_parseProcedure;
+	//dbg.put ("parseProcedure");
+	xor (eax, eax);
+	mov (eax, curprop);
+	mov (eax, isext);
+	
+	// get the procedure id
+	genLex (esi);
+	move (genLine, line);
+	str.cpy (genID, strbuf);
+	
+	// find start and end of typestr
+	peek (esi);
+	if (eax = gen_lparen) then
+		genLex (esi);
+		mov (esi, startID);
+		findToken (gen_rparen);
+		if (eax != gen_eof || eax != gen_error) then
+			mov (esi, endID);
+		else
+			jmp done; // we have some kind of source error, ignore this
+		endif;
+	else
+		// no typestr
+		xor (eax, eax);
+		mov (eax, startID);
+		mov (eax, endID);
+	endif;
+	getEOI (esi);
+	
+	checkExternal();
+	mov( eax, isext );
+	
+	// search the symbol list
+	mov (scanNode, eax);
+	if (isext) then
+		mov (listeax.props_ext, curtable);
+	else
+		mov (listeax.props, curtable);
+	endif;
+	
+	USE (ESI, EDI);
+		mov (curtable, esi);
+		tableesi.getNode (strbuf);
+	ENDUSE;
+	mov (eax, ebx);
+
+	if (tablenodeebx.Value = 0) then
+
+		//dbg.put ("new node :", strbuf);
+		mem.zalloc ( @size(propNode_t));
+		mov (eax, curprop);
+		mov (eax, tablenodeebx.Value);
+		mov (eax, edx);
+	
+		USE (ESI, EDI);
+			mov (endID, esi);
+			mov (startID, edi);
+			sub (edi, esi);
+			if (esi) then
+				if (esi > 80) then
+					mov (80, esi);
+				endif;
+				add (edi, esi);
+				
+				// strip nl from genID
+				mov (genID, edx);
+				str.trim (edx);
+				mov ([edx], al);
+				xor (ecx, ecx);
+				while (al) do
+					if (al = $0a) then
+						str.delete (genID, ecx, 2);
+					elseif (al = $09) then
+						// change tabs to spaces
+						mov ($20, (type byte [edx]) );
+					endif;
+					inc (ecx);
+					inc (edx);
+					mov ([edx], al);
+				endwhile;
+				//dbg.put ("extract :", edi, " : ", esi);
+				genExtract();
+				//dbg.put ("got :", genID);
+			else
+				str.cpy ("", genID);
+			endif;
+		ENDUSE;
+		
+		//dbg.put ("var type = ", genID);
+		mov (curprop, edx);
+		formatString( genID, strbuf );
+		str.a_cpy (strbuf);
+		mov (eax, propedx.typestr);
+		move (scanNode, propedx.fnode);
+		move (line, propedx.line);
+		mov (id_procedure, al);
+		mov (al, propedx.ptype);
+	endif;
+	done:
+	//dbg.put ("/parseProcedure");	
+end prop_parseProcedure;
+
+
+procedure prop_parseMacro (src:dword in esi);
+var
+	curprop	:pointer to propNode_t;
+	idstart	:dword;
+
+begin prop_parseMacro;
+	
+	genLex (esi);
+	if (eax <> gen_id) then
+		exit prop_parseMacro;
+	endif;
+	
+	USE (ESI);
+		mov (scanNode, eax);
+		mov (listeax.props, esi);
+		tableesi.getNode (genID);
+	ENDUSE;
+	mov (eax, ebx);
+	if (tablenodeebx.Value != 0 )then
+		exit prop_parseMacro;
+	endif;
+	
+	mem.zalloc ( @size(propNode_t));
+	mov (eax, curprop);
+	mov (eax, tablenodeebx.Value);
+	mov (eax, edx);
+	move (scanNode, propedx.fnode);
+	mov (genLine, propedx.line);
+	mov (id_macro, propedx.ptype);
+	
+	genLex (esi);
+	if (eax = gen_semicolon) then
+		exit prop_parseMacro;
+	endif;
+	
+	mov (esi, idstart);
+	findToken (gen_rparen);
+	if (eax <> gen_eof) then
+		mov (idstart, edi);
+		push (esi);
+		sub (2, esi);
+		genExtract();
+		pop (esi);
+		
+		// strip newlines from genID
+		mov (genID, edi);
+		str.trim (edi);
+		mov ([edi], al);
+		xor (ecx, ecx);
+		while (al) do
+			if (al = $a) then
+				str.delete (genID, ecx, 2);
+			endif;
+			inc (ecx);
+			inc (edi);
+			mov ([edi], al);
+		endwhile;
+		
+		mov (curprop, edx);
+		formatString( genID, strbuf );
+		str.a_cpy (strbuf);
+		mov (eax, propedx.typestr);
+
+	endif;
+	
+	findToken (tkn_endmacro);
+	//dbg.put ("/prop_parseMacro :", eax);
+end prop_parseMacro;
+
+
+procedure prop_parseType (src:dword in esi);
+var
+	tkn		:save_t;
+	curprop	:pointer to propNode_t;
+	
+begin prop_parseType;
+	//dbg.put ("parseType");
+	forever
+		saveToken (tkn);
+		genLex (esi);
+		switch (eax);
+		
+		case (gen_colon)
+			USE (ESI);
+				mov (scanNode, eax);
+				mov (listeax.props, esi);
+				tableesi.getNode (genID); 
+			ENDUSE;
+			//dbg.put ("type label = ", genID);
+			mov (eax, ebx);
+			if (tablenodeebx.Value = 0 ) then
+					
+				mem.zalloc ( @size(propNode_t));
+				mov (eax, curprop);
+				mov (eax, tablenodeebx.Value);
+				mov (eax, edx);
+				move (scanNode, propedx.fnode);
+				move (genLine, propedx.line);
+				mov (id_type, propedx.ptype);
+					
+				// get the type declaration
+				// this could be a reserved word, we don't want that,
+				// we want a string representation to copy.
+				//skip over blank spaces
+				dec (esi);
+				xor (eax, eax);
+				skipblank:
+					inc (esi);
+					cmp (esi, genEOF);
+					ja done;
+					mov ([esi], al);
+					cmp (al, ' ');
+					je skipblank;
+					cmp (al, $9);
+					je skipblank;
+					cmp (al, $d);
+					je skipblank;
+					if ( al = $a) then
+						inc (genLine);
+						jmp skipblank;
+					endif;
+				
+				// grab lexeme
+				mov (esi, edi);
+				dec (esi);
+				ScanChars:
+					inc( esi );
+					mov ([esi], al);
+					bt (eax, genGoodID);
+					jc ScanChars;
+				done:
+				genExtract();		
+				mov (curprop, edx);
+				formatString( genID, strbuf );
+				str.a_cpy (strbuf);
+				mov (eax, propedx.typestr);
+
+				//dbg.put ("type id = ", genlcID);
+
+				checkKW (genlcID);
+				switch (eax);
+				
+				case (kw_record)
+					
+					findEnd (tkn_endrecord, tkn_record);
+					breakif (eax = gen_eof);
+					
+				case (kw_union)
+		
+					// skip to end of union
+					findEnd (tkn_endunion, tkn_union);
+					breakif (eax = gen_eof);
+					
+				case (kw_class)
+					
+					// make into a class
+					//dbg.put ("found class");
+					mov (id_class, propedx.ptype);
+					findToken (tkn_endclass);
+					breakif (eax = gen_eof);
+				
+				case (kw_procedure)
+				
+
+					peek (esi);
+					if (eax = gen_lparen) then
+						findToken (gen_rparen);
+						breakif (eax = gen_eof);
+					endif;
+				
+				default
+					getEOI(esi);
+				endswitch;
+	
+			endif;
+			
+		case (gen_pound)
+			if (checkInclude(esi)) then
+				prop_parseInclude (esi);
+				breakif (eax = gen_error);
+			else
+				restoreToken (tkn);
+				or (-1, eax);
+				break;
+			endif;
+			
+		case (tkn_procedure, tkn_proc, tkn_static, tkn_var, tkn_const,
+				tkn_val, tkn_type, tkn_begin, tkn_readonly, tkn_storage,
+				tkn_method, tkn_iterator)
+				
+			restoreToken (tkn);
+			break;
+
+		case( gen_bookmark)
+			prop_processBookmark( esi );
+
+		case (gen_eof, gen_error)
+			break;
+		
+		endswitch;
+	endfor;
+	//dbg.put ("/parseType");
+end prop_parseType;
+
+
+procedure prop_parseLabels (src:dword in esi); @noframe;		
+	var
+		begincount	:uns32;
+		
+begin prop_parseLabels;
+	//dbg.put ("prop_parseLabels");
+	mov (1, begincount);
+	forever
+		genLex (esi);
+		switch (eax);
+		case (gen_colon)
+			// previous genLex filled genID with the label
+			//dbg.put ("colon");
+			USE (ESI);
+				mov (scanNode, ebx);
+				mov (listebx.props, esi);
+				//dbg.put ("getting label :", genID);
+				tableesi.getNode (genID);
+				mov (eax, edx);
+				if (tablenodeedx.Value = 0) then
+					mem.zalloc (@size(propNode_t));
+					mov (eax, tablenodeedx.Value);
+					mov (eax, edx);
+					mov (ebx, propedx.fnode);
+					mov (genLine, propedx.line);
+					mov (id_label, propedx.ptype);
+				endif;
+			ENDUSE;
+			//dbg.put ("/colon");
+			
+		case (tkn_begin)
+			//dbg.put ("begin");
+			inc (begincount);
+			
+		case (tkn_end)
+			//dbg.put ("end");
+			dec (begincount);
+			breakif (@z);
+			
+		case (gen_eof, gen_error)
+			//dbg.put ("eof/error");
+			break;
+			
+		case( gen_bookmark)
+			prop_processBookmark( esi );
+			
+		default
+			//dbg.put ("token = ", eax, nl "genID = ", genID);
+			
+		endswitch;
+	endfor;
+	//dbg.put ("/prop_parseLabels");	
+	ret();
+end prop_parseLabels;
+
+
+procedure prop_scanHLA (src:dword in esi); @noframe;
+begin prop_scanHLA;
+	//dbg.put ("prop_scanHLA");
+	forever
+		genLex (esi); //dbg.put("tkn :", eax );
+		switch (eax);
+		
+		case (tkn_program, tkn_unit)
+			// may want to make a list of modules
+			// for project viewer later.
+			// skip for now
+			//dbg.put ("tkn_program/unit");
+			if (eax = tkn_program) then
+				genLex (esi);
+				str.cpy (genID, mainBegin);
+			else
+				genLex (esi);
+			endif;
+			//dbg.put ("found program/unit :", genID);
+			
+		case (tkn_begin)
+			
+			genLex (esi);
+			//dbg.put ("found begin :", genID);
+			if ( str.eq ( genID, mainBegin)) then
+				USE (ESI);
+					mov (scanNode, ebx);
+					mov (listebx.props, esi);
+					str.put (strbuf, "__jobMain__");
+					tableesi.getNode (strbuf);
+					if (tablenodeeax.Value = 0) then
+						mov (eax, ecx);
+						mem.zalloc (@size (propNode_t));
+						mov (eax, tablenodeecx.Value);
+						mov (eax, edx);
+						mov (id_main, propedx.ptype);
+						mov (ebx, propedx.fnode);
+						move (genLine, propedx.line);
+						//dbg.put ("found jobmain of :", listebx.id, "  at line: ", propedx.line);
+					endif;
+				ENDUSE;
+			endif;
+			prop_parseLabels (esi);
+			breakif (eax = gen_eof || eax = gen_error);
+			
+		case (tkn_const)
+			// parse a const section.
+			//dbg.put ("const");
+			prop_parseVariable (esi, id_const);
+			breakif (eax = gen_eof || eax = gen_error);
+			
+		case (tkn_static)
+			//dbg.put ("static :", esi);
+			prop_parseVariable (esi, id_static);
+			breakif (eax = gen_error || eax = gen_eof);
+			//dbg.put ("/static :", esi);
+			
+		case (tkn_readonly)
+			//dbg.put ("readonly");
+			prop_parseVariable (esi, id_readonly);
+			breakif (eax = gen_error || eax = gen_eof);
+			
+		case (tkn_storage)
+			
+			//dbg.put ("storage");
+			prop_parseVariable (esi, id_storage);
+			breakif (eax = gen_error || eax = gen_eof);
+			
+		case (tkn_type)
+			//dbg.put ("type");
+			prop_parseType (esi);
+			breakif (eax = gen_error || eax = gen_eof);
+
+
+		case (tkn_procedure, tkn_iterator, tkn_method)
+			
+			//dbg.put ("proc/iter/meth :", genID);
+			prop_parseProcedure (esi);
+			breakif (eax = gen_error || eax = gen_eof);
+			
+		case( tkn_proc )
+			
+			//dbg.put("proc");
+			prop_parseProc( esi );
+			breakif( eax = gen_error || eax = gen_eof );
+			
+		case (gen_pound)
+			genLex (esi);
+			if (eax = tkn_macro) then
+				//dbg.put ("macro");
+				prop_parseMacro (esi);
+			elseif (eax = tkn_include || eax = tkn_includeonce ) then
+				prop_parseInclude (esi);
+			endif;
+			breakif (eax = gen_error || eax = gen_eof);
+		
+		case (tkn_val)
+			//dbg.put ("val");
+			prop_parseVariable (esi, id_val);
+			breakif (eax = gen_error || eax = gen_eof);
+			
+		case (tkn_var)
+			//dbg.put ("var");
+			prop_parseVariable (esi, id_var);
+			breakif (eax = gen_error || eax = gen_eof);
+			
+		case (gen_error, gen_eof)
+			break;
+			
+		case( gen_bookmark )
+			prop_processBookmark( esi );
+		
+		default
+			//	dbg.put ("token = ", eax);
+			//	if (eax = gen_id) then
+			//		dbg.put (genID);
+			//	endif;
+		endswitch;
+
+	endfor;
+	//dbg.put ("/prop_scanHLA");
+	ret();
+end prop_scanHLA;
+
+procedure prop_scanFile (var node:fList.fnode);
+	var
+		buf		:tBuffer;
+		
+begin prop_scanFile;
+	USE (ESI, EDI, EBX);
+	//dbg.enters( "prop_scanFile" );
+
+	mov (node, ebx);
+	mov( listebx.ftype, eax );
+	
+	//dbg.put("fname = ", listebx.id );
+	//dbg.put("type = ", eax );
+	
+	if (	eax = type_hla ||
+			eax = type_hhf	||
+			eax = type_unit ) then
+		mov (ebx, scanNode);
+		prop_freeMem ([ebx]);
+		table.create ($20);
+		mov (esi, listebx.props);
+		table.create ($10);
+		mov (esi, listebx.props_ext);
+		str.cpy ("", mainBegin);
+		buf.create_file (listebx.relative);
+		buf.getEOF();
+		mov (eax, genEOF);
+		mov (0, genLine);
+		buf.getBufferPtr();
+		mov (eax, esi);
+		
+		//dbg.put("to scan" );
+		prop_scanHLA (esi);
+		
+		
+		/*
+		// debug
+		dbg.separator;
+		mov (scanNode, eax);
+		dbg.put ("deps for :", listeax.relative);
+		push (esi);
+		push (ebx);
+		mov (listeax.deps, esi);
+		(type tList[esi]).getHead();
+		mov (eax, ebx);
+		while (ebx) do
+			dbg.put ( (type string (type tList.listNode [ebx]).value));
+			mov ((type tList.listNode[ebx]).next, ebx);
+		endwhile;
+		
+		pop (ebx);
+		pop (esi);
+		dbg.put (nl nl nl);
+		dbg.separator;
+		*/
+		
+		buf.destroy();
+	endif;
+	//dbg.exits( "prop_scanFile" );
+	ENDUSE;
+end prop_scanFile;
+
+procedure Property_View (message:dword);
+begin Property_View;
+	mov(message,eax);
+	
+	if (eax = DOCK_YES) then
+		w.GetWindowLong(hprop,w.GWL_STYLE);
+		and(!(w.WS_SIZEBOX),eax);
+		w.SetWindowLong(hprop,w.GWL_STYLE,eax);
+		w.SetParent(hprop,hwnd);
+		mov(eax,oldhprop);
+		or(PROP_D,settings.winview);	
+
+	elseif (eax = DOCK_NO) then
+
+		mov (settings.panelactive, eax);
+		if (eax = hprop) then
+			PanelFold();
+		endif;
+		
+		w.SetParent(hprop,NULL);
+		mov(0,oldhprop);
+		w.GetWindowLong(hprop,w.GWL_STYLE);
+		or(w.WS_SIZEBOX,eax);
+		w.SetWindowLong(hprop,w.GWL_STYLE,eax);
+		and(!(PROP_D),settings.winview);
+		w.ShowWindow (hprop, w.SW_SHOW);
+	
+	elseif (eax = w.SW_HIDE) then
+		w.ShowWindow (hprop, w.SW_HIDE);
+	
+    endif;
+    
+    w.SendMessage(hwnd,w.WM_SIZE,0,0);
+ //   w.SetFocus(settings.hwnd);
+    	
+end Property_View;
+
+procedure GetDisplayMode;	@returns ("EAX"); @noframe;
+	// returns display mode in eax
+begin GetDisplayMode;
+	//dbg.put ("GetDisplayMode");
+	
+	w.SendMessage(hpropcombo,w.CB_GETCURSEL,0,0);
+	//USE (EBX);
+	mov (eax, ebx);
+	hideini.writeInt ("HIDE Settings", "Property_View", ebx);
+		//w.SendMessage(hpropcombo,w.CB_GETLBTEXT,ebx,&linebuffer);
+	//ENDUSE;
+	mov( propertyList[ebx*4], ebx );
+	
+	//dbg.put("type = ", (type uns32 ebx) );
+	
+	switch( ebx );
+	
+	case( id_type )
+	
+		mov( id_type, eax );
+		
+	case( id_static )
+	
+		mov( id_static, eax );
+		
+	case( id_readonly )
+	
+		mov( id_readonly, eax );
+		
+	case( id_val )
+	
+		mov( id_val, eax );
+		
+	case( id_var )
+	
+		mov( id_var, eax );
+		
+	case( id_const )
+	
+		mov( id_const, eax );
+		
+	case( id_storage )
+	
+		mov( id_storage, eax );
+		
+	case( id_procedure )
+	
+		mov( id_procedure, eax );
+		
+	case( id_class )
+	
+		mov( id_class, eax );
+		
+	case( id_macro )
+	
+		mov( id_macro, eax );
+		
+	case( id_label )
+	
+		mov( id_label, eax );
+		
+	case( id_bookmark )
+	
+		mov( id_bookmark, eax );
+	
+	default
+	
+		xor( eax, eax );
+	
+	endswitch;
+	
+	ret();	
+	
+end GetDisplayMode;
+
+procedure prop_updateView;
+	var
+		ntable		:pointer to tableNode;
+		displaymode	:dword;
+		job			:pointer to jList.jnode;
+		count		:uns32;
+	
+	procedure prop_fillList; @noframe;
+	begin prop_fillList;
+		foreach tableesi.item() do
+			mov (eax, ebp::ntable);
+			mov (tablenodeeax.Value, edx);
+			if (edx) then
+				mov( ebp::displaymode, ecx );
+				movzx (propedx.ptype, eax);
+				//dbg.put ("ptype = ", eax, "   > displaymode = ", ecx);
+
+				if (eax = ebp::displaymode) then
+					mov (ebp::ntable, esi);
+					w.SendMessage (hproplist, w.LB_ADDSTRING, 0, tablenodeesi.id);
+					w.SendMessage (hproplist, w.LB_SETITEMDATA, eax, tablenodeesi.Value);
+				endif;
+			endif;
+		endfor;
+		ret();
+	end prop_fillList;
+
+begin prop_updateView;
+	
+	pushad();
+	//dbg.put ("prop_updateView");
+	w.SendMessage(hproplist,w.LB_RESETCONTENT,0,0);	
+
+	hideini.readInt( "HIDE Settings", "Scan Properties" );
+	if( ! eax ) then
+		
+		jmp skip_updateView;
+	
+	endif;
+	
+	GetDisplayMode();
+	mov (eax, displaymode);
+	mov (prop_displaymode, eax);
+	//dbg.put("mode :", eax );
+	switch (eax);
+	
+	case (propview_project)
+		//dbg.put("prop_updateView project");
+		fileList.getHead();
+		mov (eax, ebx);
+		while (ebx) do
+			mov (listebx.props, esi);
+			//dbg.put("props :", esi );
+			if (esi) then
+				call prop_fillList;
+			endif;
+			mov (listebx.next, ebx);
+		endwhile;
+
+	case (propview_job)
+		//dbg.put ("prop_updateView job");
+		mov (curnode, eax);
+		if (eax) then
+			mov (listeax.job, eax);
+			mov (eax, job);
+			if (eax) then 
+				fileList.getHead();
+				mov (eax, ebx);
+				while (ebx) do
+					mov (listebx.job, eax);
+					if (eax = job) then
+						mov (listebx.props, esi);
+						if (esi) then
+							call prop_fillList;
+						endif;
+					endif;
+					mov (listebx.next, ebx);
+				endwhile;
+			endif;
+		endif;
+		
+	case (propview_current)
+		mov (curnode, eax);
+		if (eax) then
+			mov (listeax.props, esi);
+			if (esi) then
+				call prop_fillList;
+			endif;
+		endif;
+		
+	case (propview_open)
+		w.SendMessage (htab, w.TCM_GETITEMCOUNT, 0, 0);
+		mov (eax, count);
+		if (eax) then
+			mov	(w.TCIF_PARAM, tci.imask);
+			while (count >=0) do
+				dec (count);
+				w.SendMessage (htab, w.TCM_GETITEM, count, &tci);
+				breakif (!eax);
+				mov (tci.lParam, ebx);
+				mov (listebx.props, esi);
+				if (esi) then
+					call prop_fillList;
+				endif;
+			endwhile;
+		endif;
+		
+	case (propview_includes)
+
+		fileList.getHead();
+		mov (eax, ebx);
+		while (ebx) do
+			if (listebx.ftype = type_hhf) then
+				mov (listebx.props, esi);
+				if (esi) then
+					call prop_fillList;
+				endif;
+			endif;
+			mov (listebx.next, ebx);
+		endwhile;
+	
+	case (propview_externals)
+		fileList.getHead();
+		mov (eax, ebx);
+		while (ebx) do
+			mov (listebx.props_ext, esi);
+			if (esi) then
+				call prop_fillList;
+			endif;
+			mov (listebx.next, ebx);
+		endwhile;
+
+	endswitch;
+	skip_updateView:
+	
+	//dbg.put ("/prop_updateView");
+	popad();
+end prop_updateView;
+
+procedure prop_jumpNode (var node:propNode_t);
+	var
+		_chrg	:w.CHARRANGE;
+		
+begin prop_jumpNode;
+USE (ebx, edx);
+//dbg.put ("prop_jumpNode");
+	mov (node, edx);
+	if (edx) then
+		if (propedx.fnode > 0) then
+			
+			// save line number here since opening a new file may corrupt the node adress
+			push( propedx.line );
+			mov ( propedx.fnode, ebx);
+			if (! selectOpenMem ([ebx])) then
+				hide_openNode( [ebx] );
+			endif;
+			pop( eax );  // linenumber
+			//mov (propedx.line, eax);
+			
+		else
+			// error, no nodes!
+			saveAll();
+			error.fatal ("Missing node in property table, files have been saved!");
+		endif;
+		
+		//dbg.put ("jump >", listebx.id, "  ", (type uns32 eax));
+		w.SendMessage (listebx.hwnd, w.EM_LINEINDEX, eax, 0);
+		mov	(eax, _chrg.cpMin);
+		mov	(eax, _chrg.cpMax);
+		lea (eax,_chrg);
+		w.SendMessage (listebx.hwnd, w.EM_EXSETSEL, 0, eax);
+		w.SendMessage(listebx.hwnd, REM_VCENTER, 0, 0);
+		w.SendMessage(listebx.hwnd, w.EM_SCROLLCARET, 0, 0);
+	endif;
+ENDUSE;
+end prop_jumpNode;
+
+
+procedure JumpProgramBegin;	 @noframe;
+begin JumpProgramBegin;
+//dbg.put ("jump program begin");
+USE (ESI, EDI, EDX, EBX);
+	mov (curnode, ebx);
+	mov (listebx.job, eax);
+	if (eax) then
+		// search jobs
+		mov (eax, ecx);
+		fileList.getHead();
+		mov (eax, ebx);
+		while (ebx) do
+			if (listebx.job = ecx) then
+				// job matched
+				mov (listebx.props, esi);
+				if (esi) then
+					tableesi.lookup ("__jobMain__");
+					if (eax) then
+						jmp foundmain;
+					endif;
+				endif;
+			endif;
+			mov (listebx.next, ebx);
+		endwhile;
+	else
+		mov (listebx.props, esi);
+		if (esi) then
+			tableesi.lookup ("__jobMain__");
+			if (eax) then
+				foundmain:
+				mov (eax, edx);
+				mov (tablenodeedx.Value, edx);
+				if (edx) then
+					prop_jumpNode ([edx]);
+				endif;
+			endif;
+		endif;
+	endif;
+ENDUSE;
+RET();
+end JumpProgramBegin;
+
+
+	procedure prop_updateMem (var node:fList.fnode);
+	begin prop_updateMem;
+		USE (EAX, EBX, ESI, EDI);
+		//dbg.enters( "prop_updateMem" );
+		
+		hideini.readInt( "HIDE Settings", "Scan Properties" );
+		if( eax ) then
+			
+			mov (node, eax);
+			if (eax) then
+				prop_scanFile (node);
+			endif;
+			if (w.IsWindowVisible (hprop)) then
+				prop_updateView();
+			endif;
+		endif;
+		
+		//dbg.exits( "prop_updateMem" );
+		ENDUSE;
+	end prop_updateMem;
+	
+	procedure prop_reset; @noframe;
+	begin prop_reset;
+		USE (ESI, EDI, EBX);
+		fileList.getHead();
+		mov (eax, ebx);
+		while (ebx) do
+			mov( listebx.ftype, eax );
+			if( eax != type_bin ) then
+				prop_updateMem ([ebx]);
+			endif;
+			mov (listebx.next, ebx);
+		endwhile;
+		ENDUSE;
+		ret();
+	end prop_reset;
+
+
+procedure prop_update; @noframe;
+	// update the view only if prop_displaymode is not propview_project 
+begin prop_update;
+	if (prop_displaymode != propview_project) then
+		prop_updateView();
+	endif;
+	ret();
+end prop_update;
+
+
+procedure Proc_Properties(lparam:dword; wparam:dword; umsg:uns32; hwin:dword);
+begin Proc_Properties;
+	pushabi;
+	mov(umsg,eax);
+	cmp(eax,w.WM_COMMAND);
+	je _command;
+	cmp(eax,w.WM_SIZE);
+	je _size;
+	cmp(eax,w.WM_NOTIFY);
+	je _notify;
+	cmp(eax,w.WM_MOVING);
+	je _changing;
+	cmp(eax,w.WM_MOUSEACTIVATE);
+	je _activate;
+	cmp(eax,w.WM_CLOSE);
+	je _close;
+	cmp(eax,w.WM_INITDIALOG);
+	je _init;
+	cmp(eax,w.WM_DESTROY);
+	je _destroy;
+	jmp _xProc_Properties;
+
+_changing:
+	cmp(oldhprop,0);
+	je _xProc_Properties;
+	Property_View(DOCK_NO);
+	jmp _xProc_Properties;
+
+_command:
+	mov(wparam,eax);
+	mov(eax,edx);
+	shr(16,edx);
+	and($0ffff,eax);
+	cmp(edx,w.BN_CLICKED);
+	je _buttons;
+	//cmp(edx,w.LBN_SELCHANGE);	//> maybe later, no need for it now
+	//je _selchange;
+	cmp(edx,w.CBN_SELCHANGE);
+	je _cbchange;
+	cmp(edx,w.LBN_DBLCLK);
+	je _dblclk;
+	sub(eax,eax);
+	jmp _xProc_Properties;
+	
+	_buttons:
+			if (eax = anchor_btn) then
+				if (testz (PROP_D, settings.winview)) then
+					xor (PROP_A, settings.winview);
+					if (testnz (PROP_A, settings.winview)) then
+						mov (true, eax);
+					else
+						mov (false, eax);
+					endif;
+					
+					caption.CheckButton(hwin, anchor_btn, al);
+					
+				else
+
+					toOutput ("Use Anchor when window is undocked" nl
+						"To undock, drag by the title bar" nl);
+				endif;
+
+
+			else
+				
+				mov (eax, prop_displaymode);
+				hideini.writeInt ("HIDE Settings", "Property_Mode", eax);
+				saveAll();			
+				prop_updateView();
+			endif;
+
+			jmp _xProc_Properties;
+			
+	//_selchange:
+		
+	_cbchange:
+		if (eax = PROPERTIES_COMBO) then
+			prop_updateView();
+		endif;
+		jmp _xProc_Properties;
+			
+	_dblclk:
+//		dbg.put("double click in list");
+		w.SendMessage(hproplist,w.LB_GETCURSEL,0,0);
+		w.SendMessage(hproplist,w.LB_GETITEMDATA,eax,0);
+		
+		//open file
+		mov (eax, ebx);
+		prop_jumpNode ([ebx]);		
+		w.UpdateWindow (hproplist);
+		jmp _xProc_Properties;
+
+
+_notify:
+	
+	mov (lparam, edx);
+	mov ((type w.NMHDR [edx]).code, eax);
+	if (eax = w.TTN_NEEDTEXT) then
+		mov((type w.NMHDR [edx]).idFrom, eax);
+		mov (propbtn_strings[eax*4], esi);
+		str.length(esi);
+		mov (eax, ecx);
+		lea (edi, (type w.TOOLTIPTEXT[EDX]).szText);
+		rep.movsb();
+	endif;
+	jmp _xProc_Properties;
+	
+_size:
+	w.GetClientRect(hwin,&rect);
+	w.MoveWindow(hproptool,0,rect.top,rect.right,28,true);
+	add(28,rect.top);
+	w.MoveWindow(hpropcombo,0,rect.top,rect.right,100,true);
+	add(24,rect.top);
+	sub(48,rect.bottom);
+	w.MoveWindow(hproplist,0,rect.top, rect.right, rect.bottom,true);
+	w.InvalidateRect(hproplist,NULL,true);
+	w.InvalidateRect(hproptool,NULL,true);
+	call _savepos;
+	jmp _xProc_Properties;
+
+_activate:
+	w.SetForegroundWindow(hwnd);
+	jmp _xProc_Properties;
+	
+_init:
+	mov(hwin,hprop);
+	w.GetDlgItem(hwin,PROPERTIES_TOOL);
+	mov(eax,hproptool);
+	w.GetDlgItem(hwin,PROPERTIES_COMBO);
+	mov(eax,hpropcombo);
+	w.GetDlgItem(hwin,PROPERTIES_LIST);
+	mov(eax,hproplist);
+	w.SendMessage(hproplist,w.LB_RESETCONTENT,0,0);
+	w.SendMessage(hproptool,w.TB_BUTTONSTRUCTSIZE,@size(w.TBBUTTON),0);
+
+	mov(hinst,prop_bitmap.hInst);
+	mov(IDB_PROPERTIES,prop_bitmap.nID);
+	w.SendMessage(hproptool,w.TB_ADDBITMAP,1,&prop_bitmap);
+	w.SendMessage(hproptool,w.TB_ADDBUTTONS,npropbtns,&propbtns);
+	
+	// fill combo box
+	w.SendMessage(hpropcombo,w.CB_RESETCONTENT,0,0);
+	
+	for( xor( ebx, ebx ); ebx < @elements( propertyList ); inc( ebx ) ) do
+		
+		mov( propertyList[ebx*4], eax );
+		w.SendMessage( hpropcombo, w.CB_ADDSTRING, 0, id_strings[eax*4] );
+		
+	endfor;
+
+	hideini.readInt ("HIDE Settings", "Property_View");
+	w.SendMessage (hpropcombo, w.CB_SETCURSEL, eax, 0); 
+
+	hideini.readInt ("HIDE Settings", "Property_Mode");
+	mov (eax, prop_displaymode);
+	
+
+	if (testnz (PROP_D, settings.winview)) then
+		Property_View (DOCK_YES);
+	endif;	
+	w.MoveWindow(hwin,settings.propwin.x,settings.propwin.y,settings.propwin.wt,settings.propwin.ht,true);
+	
+	jmp _xProc_Properties;
+		
+_destroy:
+//	dbg.put ("destroy prop");
+	call _savepos;
+	jmp _xProc_Properties;
+	
+_close:
+	call _savepos;
+	Property_View( w.SW_HIDE);
+	if (testnz (PROP_D, settings.winview)) then
+		PanelFold();
+	    w.SendMessage(hwnd,w.WM_SIZE,0,0);
+	endif;
+	or (PROP_D, settings.winview);	// force docking
+	and (! PROP_A, settings.winview); // remove anchor
+
+_xProc_Properties:
+	popabi;
+	xor(eax,eax);
+	exit Proc_Properties;
+
+_savepos:
+		w.GetWindowLong(hwin,w.GWL_STYLE);
+		test(w.WS_MAXIMIZE,eax);
+		jnz _setmax;
+		test(w.WS_MINIMIZE,eax);
+		jnz _retsavepos;
+		mov(false,settings.propwin.fmax);
+		w.GetWindowRect(hwin,&rect);
+		mov(rect.left,settings.propwin.x);
+		mov(rect.top,settings.propwin.y);
+		mov(rect.right,eax);
+		sub(rect.left,eax);
+		mov(eax,settings.propwin.wt);
+		mov(rect.bottom,eax);
+		sub(rect.top,eax);
+		mov(eax,settings.propwin.ht);
+		ret();
+	
+_setmax:	
+		mov(true,settings.propwin.fmax);
+_retsavepos:
+		ret();
+		
+end Proc_Properties;
+
+procedure prop_searchJob (src:dword); @alignstack;
+	var
+		s			:string;
+		//foundext	:dword;
+		
+begin prop_searchJob;
+	//dbg.enters( "prop_searchJob");
+	
+	mov (str.talloc (pathsize_c), s);
+	
+USE (ESI, EDI, EBX, EDX);
+	//mov (false, foundext);
+	
+	mov (src, esi);
+	str.cpyz (esi, s);
+	
+	mov (curnode, ebx);
+	mov (listebx.job, eax);
+	if (eax) then
+		//dbg.put("search job");
+		mov (eax, edx);
+		fileList.getHead();
+		mov (eax, ebx);
+		or (1, ecx);	// search props
+		call searchList;
+		if (! eax) then
+			// try the external list
+			fileList.getHead();
+			mov (eax, ebx);
+			xor (ecx, ecx);
+			call searchList;
+		endif;
+		//dbg.put ("searchjob = ", eax);
+		
+	else
+		// non-project file, search current
+		mov (listebx.props, eax);
+		if (eax) then
+			tableeax.lookup (s);
+			if (eax) then
+				mov (tablenodeeax.Value, eax);
+			endif;
+		endif;
+			if (! eax) then
+			// search external list
+			mov (listebx.props_ext, eax);
+			if (eax) then
+				tableeax.lookup (s);
+				if (eax) then
+					mov (tablenodeeax.Value, eax);
+				endif;
+			endif;
+		endif;
+		
+	endif;
+	//dbg.put ("/prop_searchJob");
+ENDUSE;
+//dbg.exits( "prop_searchJob");
+exit prop_searchJob;
+
+
+	// searches proplist for label
+	searchList:
+		while (ebx) do
+
+			if (ecx) then
+				mov (listebx.props, esi);
+			else
+				mov (listebx.props_ext, esi);
+			endif;
+
+			if (esi) then
+				if (listebx.job = edx) then
+					//dbg.put("table lookup :", s );
+					tableesi.lookup (s);
+					if (eax) then
+						//dbg.put ("found!");
+						mov (tablenodeeax.Value, eax);
+						mov( propeax.fnode, ecx );
+						//dbg.put( listecx.id );
+						//dbg.put( "line", propeax.line );
+						break;
+					endif;
+				endif;
+			endif;
+			
+			mov (listebx.next, ebx);
+
+		welse
+		
+			xor (eax, eax);
+
+		endwhile;
+		//dbg.put ("searchlist return :", eax );
+	ret();
+
+end prop_searchJob;
+
+
+
+procedure FindDeclare (src:dword; key:dword);
+	
+	//	src is a pointer to HLA string or C-string.
+	//	save current location (tabhandle/cursor positin)
+	//	scan through properties memory for 'src'
+	//	jump to that location.
+	//	if src is NULL, then restore saved postition.	
+	//	returns true in EAX if declare was found
+	var
+		propnode		:pointer to propNode_t;
+	
+	storage
+		_f2		:findDeclare_t;
+		_sft_f2	:findDeclare_t;
+		_ctl_f2	:findDeclare_t;
+		_alt_f2	:findDeclare_t;
+		_mouse	:findDeclare_t;
+		align(4);
+
+	
+begin FindDeclare;
+
+USE (esi, edi, ebx);
+//	dbg.separator;
+	//dbg.put("FindDeclare :", (type uns32 key));
+	
+	xor (eax, eax);
+	
+	mov (src, esi);
+	if (esi) then
+		if (prop_searchJob (esi)) then
+			mov (eax, propnode);
+			mov (curnode, ebx);
+			mov (key, eax);
+			switch (eax);
+			
+			case (f2)
+				mov (ebx, _f2.from);
+				w.SendMessage (listebx.hwnd, w.EM_EXGETSEL, 0, &_f2.chrg);
+				mov (true, _f2.return);
+				
+			case (sft_f2)
+				mov (ebx, _sft_f2.from);
+				w.SendMessage (listebx.hwnd, w.EM_EXGETSEL,0, &_sft_f2.chrg);
+				mov (true, _sft_f2.return);
+				
+			case (ctl_f2)
+				mov (ebx, _ctl_f2.from);
+				w.SendMessage(listebx.hwnd, w.EM_EXGETSEL,0,&_ctl_f2.chrg);
+				mov (true, _ctl_f2.return);
+				
+			case (alt_f2)
+				mov (ebx, _alt_f2.from);
+				w.SendMessage(listebx.hwnd, w.EM_EXGETSEL,0,&_alt_f2.chrg);
+				mov (true, _alt_f2.return);
+					
+			case (mouse)
+				mov (ebx, _mouse.from);
+				w.SendMessage(listebx.hwnd, w.EM_EXGETSEL,0,&_mouse.chrg);
+				mov (true, _mouse.return);
+			
+			endswitch;
+			
+			prop_jumpNode (propnode);
+			or (1, eax);
+		endif;
+		
+	else
+
+		mov (key, eax);
+		switch (eax);
+		
+		case (f2)
+			if (_f2.return) then
+				if (! selectOpenMem (_f2.from) ) then
+					hide_openNode( _f2.from );
+				endif;
+				mov (curnode, ebx);
+				w.SendMessage (listebx.hwnd, w.EM_EXSETSEL,0, &_f2.chrg);
+				mov (false, _f2.return);
+				mov( &_f2, eax );
+			endif;
+			
+			
+		case (sft_f2)
+			if (_sft_f2.return) then
+				if (! selectOpenMem (_sft_f2.from)) then
+					hide_openNode( _sft_f2.from );
+				endif;
+				mov (curnode, ebx);
+				w.SendMessage(listebx.hwnd, w.EM_EXSETSEL,0,&_sft_f2.chrg);
+				mov (false, _sft_f2.return);
+				mov( &_sft_f2, eax );
+			endif;
+			
+		case (ctl_f2)
+			if (_ctl_f2.return) then
+				if (! selectOpenMem (_ctl_f2.from)) then
+					hide_openNode( _ctl_f2.from );
+				endif;
+				mov (curnode, ebx);
+				w.SendMessage(listebx.hwnd, w.EM_EXSETSEL,0,&_ctl_f2.chrg);
+				mov (false, _ctl_f2.return);
+				mov( &_ctl_f2, eax );
+			endif;
+			
+		case (alt_f2)
+			if (_alt_f2.return) then
+				if (! selectOpenMem (_alt_f2.from)) then
+					hide_openNode( _alt_f2.from );
+				endif;
+				mov (curnode, ebx);
+				w.SendMessage(listebx.hwnd, w.EM_EXSETSEL,0,&_alt_f2.chrg);
+				mov (false, _alt_f2.return);
+				mov( &_alt_f2, eax );
+			endif;
+		case (mouse)
+		
+			if (_mouse.return) then
+				if (! selectOpenMem (_mouse.from)) then
+					hide_openNode( _mouse.from );
+				endif;
+				mov (curnode, ebx);
+				w.SendMessage(listebx.hwnd, w.EM_EXSETSEL,0,&_mouse.chrg);
+				mov (false, _mouse.return);
+				mov( &_mouse, eax );
+			endif;
+		endswitch;
+		
+		mem2.fillMem( [eax], @size(findDeclare_t), 0 );
+		w.SendMessage(listebx.hwnd, REM_VCENTER,0,0);
+		w.SendMessage(listebx.hwnd, w.EM_SCROLLCARET,0,0);
+		or (1, eax);
+	endif;
+ENDUSE;
+end FindDeclare;
+
+end Properties;
