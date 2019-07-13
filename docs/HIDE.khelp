@@ -527,7 +527,7 @@ The user menu is not shown unless there are user menus defined in the Data\Hide.
 To define a user menu, add a [User Menu] section to HIDE.ini
 Each line under "[User Menu]" has the format:
 menu id, command to execute w/arguments, optional options
-As of version of this document, the only option is output which redirects output to HIDE's output window.
+As of 2 of this document, the only option is output which redirects output to HIDE's output window.
 
 The command execution line may also contain HIDE macros (see below).
  Eg:

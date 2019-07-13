@@ -3001,9 +3001,9 @@ proc
 		if (eax) then
 			
 			if ( listeax.ftype = type_kmake ) then
-				IndentComment ( $3b, true);
+				IndentComment ( $3b, false);
 			else
-				IndentComment(DOUBLESLASH,true);
+				IndentComment(DOUBLESLASH,false);
 			endif;
 
 		endif;

@@ -1,0 +1,4 @@
+IDD_DLGAUTOSETTINGS     := 1200;
+IDC_CHKSORT             := 1201;
+IDC_CHKCASE             := 1202;
+IDD_DLGAUTO             := 1215;

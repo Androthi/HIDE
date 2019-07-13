@@ -55,7 +55,6 @@ externals.hhf,src,include
 types.hhf,src,include
 print.hla,src,hlaunit
 win_inc.hhf,src,include
-build.txt,Docs,misc
 rsrc.hhf,res,include
 HIDE_procs.hla,src,hlaunit
 scanID.txt,src,misc
@@ -74,6 +73,7 @@ script concept,Docs,misc
 manager.hla,src,hlaunit
 Tools.khelp,Docs,khelp
 Instruction_Ref.khelp,Docs,khelp
+README.md,,misc
 
 [Notes]
 <text>

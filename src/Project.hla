@@ -990,7 +990,7 @@ begin open;
 		hideini.deleteKey ("HIDE Settings", "LastProject" );
 		str.free( project.id );
 		error.warning (strbuf);
-		jmp exitopen;
+		jmp exitopen;	
 		
 	endif;
 	
@@ -1089,19 +1089,13 @@ begin open;
 	if( eax ) then
 		prop_reset();
 	endif;
-	
-	dbg.put("/prop" );
-//		
-//		fileList.getHead();
-//		mov (eax, ebx);
-//		while (ebx) do
-//			mov (listebx.ftype, eax);
-//			if (eax != type_bin) then
-//				prop_scanFile ([ebx]);
-//			endif;
-//			mov (listebx.next, ebx);
-//		endwhile;
-//	endif;
+
+	// project files may need a local Temp folder, a Units folder or a Bak folder.
+	// these folders may be missind due to downloading project files from repositories
+	// or zip programs that don't create empty folders.
+	// if the project uses these folders, make sure they exist in the project folder.
+		iniesi.writeBool ("HPR Settings", "useunits", false);
+		iniesi.writeBool ("HPR Settings", "useback", false);	
 	
 	mov (&project.hpr, esi);
 	if (iniesi.readBool ("HPR Settings", "usetemp")) then
@@ -1109,6 +1103,32 @@ begin open;
 		str.put (workpath, project.folder, dirsep_c, "temp");
 		dbg.put ("putting project temp:", workpath);
 		env2.put ("hlatmp", workpath);
+		
+		// make sure the folder exists.
+		try
+			filesys.mkdir( workpath );
+		anyexception
+			// don't care
+		endtry;
+	endif;
+	
+	if( iniesi.readBool( "HPR Settings", "useunits" )) then
+		// make sure a units folder exists
+		str.put( workpath, project.folder, dirsep_c, "units");
+		try
+			filesys.mkdir( workpath );
+		anyexception
+			// don't care
+		endtry;
+	endif;
+	
+	if( iniesi.readBool( "HPR Settings", "useback" )) then
+		str.put( workpath, project.folder, dirsep_c, "bak");
+		try
+			filesys.mkdir( workpath );
+		anyexception
+			// don't care
+		endtry;
 	endif;
 	
 	mov (true, project.isOpen);
@@ -2778,6 +2798,7 @@ proc
 							w.EnableWindow( eax, true );
 							
 						endif;
+
 		
 						manager_updateDisplay( state_selectjob );
 						updateFiles( curjob );
