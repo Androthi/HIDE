@@ -2113,7 +2113,7 @@ program HIDE_MAIN;
 	procedure Menu_ToolsDebug;	@noframe;
 	begin Menu_ToolsDebug;
 		
-		launchProgram( "SavageEd", false, false );
+		launchProgram( "DebugWin", false, false );
 		
 		ret();
 	end Menu_ToolsDebug;
