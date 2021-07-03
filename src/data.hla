@@ -27,17 +27,12 @@ storage
 	htree			:dword;		// handle for treeview window
 	hprop			:dword;		// handel for properties window
 	hmenu			:dword;		// menu handle
-	//hnotes			:dword; // depricated, change to scripts window in future
 	hnotesedt		:dword;		// notes edit window handle
-
-	// depricated, change to scripts window in future
-	//notes_win		:WINPOS;	// tracks position of undocked notes window
 
 	hideini			:tConfig;	// HIDE.ini configuration file in memory
 	hidesysini		:tConfig;	// hide_system.ini configuration file in memory
 	
 	configmain		:string;	// path for the main configuration hide\data\hide.ini
-	tempStr			:string;	// scratch string variable  -- I will eventuall change all instances of this into vars	
 	homepath		:string;	// path to HIDE home directory
 	tplpath			:string;	// path to template directory
 	workpath		:string;	// a string buffer for working paths, scratch path buffer  ** use with caution, should be depricated eventually

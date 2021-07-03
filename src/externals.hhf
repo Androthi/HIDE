@@ -242,8 +242,8 @@ static	// externals
 		homepath			:string;				@external;	// current directory
 		workpath			:string;				@external;	// a string buffer for working paths
 		tplpath				:string;				@external;	// a path holding templates directory
-		tempStr				:string;				@external;	// temporary holding string
-		//filebuffer			:string;				@external;	// holds the current filename
+		//$tempStr				:string;				@external;	// temporary holding string
+		//$filebuffer			:string;				@external;	// holds the current filename
 		projectpath			:string;				@external;	// holds current path for project folder
 		strbuf				:string;				@external;	// scratch static string
 

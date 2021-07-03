@@ -1,7 +1,4 @@
 
-//	search for	//> comments for general things that need to be done
-//	or pointers on how to expand sources.
-
 	// Quick jumps, double click word below and F3
 	// menu_tbl
 	
@@ -301,8 +298,6 @@ program HIDE_MAIN;
 			breakif(! buf.searchf ("%"));
 			mov( buf.cursor,eax );
 			mov( (type byte[eax+1]), bl );
-			dbg.put("%", (type char bl) );
-			//buf.delete( 2 );
 			if (bl = 'p') then
 				buf.puts( projectpath );
 			elseif (bl = 'c') then
@@ -1476,14 +1471,15 @@ program HIDE_MAIN;
 				mov(eax,openfile_s);
 				buf.create( openfile_s );
 				mov( buf.data, eax );
-				w.SendMessage(listebx.hwnd,w.EM_REPLACESEL,true,eax);
+				add( buf.length, eax );
+				mov( 0, (type byte[eax]));
+				w.SendMessage(listebx.hwnd,w.EM_REPLACESEL,true, buf.data);
 				buf.destroy();
 				str.free(openfile_s);
 			endif;
 			updateDisplay (update_general);
 		endif;
 		popabi;
-		ret();
 	end Menu_InsertFile;
 	
 	procedure Menu_SaveFile;	@noframe;
@@ -2701,9 +2697,6 @@ proc
 	procedure Menu_Edit_NextSource; @noframe;
 	begin Menu_Edit_NextSource;
 		
-		//> this is sloppy.  need to write a routine
-		// to scan the mem list and find the next bookmark,
-		// then jump to it.
 		zstr.cpy( sourcemark_find, &findbuff );
 		find_next();
 		ret();
@@ -2711,10 +2704,6 @@ proc
 
 	procedure Menu_Edit_PrevSource; @noframe;
 	begin Menu_Edit_PrevSource;
-
-		//> this is sloppy.  need to write a routine
-		// to scan the mem list and find the next bookmark,
-		// then jump to it.
 		
 		zstr.cpy( sourcemark_find, &findbuff );
 		find_prev();

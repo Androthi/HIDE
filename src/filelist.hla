@@ -8,7 +8,6 @@ unit filelist_unit;
 
 
 	readonly
-		//tBaseListVMT	:dword; @external;
 		fListVMT	:VMT(fList);
 		jListVMT	:VMT(jList);
 		
@@ -39,13 +38,11 @@ unit filelist_unit;
 			
 			USE (ESI, EDI);
 				mov (listebx.deps, esi);
-				//> may need to free string here?
 				(type tList[esi]).destroy();
 			ENDUSE;
 			mov (listebx.next, ebx);
 		endwhile;
 		// frees the actual list memory
-		//call( tBaseListVMT[ @offset( tBaseList.destroy ) ] );
 		super.destroy();
 	ENDUSE;
 	ret();
@@ -104,15 +101,11 @@ unit filelist_unit;
 	method fList.remove (var lNode:tBaseList.baseNode);
 	begin remove;
 	USE (EAX, EBX);
-//		dbg.put ("fList.remove");
 		mov (lNode, ebx);
 		str.free (listebx.id);
 		str.free (listebx.fullname);
-		//push (lNode);
-		//call ( tBaseListVMT [@offset ( tBaseList.remove)]);
 		super.remove( lNode );
 	ENDUSE;
-//	dbg.put ("/fList.remove");
 	end remove;
 
 	method fList.findFullname (id:string);
@@ -194,8 +187,6 @@ unit filelist_unit;
 			str.free (jobebx.id);
 			mov (jobebx.next, ebx);
 		endwhile;
-		// frees the actual list memory
-		//call( tBaseListVMT[ @offset( tBaseList.destroy ) ] );
 		super.destroy();
 	ENDUSE;
 	ret();
@@ -206,8 +197,6 @@ unit filelist_unit;
 	USE (EAX, EBX);
 		mov (lNode, ebx);
 		str.free (jobebx.id);
-		//push (lNode);
-		//call ( tBaseListVMT [@offset ( tBaseList.remove)]);
 		super.remove( lNode );
 	ENDUSE;
 	end remove;

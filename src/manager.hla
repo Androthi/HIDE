@@ -194,46 +194,52 @@ proc
 
 
 	Proc_ManagerEnv		:procedure( lparam:dword; wparam:dword; umsg:uns32; hwin:dword );
+		
+		var
+			in_str	:string;
+			
+	
 	begin Proc_ManagerEnv;
 		pushabi;
 		
+		mov( str.talloc(2000), in_str );
 		mov( umsg, eax );
 		if( eax = w.WM_INITDIALOG ) then
 
 			move( hwin, optEnv );
 
-			if( hideini._readString( "HIDE Settings", "UserPath", strbuf) ) then
+			if( hideini._readString( "HIDE Settings", "UserPath", in_str) ) then
 				
-				w.SetDlgItemText( hwin, IDC_MANAGERENV_PATH, strbuf );
+				w.SetDlgItemText( hwin, IDC_MANAGERENV_PATH, in_str );
 				
 			endif;
 			
-			if( hideini._readString( "HIDE Settings", "ProjFold", strbuf) ) then
+			if( hideini._readString( "HIDE Settings", "ProjFold", in_str) ) then
 				
-				w.SetDlgItemText( hwin, IDC_MANAGERENV_PROJECT, strbuf );
+				w.SetDlgItemText( hwin, IDC_MANAGERENV_PROJECT, in_str );
 			
 			endif;
 	
-			if( hideini._readString( "HIDE Settings", "debugger", strbuf) ) then
+			if( hideini._readString( "HIDE Settings", "debugger", in_str) ) then
 		
-				w.SetDlgItemText( hwin, IDC_MANAGERENV_DEBUG, strbuf );	
+				w.SetDlgItemText( hwin, IDC_MANAGERENV_DEBUG, in_str );	
 			
 			endif;
 	
-			if( hideini._readString( "Help", "1", strbuf) ) then
+			if( hideini._readString( "Help", "1", in_str) ) then
 				
-				w.SetDlgItemText( hwin, IDC_MANAGERENV_HELP, strbuf );		
+				w.SetDlgItemText( hwin, IDC_MANAGERENV_HELP, in_str );		
 			
 			endif;
 	
-			hideini._readString( "HIDE Settings", "hlalib", strbuf );
-			w.SetDlgItemText( hwin, IDC_MANAGERENV_HLALIB, strbuf );
+			hideini._readString( "HIDE Settings", "hlalib", in_str );
+			w.SetDlgItemText( hwin, IDC_MANAGERENV_HLALIB, in_str );
 	
-			hideini._readString( "HIDE Settings", "hlainc", strbuf );
-			w.SetDlgItemText( hwin, IDC_MANAGERENV_HLAINC, strbuf );
+			hideini._readString( "HIDE Settings", "hlainc", in_str );
+			w.SetDlgItemText( hwin, IDC_MANAGERENV_HLAINC, in_str );
 	
-			hideini._readString( "HIDE Settings", "hlaopt", strbuf );
-			w.SetDlgItemText( hwin, IDC_MANAGERENV_HLAOPT, strbuf );
+			hideini._readString( "HIDE Settings", "hlaopt", in_str );
+			w.SetDlgItemText( hwin, IDC_MANAGERENV_HLAOPT, in_str );
 		
 			or( 1, eax );
 			
@@ -247,10 +253,14 @@ proc
 	end Proc_ManagerEnv;
 
 
-	updateSettingsLinks	:procedure { @noframe };
+	updateSettingsLinks	:procedure;
+	
+		var in_str	:string;			
+	
 	begin updateSettingsLinks;
+
+		mov( str.talloc(2000), in_str );
 		pushad();
-		
 		w.SendDlgItemMessage( optSettings, IDC_MANAGERSET_LIST, w.LB_RESETCONTENT, 0, 0 );
 
 		hideini.getItemCount( "default libs" );
@@ -258,33 +268,29 @@ proc
 		xor( ecx, ecx );
 		while( ecx < ebx ) do
 			
-			iniesi.readItem( "default libs", ecx, strbuf );
+			iniesi.readItem( "default libs", ecx, in_str );
 			push( ecx );
-			w.SendDlgItemMessage( optSettings, IDC_MANAGERSET_LIST, w.LB_ADDSTRING, 0, strbuf );
+			w.SendDlgItemMessage( optSettings, IDC_MANAGERSET_LIST, w.LB_ADDSTRING, 0, in_str );
 		
 			w.GetDlgItem( optSettings, ID_HIDE_THREADSAFE );
 			mov( eax, edx );
 			
-			if( str.ieq( strbuf, "hlalib.lib" )) then
+			if( str.ieq( in_str, "hlalib.lib" )) then
 				w.EnableWindow( edx, true );
-			elseif( str.ieq( strbuf, "hlalib_safe.lib" ) ) then
+			elseif( str.ieq( in_str, "hlalib_safe.lib" ) ) then
 				w.EnableWindow( edx, true );
 				w.CheckDlgButton( optSettings, ID_HIDE_THREADSAFE, w.BST_CHECKED );
 			endif;
 			pop( ecx );
-
 			inc( ecx );
 		endwhile;
-		
 		popad();
-		ret();
 	end updateSettingsLinks;
 		
 
 	Proc_ManagerSettings	:procedure( lparam:dword; wparam:dword; umsg:uns32; hwin:dword );
 	begin Proc_ManagerSettings;
 		pushabi;
-		
 		mov( umsg, eax );
 		
 		if( eax = w.WM_COMMAND ) then
@@ -1183,6 +1189,7 @@ proc
 			mov( eax, optCurrent );
 			
 		endswitch;
+
 
 		
 	end displayTool;

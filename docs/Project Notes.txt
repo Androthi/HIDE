@@ -26,6 +26,6 @@ HIDE
 	
 Output folder may be changed using Project Manager
 	
-Also scan source for "//>" comments to find areas that need expanding/work.
+
 
 

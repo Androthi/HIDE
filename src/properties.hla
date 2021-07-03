@@ -1716,8 +1716,6 @@ _command:
 	and($0ffff,eax);
 	cmp(edx,w.BN_CLICKED);
 	je _buttons;
-	//cmp(edx,w.LBN_SELCHANGE);	//> maybe later, no need for it now
-	//je _selchange;
 	cmp(edx,w.CBN_SELCHANGE);
 	je _cbchange;
 	cmp(edx,w.LBN_DBLCLK);
@@ -1753,8 +1751,6 @@ _command:
 			endif;
 
 			jmp _xProc_Properties;
-			
-	//_selchange:
 		
 	_cbchange:
 		if (eax = PROPERTIES_COMBO) then
@@ -1763,7 +1759,6 @@ _command:
 		jmp _xProc_Properties;
 			
 	_dblclk:
-//		dbg.put("double click in list");
 		w.SendMessage(hproplist,w.LB_GETCURSEL,0,0);
 		w.SendMessage(hproplist,w.LB_GETITEMDATA,eax,0);
 		
