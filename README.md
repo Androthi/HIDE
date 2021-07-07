@@ -1,3 +1,4 @@
+![HIDE](https://user-images.githubusercontent.com/46191274/124802325-d8433800-df25-11eb-85ce-46bf37e12300.png)
 
 # HIDE
 IDE for the HLA programming language
