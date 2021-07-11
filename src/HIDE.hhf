@@ -28,7 +28,7 @@ const
 	#includeonce	("strings.hhf")
 	#includeonce	("tables.hhf") 
 	#includeonce	("hide/hidelib.hhf")
-	#includeonce	("macros/macros.hhf")
+	//#includeonce	("macros/macros.hhf")
 
 const
 		
