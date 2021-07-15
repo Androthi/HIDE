@@ -26,7 +26,7 @@ program HIDE_MAIN;
 	?@align:=4;
 	?@noalignstack := true;
 	
-	
+
 	//===============================================================
 	// locals
 
@@ -2072,8 +2072,9 @@ program HIDE_MAIN;
 		(type tList[ebx]).getHead();
 		mov (eax, ebx);
 		while (ebx) do
-			toOutput (':', (type string (type tList.listNode[ebx]).value), nl);
-			mov ( (type tList.listNode[ebx]).next, ebx);
+			
+			toOutput (':', (type string (type listNode_t[ebx]).value), nl);
+			mov ( (type listNode_t[ebx]).next, ebx);
 		endwhile;
 	ENDUSE;
 	ret();

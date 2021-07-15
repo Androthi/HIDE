@@ -80,7 +80,7 @@ unit HIDE_procs;
 		// scrolling text in about dialog
 		
 				txt_credits	:	string	:=
-			version + nl
+			version + nl + hlaversion + nl +
 			"--------------------"#13#10
 			"HIDE [HLA IDE]"#13#10
 			"Integrated Development Environment"#13#10

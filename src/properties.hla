@@ -1272,28 +1272,6 @@ begin prop_scanFile;
 		//dbg.put("to scan" );
 		prop_scanHLA (esi);
 		
-		
-		/*
-		// debug
-		dbg.separator;
-		mov (scanNode, eax);
-		dbg.put ("deps for :", listeax.relative);
-		push (esi);
-		push (ebx);
-		mov (listeax.deps, esi);
-		(type tList[esi]).getHead();
-		mov (eax, ebx);
-		while (ebx) do
-			dbg.put ( (type string (type tList.listNode [ebx]).value));
-			mov ((type tList.listNode[ebx]).next, ebx);
-		endwhile;
-		
-		pop (ebx);
-		pop (esi);
-		dbg.put (nl nl nl);
-		dbg.separator;
-		*/
-		
 		buf.destroy();
 	endif;
 	//dbg.exits( "prop_scanFile" );

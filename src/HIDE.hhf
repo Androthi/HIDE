@@ -1,7 +1,7 @@
 const
 
-	version	:string := "HIDE 1.6.3 hla 2.16/stdlib 8.0";
-
+	version	:string := "HIDE 1.6.52";
+	hlaversion :string := "hla 2.16/stdlib 8.0";
 
 	#includeonce	("os.hhf")
 	#includeonce	("src/win_inc.hhf")
@@ -9,29 +9,13 @@ const
 	#includeonce	("src/RAHexEd.hhf")
 	#includeonce	("hide/graphicex_lib.hhf")
 	
-	#if (os.win32)
-	
-		#includeonce	("hide/dbgwin.hhf")
-		
-	#else
-		
-		// just so sources will compile in linux
-		namespace dbg;
-			#macro put(args[]);
-			#endmacro
-			#macro separator; #endmacro
-			#macro cls; #endmacro
-			#macro putz (_arg_); #endmacro
-			
-		end dbg;
-	#endif
+	#includeonce	("hide/dbgwin.hhf")
 	#includeonce	("strings.hhf")
 	#includeonce	("tables.hhf") 
 	#includeonce	("hide/hidelib.hhf")
 	//#includeonce	("macros/macros.hhf")
 
 const
-		
 	nUserColors		:= 16;
 
 namespace hide;
@@ -205,19 +189,11 @@ const
 	pathsize_c		:= 300;
 	worksize_c		:= 4096;
 	mastersize_c	:= $10000;
-
-	#if (os.win32)	
-		dirsep_c		:= '\';
-		obj_c			:= ".obj";
-		lib_c			:= ".lib";
-		exe_c			:= ".exe";
-	#elseif (os.linux)
-		dirsep_c		:= '/';
-		obj_c			:= ".o";
-		lib_c			:= ".a";
-		exe_c			:= "";
-	#endif
-	dll_c				:= ".dll";
+	dirsep_c		:= '\';
+	obj_c			:= ".obj";
+	lib_c			:= ".lib";
+	exe_c			:= ".exe";
+	dll_c			:= ".dll";
 	
 	// relates to string array
 	nJobTypes				:= 5;
@@ -256,7 +232,6 @@ const
 	manager_themes		:= 3;
 	manager_project		:= manager_themes+1;
 	manager_jobs		:= manager_project+1;
-	//manager_test		:= manager_jobs+1;
 
 
 	// various options

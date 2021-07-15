@@ -46,8 +46,8 @@ begin freeCWordlist;
 		CWordlist.getHead();
 		mov (eax, ebx);
 		while (ebx) do
-			str.free ( (type tList.listNode [ebx]).value);
-			mov ( (type tList.listNode[ebx]).next, ebx);
+			str.free( (type listNode_t[ebx]).value );
+			mov ((type listNode_t[ebx]).next, ebx);
 		endwhile;
 		CWordlist.destroy();
 	ENDUSE;
@@ -67,9 +67,9 @@ begin WriteListToFile;
 		mov(fileio.openNew (pathwordlist), hFile);		
 		CWordlist.getHead();
 		while (eax) do
-			fileio.puts (hFile, (type tList.listNode [eax]).value);
+			fileio.puts (hFile, (type listNode_t[eax]).value);
 			fileio.newln(hFile);
-			mov ( (type tList.listNode[eax]).next, eax);		
+			mov ( (type listNode_t[eax]).next, eax);		
 		endwhile;
 		fileio.close(hFile);		
 	ENDUSE;
@@ -158,11 +158,11 @@ begin find_str_wordlist;
 USE (EBX);
 	mov (CWordlist.getHead(), ebx);
 	while (ebx) do
-		mov ((type tList.listNode [ebx]).value, eax);		
+		mov ((type listNode_t [ebx]).value, eax);		
 		if (eax) then
 			breakif (str.ieq (id, (type string eax)));
 		endif;
-		mov ((type tList.listNode [ebx]).next, ebx);
+		mov ((type listNode_t [ebx]).next, ebx);
 	endwhile;
 	mov (ebx, eax);
 ENDUSE;
@@ -545,8 +545,7 @@ begin DeleteWord;
 	find_str_wordlist(sWord);
 	
 	if (eax <> NULL) then			
-//dbg.put("deleteword", sWord);			
-		str.free ( (type tList.listNode [eax]).value);
+		str.free ( (type listNode_t [eax]).value);
 		CWordlist.remove( [eax]);	
 		WriteListToFile();		
 	endif;

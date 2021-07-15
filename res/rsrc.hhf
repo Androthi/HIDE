@@ -299,4 +299,4 @@ IDB_NOTES_C             := 136;
 IDR_ACCEL               := 200;
 KEYBOARD_CTRLTAB        := 1500;
 IDM_AUTOCOMPLETION      := 3000;
-IDR_VERSION             := 1;
+

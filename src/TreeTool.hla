@@ -106,7 +106,7 @@ ENDUSE;
 ret();
 end projectview_checkUpdates;
 
-procedure TrvAddNode (hpar:dword; item:string; var node:tBaseList.baseNode; image:dword); @returns ("EAX");
+procedure TrvAddNode (hpar:dword; item:string; var node:baseNode_t; image:dword); @returns ("EAX");
 begin TrvAddNode;
 USE (EDX);	// preserve so that SendMessage doesn't thrash it
 	mov (hpar, eax);
@@ -334,7 +334,7 @@ begin Project_View;
 end Project_View;
 
 
-procedure buildProjectViewMenu (var node:tBaseList.baseNode);
+procedure buildProjectViewMenu (var node:baseNode_t);
 begin buildProjectViewMenu;
 USE (ESI, EDI);
 	dbg.put ("buildProjectViewMenu");
@@ -353,7 +353,7 @@ USE (ESI, EDI);
 						IDM_PROJECT_JOBS, "Jobs Manager...");
 	
 	mov (node, ebx);
-	mov ( (type tBaseList.baseNode[ebx]).nodeID, eax);
+	mov ( (type baseNode_t[ebx]).nodeID, eax);
 	if (eax = jnode_id) then
 		mov (node, eax);
 		if (jobeax.ftype != jobtype_misc) then
@@ -551,24 +551,7 @@ begin	Proc_ProjectView;
 			mov(eax,selType);
 			mov ((type w.TV_ITEM [edx]).lParam, eax);
 			mov (eax, selMem);
-			/*
-			 //debug code
-				mov (selType, eax);
-				if (eax = IMG_PROGRAM || eax = IMG_UNIT) then 
-					pushabi;
-					mov (selMem, ebx);
-					toOutput ("Dependencies of :", listebx.relative, nl);
-					mov (listebx.deps, esi);
-					(type tList[esi]).getHead();
-					mov (eax, ebx);
-					while (ebx) do
-						toOutput ( (type string (type tList.listNode [ebx]).value), nl);
-						mov ( (type tList.listNode[ebx]).next, ebx);
-					endwhile;
-					popabi;
-				endif;
-			
-			*/
+
 			jmp xProc_ProjectView;
 		
 		_rightclick:

@@ -83,10 +83,13 @@ const	// local constants
 			];
 
 storage
-	nKWInx		:dword;
 	minibuf		:byte[100];
 	hcbthemes	:dword;	// handle of themes combo box
 	listChanged	:boolean;
+	
+static
+	nKWInx		:dword :=0;
+	
 
 proc
 	SetKeyWords	:procedure( hwin:dword );
@@ -107,7 +110,6 @@ proc
 		mov( &usrcol, ebx );
 		
 		while( index < nColorGroups ) do
-			
 			mov( index, eax );
 			str.put( strbuf, homepath, dirsep_c, GroupFiles[eax*4] );
 			if( filesys.exists( strbuf )) then
@@ -145,20 +147,15 @@ proc
 		w.SendDlgItemMessage( hwin, idLst, w.LB_RESETCONTENT, 0, 0 );
 		
 		if( index < nColorGroups ) then
-			
+
+			dbg.put("looping index at :", index );
+
 			mov( index, ecx );
 			str.put( strbuf, homepath, dirsep_c, GroupFiles[ecx*4] );
 			
-			if( filesys.exists( strbuf )) then
-
-				buf.create( strbuf );
 			
-			else
-				
-				jmp done;
-				
-			endif;
-			
+			dbg.put(" using list :", strbuf );
+			buf.create( strbuf );
 		else
 			
 			str.put( strbuf, homepath, dirsep_c, "Data\holdgroup.ini" );
@@ -174,13 +171,15 @@ proc
 			
 		endif;
 		
+		dbg.put(" group in use :", strbuf );
 		buf.eof();
 		mov( 0, (type byte[eax]) );
 		buf.bof();
 		buf.setDelimiters( hide.whiteSpaceCset );
 		buf.setDelimSkipMode( true );
+		dbg.put("changing nKWInx to :", index );
 		move( index, nKWInx );
-	
+		dbg.put(" in index :", nKWInx);
 		scan_buffer: 
 			buf.getToken( strbuf );
 			jnc check_marks;
@@ -227,7 +226,7 @@ proc
 			buf			:tBuffer;
 			
 	begin	SaveKeyWordList;
-		dbg.cls;
+		//dbg.cls;
 		dbg.enters( "SaveKeyWordList" );
 		pushad();
 		
@@ -256,6 +255,8 @@ proc
 			str.put( strbuf, homepath, dirsep_c, "Data\holdgroup.ini" );
 			
 		endif;
+		
+		dbg.put("writing :", strbuf );
 		
 		buf.writeFileName( strbuf );
 		buf.destroy();
@@ -426,7 +427,9 @@ proc
 	begin keywordsUpdate;
 		pushad();
 		
+		dbg.put("keywords update");
 		if( listChanged ) then
+			dbg.put("list changed?");
 			SaveKeyWordList( hwin, IDC_LSTKWACTIVE, nKWInx );
 			SaveKeyWordList( hwin, IDC_LSTKWHOLD, HoldGroup );
 			mov( false, listChanged );
@@ -480,6 +483,8 @@ proc
 	begin Proc_KeyWords;
 		pushabi;
 		
+		//dbg.put("proc_keywords, nKWInx = ", nKWInx);
+		
 		mov( umsg, eax );
 		switch( eax );
 		
@@ -493,6 +498,7 @@ proc
 			if (edx = w.BN_CLICKED) then
 				
 				if (eax = IDC_BTNKWAPPLY) then
+					dbg.put("apply");
 					keywordsUpdate( hwin );
 					mov(IDC_BTNKWAPPLY,eax);
 					xor(edx,edx);
@@ -526,6 +532,7 @@ proc
 	
 				elseif (eax = IDC_BTNADD) then
 	
+					dbg.put("add at index :", nKWInx);
 					w.GetDlgItemTextA(hwin,IDC_EDTKW,&minibuf,@size(minibuf));
 					w.SendDlgItemMessage(hwin,IDC_LSTKWACTIVE,w.LB_ADDSTRING,0,&minibuf);
 					mov(0,minibuf[0]);
@@ -533,6 +540,7 @@ proc
 					mov(IDC_BTNKWAPPLY,eax);
 					mov(true,edx);
 					call EnButton;
+					mov( true, listChanged );
 					
 				elseif (eax = IDC_BTNDEL) then
 					DeleteKeyWords(hwin,IDC_LSTKWACTIVE);
@@ -657,9 +665,10 @@ proc
 			elseif (edx = w.LBN_SELCHANGE) then
 				
 				dbg.put("LBN_SELCHANGE");
+				
 				if (eax = IDC_LSTKWCOLORS) then
 					dbg.put("IDC_LSTKWCOLORS");
-					
+					dbg.put("list changed?, index = ", listChanged, " : ", nKWInx);
 					if( listChanged ) then
 						SaveKeyWordList( hwin,IDC_LSTKWACTIVE, nKWInx );
 						mov( false, listChanged );
@@ -677,6 +686,7 @@ proc
 				elseif (eax = IDC_LSTKWACTIVE) then
 					dbg.put("IDC_LSTKWACTIVE");
 					w.SendDlgItemMessage(hwin,IDC_LSTKWACTIVE,w.LB_GETSELCOUNT,0,0);
+					mov( true, listChanged );
 					push(eax);
 					mov(eax,edx);
 					mov(IDC_BTNHOLD,eax);
@@ -684,6 +694,7 @@ proc
 					pop(edx);
 					mov(IDC_BTNDEL,eax);
 					call EnButton;
+					dbg.put("added to :", nKWInx );
 		
 				elseif (eax = IDC_LSTKWHOLD) then
 		
@@ -691,6 +702,8 @@ proc
 					mov(eax,edx);
 					mov(IDC_BTNACTIVE,eax);
 					call EnButton;
+		
+		
 		
 				endif;
 				dbg.put("/LBN_SELCHANGE");

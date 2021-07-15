@@ -1,5 +1,5 @@
 // HIDE types and macros
-
+		
 	#macro toOutput ( _parms_[]): __parms, __counter, __buildstr;
 		?__parms := @elements( _parms_);
 		?__counter := 0;
@@ -202,7 +202,7 @@ type
 		jList	:class inherits( tBaseList );
 			
 			type
-				jnode :record inherits( tBaseList.baseNode );
+				jnode :record inherits( baseNode_t );
 					id			:string;	// name of job
 					ftype		:dword;		// type number of job
 					inQueue		:BOOL;		// job is in active queue or Held
@@ -223,7 +223,7 @@ type
 		fList	:class inherits (tBaseList);
 			
 			type
-				fnode :record inherits( tBaseList.baseNode );
+				fnode :record inherits( baseNode_t );
 			
 					id			:string;	// name + extension of file
 					union

@@ -590,12 +590,12 @@ proc
 		(type tList[ebx]).getHead();
 		mov (eax, ebx);
 		while (ebx) do
-			checkFileTimes (outfile, (type string (type tList.listNode [ebx]).value) );
+			checkFileTimes (outfile, (type string (type listNode_t [ebx]).value) );
 			if (eax) then
 				mov (eax, ebx);
 				break;
 			endif;
-			mov ((type tList.listNode [ebx]).next, ebx);
+			mov ((type listNode_t [ebx]).next, ebx);
 		endwhile;
 		mov (ebx, eax);
 		//dbg.put ("/checkDependencies");
@@ -797,7 +797,7 @@ proc
 	end compile_link;
 
 
-procedure compile (var node:tBaseList.baseNode; force:BOOL); @returns ("EAX");
+procedure compile (var node:baseNode_t; force:BOOL); @returns ("EAX");
 	@alignstack;
 
 	var

@@ -762,29 +762,6 @@ BEGIN
   CONTROL "CANCEL",2,"Button",0x50010000,4,18,32,13
 END
 
-IDR_VERSION VERSIONINFO
-FILEVERSION 1,6,1,0
-PRODUCTVERSION 1,6,1,0
-FILEOS 0x00000004
-FILETYPE 0x00000001
-BEGIN
-  BLOCK "StringFileInfo"
-  BEGIN
-    BLOCK "04090000"
-    BEGIN
-      VALUE "CompanyName", "Sevag Krikorian\0"
-      VALUE "FileDescription", "HLA IDE\0"
-      VALUE "LegalCopyright", "2010, 2011\0"
-      VALUE "OriginalFilename", "HIDE.exe\0"
-      VALUE "ProductName", "HIDE\0"
-    END
-  END
-  BLOCK "VarFileInfo"
-  BEGIN
-    VALUE "Translation", 0x0409, 0x0000
-  END
-END
-
 ID_GETSTRINGINPUT DIALOGEX 4,4,197,30
 FONT 10,"MS Sans Serif",400,0,0
 STYLE 0x10CC0880

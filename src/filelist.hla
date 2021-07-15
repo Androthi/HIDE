@@ -86,7 +86,7 @@ unit filelist_unit;
 		while (ebx) do
 			mov (listebx.job, eax);
 			if (eax) then
-				mov ( (type tList.listNode[eax]).value, eax);
+				mov ( (type listNode_t[eax]).value, eax);
 				toOutput ( (type string eax), " :", listebx.fullname, nl);
 			else
 				toOutput ( listebx.fullname, nl);
@@ -98,7 +98,7 @@ unit filelist_unit;
 	ret();
 	end dumpList;
 
-	method fList.remove (var lNode:tBaseList.baseNode);
+	method fList.remove (var lNode:baseNode_t);
 	begin remove;
 	USE (EAX, EBX);
 		mov (lNode, ebx);
@@ -192,7 +192,7 @@ unit filelist_unit;
 	ret();
 	end destroy;
 
-	method jList.remove (var lNode:tBaseList.baseNode);
+	method jList.remove (var lNode:baseNode_t);
 	begin remove;
 	USE (EAX, EBX);
 		mov (lNode, ebx);
