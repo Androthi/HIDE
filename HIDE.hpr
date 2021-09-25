@@ -6,7 +6,7 @@ options=00000040
 Project Version=10
 usetemp=false
 useunits=true
-useback=true
+useback=false
 findscope=00000001
 findflags=00000001
 wscan header=src\win_inc.hhf
@@ -14,7 +14,6 @@ wscan header=src\win_inc.hhf
 [HPR Folders]
 units
 res
-bak
 src
 Docs
 
