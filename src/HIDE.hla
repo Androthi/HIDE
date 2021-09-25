@@ -45,9 +45,9 @@ program HIDE_MAIN;
 		IDM_HIDE_COLLAPSEALL	:= $0fffC;
 		IDM_HIDE_EXPANDALL		:= $0FFFD;
 
-		HIDE_SYSTEMINI		:="Data" + dirsep_c + "hide_system.ini";	//"Data\hide_system.ini";
-		HIDE_INI			:="Data" + dirsep_c + "HIDE.ini";			//"Data\HIDE.ini";
-		HIDE_TPL			:="Data" + dirsep_c + "Templates";			//"Data\Templates";
+		HIDE_SYSTEMINI		:="Data" + dirsep_c + "hide_system.ini";
+		HIDE_INI			:="Data" + dirsep_c + "HIDE.ini";
+		HIDE_TPL			:="Data" + dirsep_c + "Templates";
 
 		raseledi	:text:= "(type RASELCHANGE [edi])";
 		rabecx		:text:= "(type RABLOCKDEF [ecx])";
@@ -104,7 +104,6 @@ program HIDE_MAIN;
 	
 		szINS		:mzstr ( "INS");
 		szOVR		:mzstr ( "OVR");
-		//szAnchor	:mzstr ( "Anchor" );
 		
 	// auto inserts
 		ins_begin			:mzstr ( "begin ");
@@ -280,7 +279,6 @@ program HIDE_MAIN;
 		endif;
 		dbg.exits("findExecutable");
 	end findExecutable;
-
 	
 	expandPathMacs :procedure(source:string; dest:string);
 		var
@@ -380,7 +378,7 @@ program HIDE_MAIN;
 		default
 			str.cpy ("", strbuf);
 		endswitch;
-	
+
 		if (propebx.typestr > 0 ) then
 			str.put2 (strbuf, propebx.typestr);
 		endif;
@@ -1394,6 +1392,7 @@ program HIDE_MAIN;
 		already_closed:
 		ENDUSE;
  	end hide_closeNode;
+
 
 	
 	procedure Menu_NewFile; @noframe;
@@ -2495,8 +2494,6 @@ proc
 		toOutput ("%l lib      :", s, nl);
 		env2.get ("hlainc", s);
 		toOutput ("%i hlainc   :", s,nl);
-		//env2.get ("include", s);
-		//toOutput ("%f include  :", s, nl);
 		toOutput ("%s filename :");
 		mov (curnode, eax);
 		if (eax) then

@@ -821,7 +821,7 @@ proc
 		else
 			w.SetWindowPos(hwnd,w.HWND_NOTOPMOST,0,0,0,0,3);
 		endif;
-		
+
 		w.IsDlgButtonChecked( optGeneral, IDC_MANAGERGEN_OPENLAST );
 		hideini.writeInt( "HIDE Settings", "Restore Project", eax );
 		
@@ -905,11 +905,12 @@ proc
 		//==========================================================
 		
 		if( w.GetDlgItemTextA( optEnv, IDC_MANAGERENV_PATH, &buffer, @size(buffer) )) then
-
+			
+			env2.get( "PATH", strbuf );
 			str.cpyz( &buffer, strbuf );
 			hideini.writeString( "HIDE Settings", "UserPath", strbuf );
 			expandPathMacs( strbuf, strbuf );
-			str.put2( strbuf, ';', homepath, dirsep_c, "bin:" );
+			str.put2( strbuf, ';', homepath, dirsep_c, "bin;" );
 			env2.put( "PATH", strbuf );
 			
 		else
@@ -917,7 +918,6 @@ proc
 			hideini.deleteKey( "HIDE Settings","UserPath" );
 			
 		endif;
-		
 			
 		if( w.GetDlgItemTextA( optEnv, IDC_MANAGERENV_PROJECT, &buffer, @size(buffer) )) then
 
