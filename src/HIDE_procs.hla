@@ -468,21 +468,11 @@ _base:
 
 	w.GetDlgItemInt( hwin, ADVLINK_ALIGN, NULL, false );
 	if( eax != def_align ) then
-	//zstr.zcmp(&buffer,&szDefAlign);
-	//_if(eax)
-		
 		str.put2( temps, "-align:", (type int32 eax ), nl );
-	
-		//str.cats(temps, "-align:");
-		//str.cati32( (type int32 eax ), temps );
-		//str.cats(temps, nl);
-	//_endif;	
 	endif;
 
 	if (isdll) then
-		str.put2 (temps, "-dll" nl);
-	//else
-		//str.cats(temps, "-machine:ix86" nl);			
+		str.put2 (temps, "-dll" nl);		
 	endif;
 	
 	thisini.writeSection (linksec_s, temps);	

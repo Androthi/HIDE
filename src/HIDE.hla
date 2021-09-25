@@ -3772,7 +3772,6 @@ proc
 				closeAll();
 				cmp (eax, true);
 				je _cancel;
-				//destroyAll();
 			endif;
 	
 			if (htree) then

@@ -20,12 +20,7 @@ readonly
 	align(4);
 		hlaext	:mzstr ("hla");
 
-		//asmtype :byte; @nostorage;
-		//		byte "ASM unit (*.asm)",0,"*.asm",0;
-		//		byte "All Files (*.*)",0,"*.*",0,0;
 	align(4);
-		//asmext	:mzstr ("asm");
-				
 		hhftype	:byte; @nostorage;
 				byte "HHF header (*.hhf)",0,"*.hhf",0;
 				byte "All Files (*.*)",0,"*.*",0,0;
@@ -58,7 +53,7 @@ readonly
 
 		templatetype	:byte; @nostorage;
 				byte "HIDE Template File (*.kmk)",0,"*.kmk",0,0;
-				
+	
 	align(4);
 		tempext	:mzstr ("kmk");
 
@@ -68,7 +63,6 @@ readonly
 		// blocks \\
 
 		blocks	:dword; @nostorage;
-			//dword &rabdprogram;
 			dword &rabdmethod, &rabdprocedure, &rabdif,&rabdwhile,&rabdrec,&rabdmacro,&rabdbeg, &rabdfor;
 			dword &rabdproc, &rabdstore,&rabdstatic,&rabdconst,&rabdread;
 			dword &rabdvar,&rabdtype, &rabdval, 0;
@@ -254,7 +248,6 @@ procedure SetWindowCaption;
 		changed	:BOOL;
 		
 begin SetWindowCaption;
-	//dbg.put ("SetWindowCaption");
 	pushabi;
 	mov (0, changed);
 	//str.cpy(AppName,workpath);
@@ -267,10 +260,7 @@ begin SetWindowCaption;
 		endif;
 		mov (listebx.job, eax);
 		if (eax) then
-			//str.put2 (workpath, " -{", project.id, "} (", jobeax.id, ") [");
 			str.put (workpath, project.id, " - {", jobeax.id, "} ");
-		//else
-		//	str.put2 (workpath, " -[");
 		endif;
 		
 		if (changed) then
@@ -283,9 +273,7 @@ begin SetWindowCaption;
 	endif;
 	
 	w.SetWindowText (hwnd, workpath);
-	//dbg.put ("/SetWindowCaption");
 	popabi;
-
 end	SetWindowCaption;
 
 procedure RAEdit_new (var node:fList.fnode);
@@ -347,7 +335,7 @@ begin RAEdit_loadFileLight;
 	// to make it permanent and visible with a tab tool, send this node to
 	// hide_selectNode()
 	
-USE( EBX );
+	USE( EBX );
 	mov( node, ebx );
 	if( filesys.exists( listebx.fullname ) ) then
 		
@@ -367,10 +355,7 @@ USE( EBX );
 	else
 		toOutput( "File not found: ", listebx.fullname, nl );
 	endif;
-	
-ENDUSE;
-	
-	
+	ENDUSE;
 end RAEdit_loadFileLight;
 
 
@@ -383,10 +368,8 @@ procedure RAEdit_openNew (fname:string);
 		s		:string;
 		
 begin RAEdit_openNew;
-//dbg.put ("RAEdit_openNew");
-//dbg.separator;
 	mov (str.talloc (pathsize_c), s);
-USE (EBX, ESI, EDI);
+	USE (EBX, ESI, EDI);
 	if (fname = NULL) then
 		
 		fileList.appendFile ("Untitled");
@@ -422,9 +405,7 @@ USE (EBX, ESI, EDI);
 		endif;
 	endif;
 	mov (ebx, eax);
-ENDUSE;
-//dbg.put ("/RAEdit_openNew");
-//dbg.separator;
+	ENDUSE;
 end RAEdit_openNew;
 
 proc
@@ -475,8 +456,6 @@ USE (EBX);
 ENDUSE;
 end RAHexed_new;
 
-
-
 procedure RAHexed_openNew (fname:string);
 	var
 		s	:string;
@@ -525,8 +504,6 @@ proc
 		dbg.put ("/hex open");
 	end RAHexed_open;
 
-
-
 	RAEdit_setFormat :procedure( var node:fList.fnode );
 		var
 			gwstyle	:dword;
@@ -536,13 +513,11 @@ proc
 			options	:dword;
 
 	begin RAEdit_setFormat;
-		//dbg.put ("RAEdit_setFormat");
 		USE( ebx, edx, esi, edi );
 	
 		mov (0, gwstyle);
 		mov (0, group);
 		mov (node, ebx);
-		//dbg.put ("NODE = ", ebx);
 		
 		if( listebx.isproject ) then
 			move( project.options, options );
@@ -598,7 +573,6 @@ proc
 			
 			hideini.readInt( "HIDE Settings", "Show Line Numbers" );
 			if( eax ) then
-			//if (testnz ( opt_showlines, project.options)) then
 				w.CheckDlgButton (listebx.hwnd, -2, true);
 				w.SendMessage (listebx.hwnd, w.WM_COMMAND, -2, 0);
 			endif;
@@ -670,8 +644,7 @@ proc
 	
 		endif;	
 	
-		ENDUSE;
-		//dbg.put ("/RAEdit_setFormat");	
+		ENDUSE;	
 	end RAEdit_setFormat;
 
 procedure saveFileAs (var node:fList.fnode);
@@ -860,8 +833,6 @@ begin WriteToFile;
 	dbg.put ("after writetofile");
 end WriteToFile;
 
-
-
 procedure Recent_Insert ( source: string);
 //	add source to recently opened files list
 
@@ -880,8 +851,6 @@ USE (EAX, ESI, EDI);
 	UpdateMenu();
 ENDUSE;
 end Recent_Insert;
-
-
 
 procedure InitOF (title:string; defext:string; filtertype:dword);
 	// initializes the OPENFILENAME structure
@@ -914,10 +883,6 @@ begin InitOF;
 		
 	mov(filtertype,ebx);
 	// determine default extensions to use	
-//	if (ebx = type_all) then
-//		
-//		mov(&allfiles,eax);
-//		
 	if ( (ebx = type_hla) || (ebx = type_unit) ) then
 		
 			mov(&hlatype,eax);
@@ -1039,21 +1004,6 @@ ENDUSE;
 ret();
 end saveAll;
 
-//procedure destroyAll; @noframe;
-//begin destroyAll;
-//USE (ESI, EDI, EBX);
-//	fileList.getHead();
-//	mov (eax, ebx);
-//	while (ebx) do
-//		w.DestroyWindow (listebx.hwnd);
-//		mov (ebx, edi);
-//		mov (listebx.next, ebx);
-//		fileList.remove ([edi]);
-//	endwhile;
-//ENDUSE;
-//RET();
-//end destroyAll;
-
 procedure setFormatAll;
 
 	var
@@ -1061,16 +1011,8 @@ procedure setFormatAll;
 		
 
 begin setFormatAll;
-//	USE (ESI, EDI, EBX);
-//	fileList.getHead();
-//	mov (eax, ebx);
-//	while (ebx) do
-//		RAEdit_setFormat ([ebx]);
-//		mov (listebx.next, ebx);
-//	endwhile;
-//	ENDUSE;
 	// cycle through all open tabs and set format
-USE (EBX, ESI, EDI);
+	USE (EBX, ESI, EDI);
 	w.SendMessage (htab, w.TCM_GETITEMCOUNT, 0, 0);
 	mov (eax, count);
 	if (eax) then
@@ -1084,10 +1026,8 @@ USE (EBX, ESI, EDI);
 
 		endwhile;
 	endif;
-ENDUSE;	
-
+	ENDUSE;	
 end setFormatAll;
-
 
 procedure closeAll;
 	// close all the open tab windows
@@ -1095,8 +1035,7 @@ procedure closeAll;
 		count	:uns32;
 		
 begin closeAll;
-	dbg.put ("closeAll");
-USE (EBX, ESI, EDI);
+	USE (EBX, ESI, EDI);
 	w.SendMessage (htab, w.TCM_GETITEMCOUNT, 0, 0);
 	mov (eax, count);
 	if (eax) then
@@ -1126,8 +1065,7 @@ USE (EBX, ESI, EDI);
 	if (! eax) then
 		mov (0, curnode);
 	endif;
-ENDUSE;
-//dbg.put ("/closeAll :", eax);
+	ENDUSE;
 end closeAll;
 
 procedure querySave (var node:fList.fnode);
@@ -1139,9 +1077,8 @@ procedure querySave (var node:fList.fnode);
 		s	:string;
 		
 begin querySave;
-	//dbg.put ("querySave");
 	mov (str.talloc (pathsize_c), s);
-USE (EBX);
+	USE (EBX);
 	xor(eax,eax);
 	mov (node, ebx);
 	if (w.SendMessage (listebx.hwnd, w.EM_GETMODIFY, 0, 0)) then
@@ -1159,8 +1096,7 @@ USE (EBX);
 	else
 		mov (false,eax);
 	endif;
-ENDUSE;
-//dbg.put ("/querySave");
+	ENDUSE;
 end querySave;
 
 procedure repaintAll; @noframe;
