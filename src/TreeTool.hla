@@ -492,23 +492,7 @@ begin	Proc_ProjectView;
 			shr(16,edx);
 			and($0ffff,eax);
 			
-			if (edx = w.BN_CLICKED) then
-				if (eax = anchor_btn) then
-					if (testz (TREE_D, settings.winview)) then
-						xor (TREE_A, settings.winview);
-						if (testnz (TREE_A, settings.winview)) then
-							mov (true, eax);
-						else
-							mov (false, eax);
-						endif;
-						
-						caption.CheckButton(hwin, anchor_btn, al);						
-					else
-						toOutput ("Use Anchor when window is undocked" nl
-							"To undock, drag by the title bar" nl);
-					endif;
-				endif;
-			endif;
+//> delete this section?
 			jmp xProc_ProjectView;
 		
 	_notify:	

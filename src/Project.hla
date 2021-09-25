@@ -951,7 +951,6 @@ begin open;
 		
 			str.a_cpy (strbuf);
 			mov (eax, project.folder);
-			//dbg.put ("cd to :", project.folder);
 			filesys.cd (project.folder);
 			
 		else
@@ -1091,11 +1090,9 @@ begin open;
 	endif;
 
 	// project files may need a local Temp folder, a Units folder or a Bak folder.
-	// these folders may be missind due to downloading project files from repositories
+	// these folders may be missing due to downloading project files from repositories
 	// or zip programs that don't create empty folders.
 	// if the project uses these folders, make sure they exist in the project folder.
-		iniesi.writeBool ("HPR Settings", "useunits", false);
-		iniesi.writeBool ("HPR Settings", "useback", false);	
 	
 	mov (&project.hpr, esi);
 	if (iniesi.readBool ("HPR Settings", "usetemp")) then
@@ -1148,7 +1145,6 @@ begin open;
 			SetWindowCaption();
 		endif;
 
-		Notes_Open();
 		prop_updateView();
 		w.SendMessage(hwnd,HIDE_TOGGLEDEBUG,0,0);
 		TreeToolSetup();
@@ -1183,12 +1179,8 @@ begin open;
 				str.put( workpath, jfname );
 			endif;
 			
-			//dbg.put(">", workpath);
-			// convert hpr version
-			//dbg.put(">", fname, "  :", ftype );
 			checkSA( ftype );
 			if( eax = sa_extlinked ) then
-				dbg.put("removed");
 				str.put( strbuf, jobname, ".extlinked" );
 				mov( ebx, esi );
 				iniesi.writeItem( strbuf, -1, workpath );
@@ -1224,10 +1216,6 @@ USE (EBX, ESI, EDI);
 		
 		fileList.destroy();
 		fileList.create();
-
-		Notes_Save();
-		Notes_Clear();
-		
 
 		filesys.gwd( workpath );
 		str.put2( workpath, dirsep_c, project.id );
@@ -1456,6 +1444,7 @@ procedure manager_updateDisplay (state:dword);
 
 		w.GetDlgItem( hmanager, IDC_MANAGERJOBS_QUESEL );
 		w.EnableWindow( eax, ebx );
+
 		w.GetDlgItem( hmanager, IDC_MANAGERJOBS_REMOVEJOB );
 		w.EnableWindow (eax, ebx);
 		w.GetDlgItem( hmanager, IDC_MANAGERJOBS_RENAMEJOB );

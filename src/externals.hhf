@@ -109,13 +109,6 @@ procedure PanelActivate; @external;
 procedure Panel_HideDocked; @external;
 procedure panel_setfrom; @external;
 
-// notes
-procedure Notes_Save; @external;
-procedure Notes_Open; @external;
-procedure Proc_Notes(lparam:dword; wparam:dword; umsg:uns32; hwin:dword); @external;
-procedure Notes_View (message:dword); @external;
-procedure Notes_Clear; @external;
-
 // output
 procedure Proc_Output (lparam:dword; wparam:dword; umsg:uns32; hwin:dword);	@external;
 procedure CloseOutputDelay(ntime:dword);	@external;
@@ -171,13 +164,6 @@ procedure getStringInput3 (title:string; initial:string; dest:string); @returns 
 procedure Proc_AdvancedLink(lparam:dword; wparam:dword; umsg:uns32; hwin:dword); @external;
 
 procedure showAboutWin; @external;
-
-namespace caption;
-	procedure InsertButton(hwnd:dword; uCmd:dword; nBorder:dword; hBmp_normal:dword; hBmp_pushed:dword; hBmp_hover:dword; 
-								hBmp_checked:dword; hBmp_disabled:dword; hInst:dword;lptstr:dword); @external("CAPTION_INSERTBUTTION");
-	procedure RemoveButton(hwnd :dword); @external("CAPTION_REMOVEBUTTON");
-	procedure CheckButton(hwnd:dword; uCmd:dword; bCheck:boolean); @external("CAPTION_CHECKBUTTON");
-end caption;
 
 namespace project;
 
@@ -242,8 +228,6 @@ static	// externals
 		homepath			:string;				@external;	// current directory
 		workpath			:string;				@external;	// a string buffer for working paths
 		tplpath				:string;				@external;	// a path holding templates directory
-		//$tempStr				:string;				@external;	// temporary holding string
-		//$filebuffer			:string;				@external;	// holds the current filename
 		projectpath			:string;				@external;	// holds current path for project folder
 		strbuf				:string;				@external;	// scratch static string
 
@@ -268,7 +252,6 @@ static	// externals
 		hVSplitBar			:dword;					@external;
 		hHSplitBar			:dword;					@external;
 		hnotes				:dword;					@external;	// notes window handle
-		hnotesedt			:dword;					@external;
 		htimer				:dword; @external;  // 0 = output timer off,  >0 = output timer on
 	
 

@@ -1025,7 +1025,6 @@ procedure saveAll; @noframe;
 	// that have been altered
 begin saveAll;
 USE (ESI, EDI, EBX, EAX);
-	Notes_Save();
 	fileList.getHead();
 	mov (eax, ebx);
 	while (ebx) do

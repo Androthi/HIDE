@@ -1,6 +1,7 @@
 
 	// Quick jumps, double click word below and F3
 	// menu_tbl
+	// WndProc
 	
 program HIDE_MAIN;
 	
@@ -37,7 +38,6 @@ program HIDE_MAIN;
 		POS_INS		:=POS_LINES+31;
 		POS_PROJ	:=POS_INS+63;
 		POS_DBG		:=POS_PROJ+60;
-		//POS_INFO	:=POS_DBG +45;	//	actually not used... -1 as last element on status bar
 
 		// increase this when a new Panel window is added, "Fold" is Window #0
 		nPanelWindows	:= 2;
@@ -55,7 +55,7 @@ program HIDE_MAIN;
 	static	// local
 		align(4);
 			// parts : Ln : lines| ins | (Non)Project | Debug | -
-	 	parts		:int32[STATUS_PARTS]:=[POS_LINES,POS_INS, POS_PROJ,POS_DBG,-1];	// for status bar divisions :: POS_INFO is last element (-1)
+	 	parts		:int32[STATUS_PARTS]:=[POS_LINES,POS_INS, POS_PROJ,POS_DBG,-1];
 	
 		RadDLL	:str.constant("Data\RAEdit.dll");
 		RadHex	:str.constant("Data\RAHexed.dll");
@@ -71,7 +71,6 @@ program HIDE_MAIN;
 		prvline		:dword;
 		haccel		:dword;		// handle for accelerator table
 		hradll		:dword;		// dll handle
-		richeddll	:dword;		// rich ed dll handle
 		hexeddll	:dword;		// hex ed dll handle
 		nlastline	:dword;		// check for last line in edit control
 		dummy		:dword;		// dummy var for some windows APIs and temp storage
@@ -105,7 +104,7 @@ program HIDE_MAIN;
 	
 		szINS		:mzstr ( "INS");
 		szOVR		:mzstr ( "OVR");
-		szAnchor	:mzstr ( "Anchor" );
+		//szAnchor	:mzstr ( "Anchor" );
 		
 	// auto inserts
 		ins_begin			:mzstr ( "begin ");
@@ -583,8 +582,8 @@ program HIDE_MAIN;
 		
 		procedure ScancodeToAscii(scancode:dword);
 		
-			// 		covert scan code to ascii
-			// 		result of ascii code in register BL
+			// 	covert scan code to ascii
+			// 	result of ascii code in register BL
 			//	added by: Bernd Kastenholz
 		
 		var 
@@ -613,7 +612,6 @@ program HIDE_MAIN;
 		if (listebx.ftype = type_bin) then
 			jmp _exitnocall;
 		endif;
-		//dbg.put ("Proc_SubclassedEdit");
 		if(eax=w.WM_KEYUP) then
 			
 			mov(wparam,eax);
@@ -883,16 +881,13 @@ program HIDE_MAIN;
 			endif;
 		
 		elseif (eax = w.WM_KEYDOWN) then
+			dbg.put("keydown : wparam = ", wparam);
+			
 			if (wparam = w.VK_SHIFT) then
 				mov (true, shiftdn);
 				
 			elseif( wparam = w.VK_ESCAPE ) then
-				
-				// close the output window if it is on a timer
-				if( htimer ) then
-					CancelTimerCloseOutput();
-				endif;
-				
+				w.SendMessage(hwnd,w.WM_CLOSE,0,0);				
 			endif;
 		
 		elseif (eax = w.WM_MBUTTONDOWN) then
@@ -930,7 +925,6 @@ program HIDE_MAIN;
 			endif;
 		_exitnocall:
 	ENDUSE;
-//	dbg.put ("/subclass");
 	end Proc_SubclassedEdit;
 
 	procedure updateDisplay (toupdate:dword);
@@ -3385,12 +3379,12 @@ proc
 			cmp(ecx,eax);
 			jne _nxtmsg;
 			jmp([edx+4]);
-		
+				
 	_defproc:
 			pop(edi); pop(esi); pop(ebx);
 			w.DefWindowProc(hwin,umsg,wparam,lparam);
 			exit WndProc;
-	
+		
 	_toggleout:
 			mov(IDM_VIEW_OUTPUT,eax);
 			or(w.BN_CLICKED,eax);
@@ -3833,7 +3827,7 @@ proc
 			hideini.write (configmain);
 			GraphicEx.Deinit();
 			//dbg.put ("quitting");
-		_setquit:	w.PostQuitMessage(0);
+			w.PostQuitMessage(0);
 			
 		_cancel:
 			jmp xWndProc;
@@ -4102,34 +4096,15 @@ proc
 		w.SendMessage(hpaneltab, w.TCM_SETCURSEL, settings.panelwin, 0);
 		
 		PanelViewWin();
-			
-		caption.InsertButton(htree, anchor_btn,5, w.LoadBitmap(hinst, val IDB_ANCHOR_N),0, 0,
-							w.LoadBitmap (hinst, val IDB_ANCHOR_C),0, hinst, &szAnchor);
-		caption.InsertButton (hprop, anchor_btn, 5, w.LoadBitmap(hinst, val IDB_ANCHOR_N), 0, 0,
-							w.LoadBitmap (hinst, val IDB_ANCHOR_C),0, hinst, &szAnchor);
-
-		caption.InsertButton( hout, output_btn, 5, w.LoadBitmap( hinst, val IDB_OUTPUT_N), 0, 0,
-							w.LoadBitmap( hinst, val IDB_OUTPUT_C), 0, hinst, zOutput );
-		caption.InsertButton( hout, notes_btn, 2, w.LoadBitmap( hinst, val IDB_NOTES_N), 0, 0,
-							w.LoadBitmap( hinst, val IDB_NOTES_C), 0, hinst, zNotes );
-	
-		
+				
 		if (testz (PROP_D, settings.winview)) then
 			dbg.put (">>>>>>>>>>prop visible");
 			w.ShowWindow (hprop, w.SW_SHOW);
-			if (testnz (PROP_A, settings.winview)) then
-				caption.CheckButton(hprop, anchor_btn, true);
-			endif;
 		endif;
 		
 		if (testz (TREE_D, settings.winview)) then
 			dbg.put(">>>>>>>>>>>tree visible");
 			w.ShowWindow (htree, w.SW_SHOW);
-			if (testnz (TREE_A, settings.winview)) then
-				caption.CheckButton (htree, anchor_btn, true);
-			endif;
-
-
 		endif;
 		
 		// if the previeous session had status bar active, update the vertical split
@@ -4223,22 +4198,21 @@ proc
 	procedure initHIDE; @noframe;
 	begin initHIDE;
 	
-			// general settings
+		// general settings
 		dbg.put ("Initialize");
-		move ( str.alloc (pathsize_c), homepath);
+		move( str.alloc (pathsize_c), homepath);
 
-		move ( str.alloc (pathsize_c), configmain);
-		///move ( str.alloc (pathsize_c), filebuffer);
-		move ( str.alloc (worksize_c), workpath);
-		move ( str.alloc (pathsize_c), projectpath);
-		move ( str.alloc (pathsize_c), tplpath);
-		move ( str.alloc (mastersize_c), strbuf);
+		move( str.alloc (pathsize_c), configmain);
+		move( str.alloc (worksize_c), workpath);
+		move( str.alloc (pathsize_c), projectpath);
+		move( str.alloc (pathsize_c), tplpath);
+		move( str.alloc (mastersize_c), strbuf);
 	
 		GraphicEx.Init();
 		make_init();
 
-		and (! opt_exptabs, settings.options);
-		or ( opt_indent, settings.options);			
+		and(! opt_exptabs, settings.options);
+		or( opt_indent, settings.options);			
 		
 		call arg.c;
 		mov (eax,argc);
@@ -4367,7 +4341,6 @@ proc
 		endif;
 		
 		env2.put("hlaopt", strbuf );
-//	dbg.endtrace;
 
 		str.put (workpath, homepath, dirsep_c, "hlalib");
 		env2.put ("lib", workpath);
@@ -4395,16 +4368,6 @@ proc
 		str.put (workpath, homepath, dirsep_c, "temp");
 		env2.put ("hlatmp", workpath);
 		
-		// set up env for FASM
-		//str.put (workpath, homepath, dirsep_c, "fasminc");
-		//env2.put ("include", workpath);
-	
-		// set default behavior
-		if( hideini.isKeyDefined( "HIDE Settings", "tab" ) ) then
-			hideini.readInt( "HIDE Settings", "tab" );
-			mov( al, settings.tab );
-		endif;
-
 		// default editor settings		
 		hideini.readUns( "HIDE Settings", "tab" );
 		if( eax ) then
@@ -4418,10 +4381,9 @@ proc
 			mov( eax, settings.options );
 		endif;
 
-		hideini.readUns( "HIDE Settings", "tab" );
+		hideini.readUns( "HIDE Settings", "backups" );
 		mov( al, settings.backups );
 		
-
 		move (settings.options, project.options);
 		mov (settings.tab, al);
 		mov (al, project.tab);
@@ -4487,7 +4449,7 @@ proc
 	
 	begin	HIDE_MAIN;
 	
-			// general init
+		// general init
 		dbg.cls;
 		dbg.put(">Begin [HIDE_MAIN]");
 		#if( @thread )
@@ -4502,10 +4464,7 @@ proc
 			jmp WinMain;
 		endif;
 
-		#if (os.win32)
-			w.AllocConsole();
-		#endif
-		
+		w.AllocConsole();
 		if (mode > 0) then
 			project.open (openfile_s);
 			if (mode = mode_build) then
@@ -4515,18 +4474,13 @@ proc
 			else
 				error.fatal ("Unknown value for 'cmdreturn'"); 
 			endif;
-
 		endif;
-
-		#if (os.win32)
-			toOutput (nl "press enter to exit");
-			stdin.readLn();
-		#endif
-		
+		toOutput (nl "press enter to exit");
+		stdin.readLn();
 		os.exitProcess (0);
 			
-	/**************************************************************/
-	//			Main Window Setup							//
+	/***************************************************************/
+	//			Main Window Setup									//
 	/***************************************************************/
 	WinMain:
 		dbg.put(">>WinMain");
@@ -4549,13 +4503,6 @@ proc
 		endif;
 		mov (eax,hexeddll);
 		
-		w.LoadLibrary ("riched20.dll");
-		if (! eax) then
-			error.fatal ("riched20.dll not found on system");
-			jmp _errorexit;
-		endif;
-		mov (eax, richeddll);
-		
 		// register window classes
 		mov(@size(w.WNDCLASSEX),wc.cbSize);
 		mov(w.CS_HREDRAW | w.CS_VREDRAW,wc.style);
@@ -4573,7 +4520,7 @@ proc
 		mov(eax,wc.hCursor);
 		w.RegisterClassEx(wc);
 		w.CreateDialogParam(hinst,val IDD_DLG,NULL,&WndProc,NULL);
-	dbg.put ("dialog created");
+		dbg.put ("dialog created");
 		if(settings.edtwin.fmax) then
 			mov(w.SW_MAXIMIZE,eax);
 		else
@@ -4612,7 +4559,6 @@ proc
 			hideini.readInt ("HIDE Settings", "Restore Project");
 			if ( eax ) then
 				if (hideini._readString ("HIDE Settings", "LastProject", workpath)) then
-					//dbg.put ("OPENING :", strbuf);
 					Recent_Insert( workpath );
 					project.open (workpath);
 				endif;
@@ -4620,7 +4566,6 @@ proc
 		endif;
 
 		updateDisplay (update_general);
-		dbg.put ("main message loop");
 		_msgloop:
 			w.GetMessage(msg,NULL,0,0);
 			cmp(eax,0);
@@ -4643,7 +4588,6 @@ proc
 		push (eax);
 		w.FreeLibrary(hradll);
 		w.FreeLibrary(hexeddll);
-		w.FreeLibrary(richeddll);
 		pop (eax);
 		_errorexit:
 		os.exitProcess (eax);

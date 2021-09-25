@@ -27,7 +27,6 @@ storage
 	htree			:dword;		// handle for treeview window
 	hprop			:dword;		// handel for properties window
 	hmenu			:dword;		// menu handle
-	hnotesedt		:dword;		// notes edit window handle
 
 	hideini			:tConfig;	// HIDE.ini configuration file in memory
 	hidesysini		:tConfig;	// hide_system.ini configuration file in memory

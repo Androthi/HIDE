@@ -1,6 +1,6 @@
 const
 
-	version	:string := "HIDE 1.6.52";
+	version	:string := "HIDE 1.6.60";
 	hlaversion :string := "hla 2.16/stdlib 8.0";
 
 	#includeonce	("os.hhf")
@@ -13,7 +13,6 @@ const
 	#includeonce	("strings.hhf")
 	#includeonce	("tables.hhf") 
 	#includeonce	("hide/hidelib.hhf")
-	//#includeonce	("macros/macros.hhf")
 
 const
 	nUserColors		:= 16;
@@ -165,11 +164,6 @@ const
 	panel_closed	:=0;
 	panel_project	:=1;
 	panel_prop		:=2;
-	panel_notes		:=3;	// depricated  -- change to scripts window in the future
-		
-	anchor_btn		:= 10;
-	output_btn		:= 11;
-	notes_btn		:= 12;
 		
 	enum0
 	(	// docking window messages

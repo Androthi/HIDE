@@ -1702,33 +1702,12 @@ _command:
 	jmp _xProc_Properties;
 	
 	_buttons:
-			if (eax = anchor_btn) then
-				if (testz (PROP_D, settings.winview)) then
-					xor (PROP_A, settings.winview);
-					if (testnz (PROP_A, settings.winview)) then
-						mov (true, eax);
-					else
-						mov (false, eax);
-					endif;
-					
-					caption.CheckButton(hwin, anchor_btn, al);
-					
-				else
-
-					toOutput ("Use Anchor when window is undocked" nl
-						"To undock, drag by the title bar" nl);
-				endif;
-
-
-			else
-				
-				mov (eax, prop_displaymode);
-				hideini.writeInt ("HIDE Settings", "Property_Mode", eax);
-				saveAll();			
-				prop_updateView();
-			endif;
-
-			jmp _xProc_Properties;
+	
+		mov (eax, prop_displaymode);
+		hideini.writeInt ("HIDE Settings", "Property_Mode", eax);
+		saveAll();			
+		prop_updateView();
+		jmp _xProc_Properties;
 		
 	_cbchange:
 		if (eax = PROPERTIES_COMBO) then

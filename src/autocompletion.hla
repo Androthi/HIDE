@@ -735,9 +735,7 @@ begin SubListbox;
 				HideDialog();
 				exit SubListbox;
 			elseif(wparam = w.VK_F1) then
-//				dbg.put ("f1");
 				w.DialogBoxParam(hinst,val IDD_DLGAUTOSETTINGS,hwin,&Proc_Autosetting,0);
-//				dbg.put ("/f1");
 			elseif(wparam = w.VK_DELETE) then
 				DeleteWord();
 			endif;

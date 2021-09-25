@@ -10,6 +10,16 @@ The project is setup to look for a HIDE_WORK folder in the same tree level as th
 
 
 # CHANGE LOG
+
+## v1.6.60
+	- start of cleanup code with the possible intention of making HIDE
+	  more language agnostic.
+	- removed NOTES from output, removed unused 'anchor' button from side windows
+	- loading and saving the resource images in a modern image editor fixed the pale
+	  images in the Properties Panel buttons.
+	- removed the now unused captionbutton.hla unit
+	
+
 ## v1.6.3
-	-	Fixed Insert File at Cursor crash
+	- Fixed Insert File at Cursor crash
 	

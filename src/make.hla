@@ -604,10 +604,8 @@ proc
 
 	make_init :procedure { @noframe };
 	begin make_init;
-		
 		linkobjs.create();
 		linkfile.create();
-		
 		ret();
 	end make_init;
 
@@ -921,18 +919,11 @@ USE (EBX, ESI, EDX);
 	mov (listebx.ftype, eax);
 	switch (eax);
 	case (type_hla, type_unit)
-		
-		//dbg.put ("case program/unit");
-		
+			
 		build_outfile();
 		
-		//dbg.put ("/outfile :", outfile);
-		
 		if (force = mforce_c) then
-			
-			//dbg.put("forced");
-			mov (true, build);
-			
+			mov (true, build);			
 		else
 
 			//dbg.put ("checking exists");

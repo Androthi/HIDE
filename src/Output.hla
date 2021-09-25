@@ -13,8 +13,6 @@ unit OutputUnit;
 storage
 	oldoutputedit	:dword;
 	oldhout			:dword;
-	active_edt		:dword;
-
 	htimer			:dword;
 
 procedure CloseOutputTimer(lparam:dword; wparam:dword; umsg:uns32; hwin:dword);
@@ -45,84 +43,6 @@ begin CancelTimerCloseOutput;
 	w.SendMessage( hout, w.WM_CLOSE, 0, 0 );
 	ret();
 end CancelTimerCloseOutput;
-
-
-
-procedure Notes_Open;
-	var
-		buf	:tBuffer;
-		
-begin Notes_Open;
-//	dbg.put ("NOTES_OPEN");
-	pushabi;
-	if (project.isOpen) then
-		buf.create();
-		mov (&project.hpr, esi);
-		
-		if( iniesi.readBufSection( "Notes", buf ) ) then
-			
-			buf.eof();
-			buf.putByte( 0 );
-			buf.bof();
-			w.SendMessage( hnotesedt, w.WM_SETTEXT, 0, EAX );
-		endif;
-		
-		buf.destroy();
-		
-	endif;
-	w.SendMessage (hnotesedt, w.EM_SETMODIFY, false, 0);
-	popabi;
-//	dbg.put ("/NOTES_OPEN");
-
-end Notes_Open;
-
-procedure Notes_Save;
-	var
-		buf	:tBuffer;
-		s	:string;
-
-begin Notes_Save;
-	//dbg.put ("notes_save");
-
-	w.SendMessage ( hnotesedt, w.EM_GETMODIFY, 0, 0);
-	if (eax) then
-		
-		// need to preserve current dir
-		mov (str.talloc (pathsize_c), s);
-		filesys.gwd (s);
-	
-		pushabi;
-		buf.create( $10000 );
-		mov( buf.cursor, eax );
-		w.SendMessage( hnotesedt, w.WM_GETTEXT, $10000, EAX );
-		mov( eax, buf.length );
-		buf.bof();
-
-		if (project.isOpen) then
-			buf.inserts ("<text>" nl);
-			buf.eof();
-			buf.puts( nl );
-			buf.puts( "</text>" nl );
-
-			lea (esi, project.hpr);
-			iniesi.writeBufSection ("Notes", buf);
-			filesys.cd (project.folder);
-			iniesi.write (project.id);
-		endif;
-		
-		filesys.cd (s);	
-		buf.destroy();
-		popabi;
-	endif;
-	//dbg.put ("/notes_save");
-end Notes_Save;
-
-procedure Notes_Clear; @noframe;
-begin Notes_Clear;
-	w.SendMessage (hnotesedt, w.EM_SETSEL, 0, -1);
-	w.SendMessage(hnotesedt, w.WM_CLEAR,0,0);
-	ret();
-end Notes_Clear;
 
 procedure Output_View ( message:dword);
 	
@@ -195,7 +115,6 @@ begin Proc_OutputEdit;
 		lea(eax,_chrg);
 		w.SendMessage(houtedt,w.EM_EXGETSEL,0,eax);
 		w.SendMessage(houtedt,w.EM_EXLINEFROMCHAR,0,_chrg.cpMin);
-		//dbg.put("line index = ", (type int32 eax) );
 		mov(&buffer,esi);
 		mov(@size(buffer),(type word [esi]));
 		
@@ -203,16 +122,11 @@ begin Proc_OutputEdit;
 		str.a_cpyz(&buffer);
 		mov(eax,_somestr);
 		
-		//dbg.put("returned length = ",(type uns32 eax));		
-		//dbg.put("captured line:");
-		//dbg.put(_somestr);
-
 		// parse the line to find HLA errors, grab the file name,
 		// grab the line number and jump to that word, highlight the line.
 		
 		pat.match(_somestr);
 			pat.matchStr("Error in file ");
-			dbg.putz(esi);
 			inc(esi);			// skip 1st '"'
 			pat.upToChar('"');	// find closing quote
 			pat.a_extract(_extFileName);
@@ -298,33 +212,6 @@ procedure Proc_Output (lparam:dword; wparam:dword; umsg:uns32; hwin:dword);
 
 	var		chrg	:w.CHARRANGE;
 	
-	procedure doButton( id:uns32 );
-	begin doButton;
-		mov( id, eax ); dbg.put("dobutton :", eax );
-		if (eax = output_btn) then
-				
-			caption.CheckButton(hout, output_btn, true);
-			caption.CheckButton(hout, notes_btn, false);
-			hideini.writeInt ("HIDE Settings", "output mode", output_btn);
-			w.SetWindowText( hout, (type string zOutput) );
-			w.ShowWindow(hnotesedt, w.SW_HIDE);
-			w.ShowWindow(houtedt, w.SW_SHOW);
-			move( houtedt,active_edt ); 
-			
-		elseif( eax = notes_btn) then
-			
-			caption.CheckButton(hout, notes_btn, true);
-			caption.CheckButton(hout, output_btn, false);
-			hideini.writeInt ("HIDE Settings", "output mode", notes_btn);
-			w.SetWindowText( hout, (type string zNotes) );
-			w.ShowWindow(houtedt, w.SW_HIDE);
-			w.ShowWindow(hnotesedt, w.SW_SHOW);
-			move( hnotesedt, active_edt );
-		endif;
-
-	end doButton;
-
-	
 begin 	Proc_Output;
 	pushabi;
 		mov(umsg,eax);
@@ -340,23 +227,8 @@ begin 	Proc_Output;
 		je _destroy;
 		cmp(eax,w.WM_MOUSEACTIVATE);
 		je _activate;
-		cmp( eax, w.WM_COMMAND);
-		je _command;
 		jmp xProc_Output;
 		
-	_command:	
-		mov(wparam,eax);
-		mov(eax,edx);
-		shr(16,edx);
-		and($0ffff,eax);
-		
-		if (edx = w.BN_CLICKED) then
-
-			doButton( eax );
-			w.SendMessage(hwin,w.WM_SIZE,0,0);	
-		endif;
-		jmp xProc_Output;
-
 		
 	_changing:
 			cmp(oldhout,0);
@@ -368,8 +240,7 @@ begin 	Proc_Output;
 			w.GetClientRect(hwin, &rect);
 			mov	(rect.bottom,eax);
 			sub	(rect.top,eax);
-			// eax = height
-			w.MoveWindow( active_edt, 0, rect.top, rect.right, eax, true );
+			w.MoveWindow( houtedt, 0, rect.top, rect.right, eax, true );
 			call _savepos;
 			w.InvalidateRect(hout,NULL,true);
 			jmp xProc_Output;
@@ -381,13 +252,7 @@ begin 	Proc_Output;
 						STYLE_NOSPLITT | STYLE_NOLINENUMBER | STYLE_NOCOLLAPSE | STYLE_NOHILITE | STYLE_NODIVIDERLINE,
 						0,0,0,0,hwin,NULL,hinst,NULL);
 			mov(eax,houtedt);
-	
-			w.CreateWindowEx(w.WS_EX_CLIENTEDGE, RAEditClassName,NULL,w.WS_CHILD |
-						STYLE_NOSPLITT | STYLE_NOLINENUMBER | STYLE_NOCOLLAPSE | STYLE_NOHILITE | STYLE_NODIVIDERLINE,
-						0,0,0,0,hwin,NULL,hinst,NULL);
-			mov(eax,hnotesedt); 
-			
-			dbg.put("*********notes edt = ", hnotesedt );
+			dbg.put("houtedit = ", houtedt);
 	
 			mov(hmainfont,rafnt.hFont);
 			mov(hitalic,rafnt.hIFont);
@@ -395,22 +260,10 @@ begin 	Proc_Output;
 
 			w.SendMessage(houtedt,REM_SETFONT,0,&rafnt);
 			w.SendMessage(houtedt,REM_SETCOLOR,0,&col);
-			w.SendMessage(hnotesedt,REM_SETFONT,0,&rafnt);
-			w.SendMessage(hnotesedt,REM_SETCOLOR,0,&col);
-
 	
 			w.SendMessage(houtedt,REM_SUBCLASS,0,&Proc_OutputEdit);
 			mov(eax,oldoutputedit);
-			
-			// setup outwindow mode mode
-			hideini.readInt ("HIDE Settings", "output mode");
-			if( ! eax ) then
-				hideini.writeInt( "HIDE Settings", "output mode", output_btn );
-				mov( output_btn, eax );
-			endif;
-			doButton( eax );
-			
-			
+			w.ShowWindow(houtedt,w.SW_SHOWNA);			
 			test(OUTPUT_D,settings.winview);
 			if(@nz) then
 				Output_View(DOCK_YES);
@@ -418,7 +271,7 @@ begin 	Proc_Output;
 				w.MoveWindow(hwin,settings.outwin.x,settings.outwin.y,settings.outwin.wt,settings.outwin.ht,true);
 				w.SendMessage(hwin,w.WM_SIZE,0,0);			
 			endif;
-			
+			w.SetWindowText(hout, "Output");
 			jmp xProc_Output;
 	
 	_activate:
