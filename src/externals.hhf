@@ -28,7 +28,6 @@ proc
 procedure hide_openFile( fname:string ); @returns ("EAX"); @external;
 
 // project
-//procedure Proc_OpenTemplate (lparam:dword; wparam:dword; umsg:uns32; hwin:dword); @external;
 procedure Proc_JobsManager (lparam:dword; wparam:dword; umsg:uns32; hwin:dword);	@external;
 procedure writeStdTpl ( fileName:string; ftype:uns32); @external;
 procedure Proc_NewProject  (lparam:dword; wparam:dword; umsg:uns32; hwin:dword); @external;
@@ -93,7 +92,6 @@ procedure projectview_checkUpdates; @external;
 // tabtool
 procedure tabtool_activate; @external;
 procedure tabtool_add (var node:fList.fnode); @external;
-//procedure tabtool_getmem (var node:fList.fnode); @returns ("EAX"); @external;
 procedure tabtool_getindex (var node:fList.fnode); @returns ("EAX"); @external;
 procedure tabtool_update (var node:fList.fnode); @returns ("EAX"); @external;
 procedure tabtool_close (var node:fList.fnode); @returns ("EAX"); @external;

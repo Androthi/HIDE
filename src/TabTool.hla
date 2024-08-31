@@ -181,26 +181,6 @@ USE (ESI, ECX, EDI, EBX, EDX);
 ENDUSE;
 end tabtool_add;
 
-//procedure tabtool_getmem (var node:fList.fnode);
-//	var
-//		index	:uns32;
-//		
-//begin tabtool_getmem;
-//USE (EBX);
-//	mov (-1, index);
-//	mov(w.TCIF_PARAM, tci.imask);
-//	mov(true, eax);
-//	while(eax) do
-//		inc	(index);
-//		w.SendMessage (htab, w.TCM_GETITEM, index, &tci);
-//		if (eax) then
-//			mov	(tci.lParam, eax);
-//			breakif (eax = node);
-//		endif;
-//	endwhile;
-//ENDUSE;
-//end tabtool_getmem;
-//
 procedure tabtool_update (var node:fList.fnode);
 	// updates text display of node
 	// returns 0 if node not found

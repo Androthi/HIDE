@@ -567,7 +567,6 @@ program HIDE_MAIN;
 			pushabi;
 			hideini.readInt( "HIDE Settings", "Auto Parenthesis" );
 			if( eax ) then
-			//if (testnz (opt_autoparen, project.options)) then
 				
 				mov (ebp::wparam, eax);
 				w.SendMessage(listebx.hwnd,w.EM_EXGETSEL,0,&chrg);
@@ -1394,6 +1393,8 @@ program HIDE_MAIN;
  	end hide_closeNode;
 
 
+
+
 	
 	procedure Menu_NewFile; @noframe;
 	begin Menu_NewFile;
@@ -1900,7 +1901,7 @@ program HIDE_MAIN;
 		MakeProc( mbuild_c, mobject_c, mclear_c );
 		ret();
 	end Menu_MakeBuildObjects;
-	
+		
 	proc
 		Menu_MakeHla :procedure {@noframe} ;
 		begin Menu_MakeHla;
@@ -1908,8 +1909,20 @@ program HIDE_MAIN;
 			MakeProc( mhla_c, eax, mclear_c );
 			ret();
 		end Menu_MakeHla;
-
 		
+		Menu_BuildScript	:procedure;
+			var s	:string;
+	
+				
+		begin Menu_BuildScript;
+			mov (str.talloc (pathsize_c), s);
+			
+			if (filesys.exists ("Build.kmk")) then
+					str.put (s, "kmake Build.kmk" );
+					launchProgram( s, true, true );
+			endif;
+			
+		end Menu_BuildScript;
 
 	
 	procedure Menu_MakeBuildJob; @noframe;
@@ -3301,6 +3314,7 @@ proc
 			dword	IDM_MAKE_REBUILDONE,	&Menu_MakeBuildOne;
 			dword	IDM_MAKE_REBUILDJOB,	&Menu_MakeReBuildJob;
 			dword	IDM_MAKE_BUILDOBJECTS,	&Menu_MakeBuildObjects;
+			dword	IDM_BUILD_SCRIPT,		&Menu_BuildScript;
 			dword	IDM_MAKE_HLA,			&Menu_MakeHla;
 			dword	IDM_MAKE_RUN,			&Menu_MakeRun;
 			dword	IDM_MAKE_BUILDITRUN,	&Menu_MakeBuildRun;

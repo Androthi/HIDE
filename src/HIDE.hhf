@@ -1,6 +1,6 @@
 const
 
-	version	:string := "HIDE 1.6.63";
+	version	:string := "HIDE 1.7.00";
 	hlaversion :string := "hla 2.16/stdlib 8.0";
 
 	#includeonce	("os.hhf")
@@ -250,7 +250,7 @@ const
 	opt_scanprops	:= @{16};	// used to scan or skip scan properties list -- moved
 	opt_threadsafe	:= @{17};	// used to link in thread safe standard library
 
-	// hide modes, not really used
+	// hide modes
 	mode_gui		:= 0;		// normal operation
 	mode_build		:= 1;		// no gui - just build project
 	mode_buildall	:= 2;		// no gui - just build all project	

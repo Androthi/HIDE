@@ -22,7 +22,7 @@ console=false
 output=%h\..\HIDE_WORK\hide.exe
 type=modular
 main=HIDE.hla
-debug=true
+debug=false
 
 [HIDE.link]
 -heap:0x100,0x100
@@ -72,12 +72,7 @@ manager.hla,src,hlaunit
 Tools.khelp,Docs,khelp
 Instruction_Ref.khelp,Docs,khelp
 README.md,,misc
-
-[Notes]
-<text>
-====================================================================project to develop HIDE compilation and execution in linuxis no longer supported.====================================================================Building GUI in linuxuse this linker commandline"-I /lib/ld-linux.so.2 -lX11 -L/usr/X11R6/lib"====================================================================HIDE Internals Notes====================================================================Getting String input from usergetStringInput (title:string; dest:string);	title = title of dialog	dest  = destination string to copy user inputgetStringInput (title:string; initial:string; dest:string);	title = title of dialog	initial = initial text in text box	dest = destination string to copy user input====================================================================Printing text to the output windowtoOutput ( args[] );	a macro used like stdout.put		====================================================================Printing text to the debug window (SavageEd.exe)dbg.put ( args[] );	used like stdout.put, see the HIDE.khelp manual	Under Operation -> Menus -> Tools -> Debug Window	for a full description of all dbg library functions====================================================================Global stringshomepath,	pathsize_c,		path to HIDE folderconfigmain, pathsize_c,		path to hide.inifilebuffer,	pathsize_c,		contains current active file nodeprojectpath,pathsize_c,		path to project folderworkpath,	worksize_c,		scratch string bufferstrbuf,		worksize_c,		scratch string buffer (also used by toOutput function)tplpath,	pathsize_c,		path to HIDE/DATA/Templates foldernote that contents of strbuf and workpath cannot be counted uponto be preserved between HIDE procedure calls.====================================================================Global variables/ structuresResource IDsVersion				1Graphic items		100Accelerator			200HIDE				1000Menu				1000Autocompletion		1100-1999Find				2000Goto				2050String Input		2100Dependency			2150Polink options		2500Output				3000Notes				3050Project Manager		3100New Project			3600Keywords			4000Project	View		5000About				6000Set Paths			6100Template			7000HIDE Settings		8500Compiler Settings	9000Properties			10000HIDE Manager		15000===========================Configurationshidesysini	Data\hide_system.inihideini		Data\hide.ini=========================== 
-</text>
-
+odin_imports.odin,src,misc
 
 [Build Lexer]
 type=target
@@ -90,6 +85,7 @@ scanID.kmk,src,kmake
 [Held Jobs]
 Build Lexer
 Update Docs
+Build
 
 [HPR Jobs]
 HIDE
@@ -114,3 +110,11 @@ target=Docs\update_docs.kmk
 
 [Update Docs.files]
 update_docs.kmk,Docs,kmake
+
+[Build]
+type=target
+output=
+target=Build.kmk
+
+[Build.files]
+Build.kmk,,kmake

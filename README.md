@@ -11,6 +11,9 @@ The project is setup to look for a HIDE_WORK folder in the same tree level as th
 
 # CHANGE LOG
 
+## v1.6.64
+	- Added menu option F10 to launch kmake on "Build.kmk" in project root folder
+
 ## v1.6.63
 	- start of cleanup code with the possible intention of making HIDE
 	  more language agnostic.
