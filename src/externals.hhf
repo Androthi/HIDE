@@ -37,7 +37,7 @@ procedure Proc_KeyWords (lparam:dword; wparam:dword; umsg:uns32; hwin:dword);	@e
 
 
 // editfunctions
-procedure SetKeyWords (hwin:dword);	@external;
+procedure SetKeyWords(var node:fList.fnode); @external;
 procedure saveAll; @external;
 procedure closeAll; @external;
 procedure querySave (var node:fList.fnode); @returns ("EAX"); @external;

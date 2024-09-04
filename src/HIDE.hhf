@@ -1,6 +1,6 @@
 const
 
-	version	:string := "HIDE 1.7.00";
+	version	:string := "HIDE 1.7.10";
 	hlaversion :string := "hla 2.16/stdlib 8.0";
 
 	#includeonce	("os.hhf")
@@ -15,7 +15,7 @@ const
 	#includeonce	("hide/hidelib.hhf")
 
 const
-	nUserColors		:= 16;
+	nUserColors		:= 6;
 
 namespace hide;
 	type
@@ -199,7 +199,7 @@ const
 	
 	
 	// relates to string array
-	nFileTypes				:=9;
+	nFileTypes				:=11;
 		type_hla		:= 0;		// main hla source file
 		type_unit		:= 1;		// hla unit with separate compilation
 		type_hhf		:= 2;		// header file
@@ -208,7 +208,9 @@ const
 		type_def		:= 5;		// dll definition file
 		type_bin		:= 6;		// binary file
 		type_misc		:= 7;		// misc file
-		type_kmake		:= 8;		// kmake file
+		type_kmake		:= 8;		// kmake file\
+		type_odin		:= 9;		// odin source files
+		type_go			:= 10;		// go source files
 		
 	
 	// file types not coverd above,

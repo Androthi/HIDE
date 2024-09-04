@@ -16,6 +16,15 @@ readonly
 		khelptype :byte; @nostorage;
 				byte "kHelp document (*.khelp)",0,"*.khelp",0;
 				byte "All Files (*.*)",0,"*.*",0,0;
+	align(4);
+		odintype  :byte; @nostorage;
+				 byte "odin source (*.odin)",0,"*.odin",0;
+				 byte "All Files (*.*)",0,"*.*",0,0;
+				 
+	align(4);
+		gotype  :byte; @nostorage;
+				 byte "go source (*.go)",0,"*.go",0;
+				 byte "All Files (*.*)",0,"*.*",0,0;
 		
 	align(4);
 		hlaext	:mzstr ("hla");
@@ -423,7 +432,15 @@ proc
 		elseif( str.ieq( strbuf, "hhf") ) then
 	
 			mov( type_hhf, listebx.ftype );
+		
+		elseif( str.ieq( strbuf, "odin" )) then
 			
+			mov( type_odin, listebx.ftype );
+			
+		elseif( str.ieq( strbuf, "go" )) then
+			
+			mov( type_go, listebx.ftype );
+		
 		else
 			
 			mov( type_misc, listebx.ftype );
@@ -588,7 +605,9 @@ proc
 			// specific settings for assembly source types
 			if( listebx.ftype = type_hla ||
 				listebx.ftype = type_unit  ||
-				listebx.ftype = type_hhf ) then
+				listebx.ftype = type_hhf ||
+				listebx.ftype = type_odin ||
+				listebx.ftype = type_go ) then
 				
 				hideini.readInt( "HIDE Settings", "Show Divider" );
 				if( eax ) then
@@ -613,16 +632,22 @@ proc
 				w.SendMessage(listebx.hwnd, REM_SETCHARTAB, ';', CT_NONE);
 				w.SendMessage(listebx.hwnd, REM_SETCHARTAB, '/', CT_CMNTDBLCHAR);
 				w.SendMessage (listebx.hwnd, REM_ADDBLOCKDEF, 0, 0);
-				mov	(&blocks, esi);
-				while ((type dword [esi])) do
-					w.SendMessage( listebx.hwnd, REM_ADDBLOCKDEF,0,[esi]);
-					add	(4,esi);
-				endwhile;
+
+				if( listebx.ftype = type_hla ||
+					listebx.ftype = type_unit  ||
+					listebx.ftype = type_hhf  ) then
+					
+					mov	(&blocks, esi);
+					while ((type dword [esi])) do
+						w.SendMessage( listebx.hwnd, REM_ADDBLOCKDEF,0,[esi]);
+						add	(4,esi);
+					endwhile;
+				endif;
 				w.SendMessage (listebx.hwnd, REM_SETBLOCKS, 0, 0);
-				SetKeyWords (listebx.hwnd);
+				SetKeyWords( listebx );
 	
 				w.SendMessage(listebx.hwnd, REM_SETCOMMENTBLOCKS, &szCmntStart,&szCmntEnd);
-		
+				
 			elseif( listebx.ftype = type_rc ) then
 				
 				mov (1, group);
@@ -900,7 +925,11 @@ begin InitOF;
     elseif (ebx = type_template) then
     	mov(&templatetype,eax);
     elseif (ebx= type_khelp) then
-    	mov (&khelptype, eax);	
+    	mov (&khelptype, eax);
+    elseif (ebx= type_odin) then
+    	mov (&odintype, eax);
+    elseif (ebx= type_go) then
+    	mov( &gotype, eax);
     endif;
 	mov(eax,of.lpstrFilter);
 	

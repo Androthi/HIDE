@@ -10,7 +10,13 @@ The project is setup to look for a HIDE_WORK folder in the same tree level as th
 
 
 # CHANGE LOG
-
+## v1.7.10
+	- consolidated the keywords .ini files into smaller number of groups.
+	- Data folder now contains HLA_Keywords.ini, x86.ini, resources.ini, custom.ini
+	- Added 2 new groups, odin.ini and go.ini those groups will be loaded if HIDE opens
+	  .odin or .go files respectively.
+	  all the other group files have been removed.
+	  
 ## v1.6.64
 	- Added menu option F10 to launch kmake on "Build.kmk" in project root folder
 

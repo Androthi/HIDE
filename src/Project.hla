@@ -93,7 +93,9 @@ readonly
 		"DLL Definition",
 		"Binary",
 		"Misc.",
-		"kMake Script"
+		"kMake Script",
+		"Odin Source",
+		"Go Source",
 	];
 	
 	hlaLevels	:zstring[4] :=
@@ -114,7 +116,9 @@ readonly
 		"misc",
 		"binary",
 		"misc",
-		"kmake"
+		"kmake",
+		"odin",
+		"go",
 	];
 
 	

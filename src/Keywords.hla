@@ -44,42 +44,22 @@ const	// local constants
 		
 		ColorGroups	:string[ nColorGroups ] :=
 			[
-				"x86 Registers",
-				"x86 Instructions",
-				"x86 Extended",
+				"x86",
 				"Resource",
 				"HLA Keywords",
-				"HLA Types",
-				"HLA Namespace",
-				"HLA Stdlib",
-				"HLA CTL",
-				"API Constants",
-				"API Functions",
-				"User 01",
-				"User 02",
-				"User 03",
-				"User 04",
-				"User 05"
+				"Custom",
+				"Odin",
+				"Go"
 			];
 			
 		GroupFiles	:string[ nColorGroups ] :=
 			[
-				"Data\x86regs.ini",
-				"Data\x86instr.ini",
-				"Data\x86xtend.ini",
+				"Data\x86.ini",
 				"Data\resource.ini",
-				"Data\hla_keywords.ini",
-				"Data\hla_types.ini",
-				"Data\hla_namespace.ini",
-				"Data\hla_stdlib.ini",
-				"Data\hla_ctl.ini",
-				"Data\api_constants.ini",
-				"Data\api_functions.ini",
-				"Data\user01.ini",
-				"Data\user02.ini",
-				"Data\user03.ini",
-				"Data\user04.ini",
-				"Data\user05.ini"
+				"Data\HLA_Keywords.ini",
+				"Data\custom.ini",
+				"Data\odin_keywords.ini",
+				"Data\go_keywords.ini"
 			];
 
 storage
@@ -92,8 +72,8 @@ static
 	
 
 proc
-	SetKeyWords	:procedure( hwin:dword );
-	
+	//>SetKeyWords	:procedure( hwin:dword );
+	SetKeyWords :procedure( var node:fList.fnode );
 		var
 			index		:uns32;
 			configini	:pointer to tConfig;
@@ -104,27 +84,71 @@ proc
 	begin SetKeyWords;
 		pushad();
 		//dbg.enters( "SetKeyWords" );
-		
-		w.SendMessage(hwin,REM_SETHILITEWORDS,0,0);
+		mov( node, edx );
+		w.SendMessage(listedx.hwnd,REM_SETHILITEWORDS,0,0);
 		mov( 0, index );
 		mov( &usrcol, ebx );
-		
-		while( index < nColorGroups ) do
-			mov( index, eax );
-			str.put( strbuf, homepath, dirsep_c, GroupFiles[eax*4] );
+		mov( node, edx );
+		if( listedx.ftype = type_hla ||
+				listebx.ftype = type_unit  ||
+				listebx.ftype = type_hhf ) then
+			while( index < 3 ) do  // items for HLA files
+				mov( index, eax );
+				str.put( strbuf, homepath, dirsep_c, GroupFiles[eax*4] );
+				if( filesys.exists( strbuf )) then
+					buf.create( strbuf );
+					mov( index, edi );
+					mov( [ebx+edi*4], edi );
+					mov( buf.cursor, eax );
+					mov( node, edx );
+					w.SendMessage( listedx.hwnd, REM_SETHILITEWORDS, edi, eax );
+					buf.destroy();
+				endif;
+				
+				inc( index );
+				
+			endwhile;	
+		elseif( listedx.ftype = type_odin ) then
+			str.put( strbuf, homepath, dirsep_c, GroupFiles[3*4] ); // this is hacky! 3 == custom
 			if( filesys.exists( strbuf )) then
-				//dbg.put("got ", strbuf );
 				buf.create( strbuf );
-				mov( index, edi );
-				mov( [ebx+edi*4], edi );
+				mov( [ebx+3*4], edi );
 				mov( buf.cursor, eax );
-				w.SendMessage( hwin, REM_SETHILITEWORDS, edi, eax );
+				mov( node, edx );
+				w.SendMessage( listedx.hwnd, REM_SETHILITEWORDS, edi, eax );
+				buf.destroy();
+			endif;
+			str.put( strbuf, homepath, dirsep_c, GroupFiles[4*4] ); // 4 == odin
+			if( filesys.exists( strbuf )) then
+				buf.create( strbuf );
+				mov( [ebx+4*4], edi );
+				mov( buf.cursor, eax );
+				mov( node, edx );
+				w.SendMessage( listedx.hwnd, REM_SETHILITEWORDS, edi, eax );
 				buf.destroy();
 			endif;
 			
-			inc( index );
-			
-		endwhile;	
+		elseif( listedx.ftype = type_go ) then
+			str.put( strbuf, homepath, dirsep_c, GroupFiles[3] );
+			if( filesys.exists( strbuf )) then
+				buf.create( strbuf );
+				mov( [ebx+3*4], edi );
+				mov( buf.cursor, eax );
+				mov( node, edx );
+				w.SendMessage( listedx.hwnd, REM_SETHILITEWORDS, edi, eax );
+				buf.destroy();
+			endif;
+			str.put( strbuf, homepath, dirsep_c, GroupFiles[5] ); // 5 == go
+			if( filesys.exists( strbuf )) then
+				buf.create( strbuf );
+				mov( [ebx+5*4], edi );
+				mov( buf.cursor, eax );
+				mov( node, edx );
+				w.SendMessage( listedx.hwnd, REM_SETHILITEWORDS, edi, eax );
+				buf.destroy();
+			endif;
+		endif;
+		
 
 		//dbg.exits( "SetKeyWords" );
 		popad();
@@ -447,7 +471,7 @@ proc
 		hideini.writeBin( "Colors", "usrcol", &usrcol, @size(usrcol) );
 		mov( curnode, eax );
 		if( eax ) then
-			SetKeyWords( listeax.hwnd );
+			SetKeyWords( listeax );
 			repaintAll();
 		endif;
 		
