@@ -83,7 +83,7 @@ readonly
 		"Misc"
 	];
 		
-	fileTypes	:zstring[ nFileTypes ] :=
+	fileTypes	:zstring[] :=
 	[
 		"HLA Main",
 		"HLA Unit",
@@ -106,7 +106,7 @@ readonly
 		"Machine"
 	];
 	
-	actionStrings	:string[ nFileTypes ] :=
+	actionStrings	:string[] :=
 	[
 		"hlaprogram",
 		"hlaunit",
@@ -1150,13 +1150,13 @@ begin open;
 		endif;
 
 		prop_updateView();
-		w.SendMessage(hwnd,HIDE_TOGGLEDEBUG,0,0);
+		w.SendMessage(core.hwnd,HIDE_TOGGLEDEBUG,0,0);
 		TreeToolSetup();
 		repaintAll();
-		w.SendMessage( hwnd, HIDE_SETSTATUS, STATUS_PROJ, zProject );
+		w.SendMessage( core.hwnd, HIDE_SETSTATUS, STATUS_PROJ, zProject );
 	endif;
 	
-	w.SendMessage( hwnd, w.WM_SETFOCUS, 0, 0);
+	w.SendMessage( core.hwnd, w.WM_SETFOCUS, 0, 0);
 	str.put( strbuf, project.folder, dirsep_c, project.id );
 	Recent_Insert( strbuf );
 	
@@ -1264,7 +1264,7 @@ USE (EBX, ESI, EDI);
 		anyexception
 			error.warning("Project folder no longer exists, please fix project path");
 		endtry;
-		w.SendMessage(hwnd,HIDE_SETSTATUS,STATUS_PROJ, zStandard );
+		w.SendMessage(core.hwnd,HIDE_SETSTATUS,STATUS_PROJ, zStandard );
 		SetWindowCaption();
 		xor (eax, eax);
 	endif;
@@ -2527,7 +2527,7 @@ proc
 			
 			elseif (eax = IDC_MANAGERJOBS_NEWFILE) then
 				
-				w.DialogBoxParam( hinst, val ID_NEWFILE, hwin, &Proc_NewFile, false );
+				w.DialogBoxParam( core.hinst, val ID_NEWFILE, hwin, &Proc_NewFile, false );
 				if( eax ) then
 					
 					updateFiles( curjob );
@@ -2561,7 +2561,7 @@ proc
 					w.SendMessage( hFiles, w.LVM_GETITEM, 0, &lvi );
 					mov( lvi.lParam, ebx );
 					dbg.put( "file :", listebx.id );
-					w.DialogBoxParam( hinst, val ID_RENAMEFILE, hwin, &Proc_RenameFile, ebx );
+					w.DialogBoxParam( core.hinst, val ID_RENAMEFILE, hwin, &Proc_RenameFile, ebx );
 					if( eax ) then
 						
 						updateFiles( curjob );
@@ -2697,7 +2697,7 @@ proc
 				
 			elseif (eax = IDC_MANAGERJOBS_NEWJOB) then
 
-				w.DialogBoxParam( hinst, val ID_NEWJOB, hwin, &Proc_NewJob, false );
+				w.DialogBoxParam( core.hinst, val ID_NEWJOB, hwin, &Proc_NewJob, false );
 				if( eax ) then
 					
 					updateJobs();
@@ -2708,7 +2708,7 @@ proc
 
 				mov( curjob, eax );
 				saveAll();
-				w.DialogBoxParam( hinst, val ID_ADVANCEDLINK, hwin, &Proc_AdvancedLink, eax );
+				w.DialogBoxParam( core.hinst, val ID_ADVANCEDLINK, hwin, &Proc_AdvancedLink, eax );
 				
 			endif;
 			
@@ -2776,6 +2776,7 @@ proc
 			
 			if( eax = w.LVN_ITEMCHANGED ) then
 				
+
 				if( (type w.NM_LISTVIEW[EDX]).iItem != -1 ) then
 				
 					if( bitSet( w.LVIS_SELECTED, (type w.NM_LISTVIEW[EDX]).uNewState )) then

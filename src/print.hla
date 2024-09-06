@@ -66,8 +66,8 @@ procedure PageSetup; // auto=don't show box, return default setup structure
 begin PageSetup;
 
 	GetPrnCaps();
-	mov(hwnd, psd.hwndOwner);
-	mov(hinst, psd.hInstance);
+	mov(core.hwnd, psd.hwndOwner);
+	mov(core.hinst, psd.hInstance);
 	mov (@size (w.PAGESETUPDLG), psd.lStructSize);
 	mov (w.PSD_MARGINS, psd.flags);
 	if (prnInches) then
@@ -139,8 +139,8 @@ begin PrintDoc;
 	lea (eax, pd);
 	mem2.fillMem([eax], @size(w.PRINTDLG), 0);
 	mov (@size(w.PRINTDLG), pd.lStructSize); // set the size
-	move (hwnd, pd.hWndOwner);
-	move (hinst, pd.hInstance);
+	move (core.hwnd, pd.hWndOwner);
+	move (core.hinst, pd.hInstance);
 
 	mov(1, pd.nMinPage);
 	mov(1, pd.nFromPage);

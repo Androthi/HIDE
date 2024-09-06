@@ -17,30 +17,30 @@ storage
 
 procedure CloseOutputTimer(lparam:dword; wparam:dword; umsg:uns32; hwin:dword);
 begin CloseOutputTimer;
-	w.KillTimer(hout,201);
-	w.SendMessage(hout,w.WM_CLOSE,0,0);
+	w.KillTimer(core.hout,201);
+	w.SendMessage(core.hout,w.WM_CLOSE,0,0);
 	mov (0, htimer);
 end CloseOutputTimer;
 
 procedure CloseOutputDelay(ntime:dword);
 begin CloseOutputDelay;
-	w.SetTimer(hout,201,ntime,&CloseOutputTimer);
+	w.SetTimer(core.hout,201,ntime,&CloseOutputTimer);
 	mov (eax, htimer);
 end CloseOutputDelay;
 
 procedure CancelTimer (htime:dword);
 begin CancelTimer;
 	if (htime) then
-		w.KillTimer (hout, htime);
+		w.KillTimer (core.hout, htime);
 		mov (0, htimer);
 	endif;
 end CancelTimer;
 
 procedure CancelTimerCloseOutput; @noframe;
 begin CancelTimerCloseOutput;
-	w.KillTimer( hout, htimer );
+	w.KillTimer( core.hout, htimer );
 	mov( 0, htimer );
-	w.SendMessage( hout, w.WM_CLOSE, 0, 0 );
+	w.SendMessage( core.hout, w.WM_CLOSE, 0, 0 );
 	ret();
 end CancelTimerCloseOutput;
 
@@ -51,14 +51,14 @@ begin Output_View;
 	
 	if (eax = w.SW_HIDE) then
 		w.CheckMenuItem(hmenu,IDM_VIEW_OUTPUT,w.MF_BYCOMMAND);
-		w.ShowWindow(hout,w.SW_HIDE);
+		w.ShowWindow(core.hout,w.SW_HIDE);
 		w.ShowWindow(hVSplitBar,w.SW_HIDE);
 		and(! (VSPLIT), settings.winview);
 		and(! (OUTPUT), settings.winview);
 			
 	elseif (eax = w.SW_SHOW) then
 		w.CheckMenuItem(hmenu,IDM_VIEW_OUTPUT,w.MF_BYCOMMAND |w.MF_CHECKED);
-		w.ShowWindow(hout,w.SW_SHOW);
+		w.ShowWindow(core.hout,w.SW_SHOW);
 		or(OUTPUT,settings.winview);
 		test(OUTPUT_D,settings.winview);
 		if(@nz) then
@@ -67,10 +67,10 @@ begin Output_View;
 		endif;
 
 	elseif (eax = DOCK_YES) then
-		w.GetWindowLong(hout,w.GWL_STYLE);
+		w.GetWindowLong(core.hout,w.GWL_STYLE);
 		and(!(w.WS_SIZEBOX),eax);
-		w.SetWindowLong(hout,w.GWL_STYLE,eax);
-		w.SetParent(hout,hwnd);
+		w.SetWindowLong(core.hout,w.GWL_STYLE,eax);
+		w.SetParent(core.hout,core.hwnd);
 		mov(eax,oldhout);
 		w.CheckMenuItem(hmenu,IDM_VIEW_OUT_DOCK,(w.MF_BYCOMMAND | w.MF_CHECKED));
 		or(OUTPUT_D,settings.winview);
@@ -80,11 +80,11 @@ begin Output_View;
 		endif;
 		
 	elseif (eax = DOCK_NO) then
-		w.SetParent(hout,oldhout);
+		w.SetParent(core.hout,oldhout);
 		mov(0,oldhout);
-		w.GetWindowLong(hout,w.GWL_STYLE);
+		w.GetWindowLong(core.hout,w.GWL_STYLE);
 		or(w.WS_SIZEBOX,eax);
-		w.SetWindowLong(hout,w.GWL_STYLE,eax);
+		w.SetWindowLong(core.hout,w.GWL_STYLE,eax);
 		w.CheckMenuItem(hmenu,IDM_VIEW_OUT_DOCK,(w.MF_BYCOMMAND));
 		w.ShowWindow(hVSplitBar,w.SW_HIDE);
 		and(!(VSPLIT),settings.winview);
@@ -92,8 +92,8 @@ begin Output_View;
 		
 	endif;
 	
-	w.SendMessage(hwnd,w.WM_SIZE,0,0);
-	w.SetFocus (hwnd);
+	w.SendMessage(core.hwnd,w.WM_SIZE,0,0);
+	w.SetFocus (core.hwnd);
   
 end Output_View;
 
@@ -113,12 +113,12 @@ begin Proc_OutputEdit;
 		dbg.put("click in outputwin");
 		
 		lea(eax,_chrg);
-		w.SendMessage(houtedt,w.EM_EXGETSEL,0,eax);
-		w.SendMessage(houtedt,w.EM_EXLINEFROMCHAR,0,_chrg.cpMin);
+		w.SendMessage(core.houtedt,w.EM_EXGETSEL,0,eax);
+		w.SendMessage(core.houtedt,w.EM_EXLINEFROMCHAR,0,_chrg.cpMin);
 		mov(&buffer,esi);
 		mov(@size(buffer),(type word [esi]));
 		
-		w.SendMessage(houtedt,w.EM_GETLINE,eax,&buffer);
+		w.SendMessage(core.houtedt,w.EM_GETLINE,eax,&buffer);
 		str.a_cpyz(&buffer);
 		mov(eax,_somestr);
 		
@@ -240,30 +240,30 @@ begin 	Proc_Output;
 			w.GetClientRect(hwin, &rect);
 			mov	(rect.bottom,eax);
 			sub	(rect.top,eax);
-			w.MoveWindow( houtedt, 0, rect.top, rect.right, eax, true );
+			w.MoveWindow( core.houtedt, 0, rect.top, rect.right, eax, true );
 			call _savepos;
-			w.InvalidateRect(hout,NULL,true);
+			w.InvalidateRect(core.hout,NULL,true);
 			jmp xProc_Output;
 		
 	_init:	
 			mov(hwin,eax);
-			mov(eax,hout);
+			mov(eax,core.hout);
 			w.CreateWindowEx(w.WS_EX_CLIENTEDGE, RAEditClassName,NULL,w.WS_CHILD |
 						STYLE_NOSPLITT | STYLE_NOLINENUMBER | STYLE_NOCOLLAPSE | STYLE_NOHILITE | STYLE_NODIVIDERLINE,
-						0,0,0,0,hwin,NULL,hinst,NULL);
-			mov(eax,houtedt);
-			dbg.put("houtedit = ", houtedt);
+						0,0,0,0,hwin,NULL,core.hinst,NULL);
+			mov(eax,core.houtedt);
+			dbg.put("houtedit = ", core.houtedt);
 	
 			mov(hmainfont,rafnt.hFont);
 			mov(hitalic,rafnt.hIFont);
 			mov(hlinefont,rafnt.hLnrFont);
 
-			w.SendMessage(houtedt,REM_SETFONT,0,&rafnt);
-			w.SendMessage(houtedt,REM_SETCOLOR,0,&col);
+			w.SendMessage(core.houtedt,REM_SETFONT,0,&rafnt);
+			w.SendMessage(core.houtedt,REM_SETCOLOR,0,&col);
 	
-			w.SendMessage(houtedt,REM_SUBCLASS,0,&Proc_OutputEdit);
+			w.SendMessage(core.houtedt,REM_SUBCLASS,0,&Proc_OutputEdit);
 			mov(eax,oldoutputedit);
-			w.ShowWindow(houtedt,w.SW_SHOWNA);			
+			w.ShowWindow(core.houtedt,w.SW_SHOWNA);			
 			test(OUTPUT_D,settings.winview);
 			if(@nz) then
 				Output_View(DOCK_YES);
@@ -271,12 +271,12 @@ begin 	Proc_Output;
 				w.MoveWindow(hwin,settings.outwin.x,settings.outwin.y,settings.outwin.wt,settings.outwin.ht,true);
 				w.SendMessage(hwin,w.WM_SIZE,0,0);			
 			endif;
-			w.SetWindowText(hout, "Output");
+			w.SetWindowText(core.hout, "Output");
 			jmp xProc_Output;
 	
 	_activate:
 		CancelTimer (htimer);
-		w.SetForegroundWindow(hwnd);
+		w.SetForegroundWindow(core.hwnd);
 		jmp xProc_Output;
 	
 	_destroy:
@@ -286,7 +286,7 @@ begin 	Proc_Output;
 	_close:
 			call _savepos;	
 			Output_View( w.SW_HIDE);
-			w.SendMessage(hwnd,w.WM_SIZE,0,0);			
+			w.SendMessage(core.hwnd,w.WM_SIZE,0,0);			
 
 		
 xProc_Output:
@@ -327,9 +327,9 @@ if (mode=mode_gui) then
 	// activate OUTPUT window if not visible.
 
 	if (testz (OUTPUT, settings.winview)) then
-		w.SendMessage( hwnd, HIDE_TOGGLEOUTPUT,0,5000);
+		w.SendMessage( core.hwnd, HIDE_TOGGLEOUTPUT,0,5000);
 	endif;
-	SendStr	(houtedt, w.EM_REPLACESEL, false, _msg_ );
+	SendStr	(core.houtedt, w.EM_REPLACESEL, false, _msg_ );
 
 else
 	stdout.put (_msg_, nl);

@@ -211,7 +211,7 @@ begin createListbox;
 		| w.WS_VSCROLL | w.LBS_NOINTEGRALHEIGHT, eax);
 
 	mov(w.CreateWindowEx(w.WS_EX_CLIENTEDGE,"LISTBOX", 0, eax, 
-		0,0,203,110,m_autocompletion.hDialog, IDC_LSTAUTOCOMPLETION,hinst,NULL),
+		0,0,203,110,m_autocompletion.hDialog, IDC_LSTAUTOCOMPLETION,core.hinst,NULL),
 		 m_autocompletion.hListbox);
 	
 	// subclass listbox  		
@@ -735,7 +735,7 @@ begin SubListbox;
 				HideDialog();
 				exit SubListbox;
 			elseif(wparam = w.VK_F1) then
-				w.DialogBoxParam(hinst,val IDD_DLGAUTOSETTINGS,hwin,&Proc_Autosetting,0);
+				w.DialogBoxParam(core.hinst,val IDD_DLGAUTOSETTINGS,hwin,&Proc_Autosetting,0);
 			elseif(wparam = w.VK_DELETE) then
 				DeleteWord();
 			endif;
@@ -890,7 +890,7 @@ USE(edx);
 		w.ClientToScreen(hwin, &p);			
 		
 		if (m_autocompletion.hDialog == 0) then			
-			mov(w.CreateDialogParam(hinst,val IDD_DLGAUTO, 
+			mov(w.CreateDialogParam(core.hinst,val IDD_DLGAUTO, 
 					hwin, &Proc_CodeCompletion, false),
 				m_autocompletion.hDialog);
 				

@@ -186,26 +186,26 @@ USE (EBX, EAX, ECX, EDX);
 		
 		w.ImageList_Create( button_size, button_size, w.ILC_COLORDDB | w.ILC_MASK, 0, 0 );
 		mov( eax, image_list_n );
-		w.LoadBitmap (hinst, val IDB_16N);
+		w.LoadBitmap (core.hinst, val IDB_16N);
 		mov (eax, graphic);
 		w.ImageList_AddMasked ( image_list_n, graphic, TRANSP_COLOR);
 		w.DeleteObject (graphic);
 	
 		w.ImageList_Create( button_size, button_size, w.ILC_COLORDDB | w.ILC_MASK, 0, 0 );
 		mov( eax, image_list_h );
-		w.LoadBitmap (hinst, val IDB_16H);
+		w.LoadBitmap (core.hinst, val IDB_16H);
 		mov (eax, graphic);
 		w.ImageList_AddMasked ( image_list_h, graphic, TRANSP_COLOR);
 		w.DeleteObject (graphic);
 	
 		w.ImageList_Create( button_size, button_size, w.ILC_COLORDDB | w.ILC_MASK, 0, 0 );
 		mov( eax, image_list_d );
-		w.LoadBitmap (hinst, val IDB_16D);
+		w.LoadBitmap (core.hinst, val IDB_16D);
 		mov (eax, graphic);
 		w.ImageList_AddMasked ( image_list_d, graphic, TRANSP_COLOR);
 		w.DeleteObject (graphic);
 	 
-		w.CreateToolbarEx ( hwnd, w.WS_CHILD | w.TBSTYLE_TOOLTIPS | w.TBSTYLE_FLAT, IDC_TBR, nbitmapimg,
+		w.CreateToolbarEx ( core.hwnd, w.WS_CHILD | w.TBSTYLE_TOOLTIPS | w.TBSTYLE_FLAT, IDC_TBR, nbitmapimg,
 							 NULL, image, &tbrbtns, ntbrbtns,
 							 button_size, button_size, button_size, button_size,
 							 @size(w.TBBUTTON) );
@@ -216,7 +216,7 @@ USE (EBX, EAX, ECX, EDX);
 		w.SendMessage (htbr, w.TB_SETDISABLEDIMAGELIST, 0, image_list_d);
 		w.SendMessage( htbr, w.TB_AUTOSIZE, 0, 0 );
 		w.ShowWindow (htbr, w.SW_SHOWNA);
-		w.SendMessage (hwnd, w.WM_SIZE, 0, 0);
+		w.SendMessage (core.hwnd, w.WM_SIZE, 0, 0);
 	
 	else
 
@@ -281,7 +281,7 @@ begin SetWindowCaption;
 		str.cpy( AppName, workpath );
 	endif;
 	
-	w.SetWindowText (hwnd, workpath);
+	w.SetWindowText (core.hwnd, workpath);
 	popabi;
 end	SetWindowCaption;
 
@@ -291,7 +291,7 @@ USE (EBX);
 	mov (node, ebx);
 	mov (w.WS_CHILD | STYLE_SCROLLTIP, eax);
 	w.CreateWindowEx(w.WS_EX_CLIENTEDGE, RAEditClassName,NULL,eax,
-					0,0,0,0,hwnd,NULL,hinst,NULL);
+					0,0,0,0,core.hwnd,NULL,core.hinst,NULL);
 	mov (eax, listebx.hwnd);
 
 	// subclass it
@@ -468,7 +468,7 @@ begin RAHexed_new;
 USE (EBX);
 	mov (node, ebx);
 	w.CreateWindowEx(w.WS_EX_CLIENTEDGE, RAHexedClassName, NULL,
-		w.WS_CHILD, 0, 0, 0, 0, hwnd, NULL, hinst, NULL);
+		w.WS_CHILD, 0, 0, 0, 0, core.hwnd, NULL, core.hinst, NULL);
 	mov (eax, listebx.hwnd);	
 ENDUSE;
 end RAHexed_new;
@@ -664,7 +664,7 @@ proc
 			
 			w.SendMessage(listebx.hwnd,REM_SETWORDGROUP,0, group);
 			w.SendMessage(listebx.hwnd,REM_SETCOLOR,0,&col);
-			w.SendMessage(hwnd,HIDE_SETINSERTMODE,0,0);
+			w.SendMessage(core.hwnd,HIDE_SETINSERTMODE,0,0);
 			w.SetWindowLong(listebx.hwnd,w.GWL_STYLE, gwstyle);
 	
 		endif;	
@@ -883,9 +883,9 @@ begin InitOF;
 	pushabi;
 	mem2.fillMem(&of, @size(of), 0);
 	mov	(@size(of),of.lStructSize);
-	pushd(hwnd);
+	pushd(core.hwnd);
 	pop	(of.hWndOwner);
-	pushd(hinst);
+	pushd(core.hinst);
 	pop(of.hInstance);
 	mov	(0,ofBuffer[0]);
 	mov	(&ofBuffer, of.lpstrFile);
@@ -1112,7 +1112,7 @@ begin querySave;
 	mov (node, ebx);
 	if (w.SendMessage (listebx.hwnd, w.EM_GETMODIFY, 0, 0)) then
 		str.put (s, "Want to Save Changes to ", listebx.id, '?');
-		w.MessageBox (hwnd, s,AppName, w.MB_YESNOCANCEL | w.MB_ICONQUESTION);
+		w.MessageBox (core.hwnd, s,AppName, w.MB_YESNOCANCEL | w.MB_ICONQUESTION);
 		if (eax= w.IDYES) then
 			RAEdit_SaveFile ([ebx]);
 			mov(false,eax);
@@ -1222,6 +1222,7 @@ begin IndentComment;
 				dec (esi);
 				l0:
 				inc (esi);
+
 				mov	([esi],al);
 				cmp (al, ' ');
 				jne	l1;

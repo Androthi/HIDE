@@ -1286,7 +1286,7 @@ begin Property_View;
 		w.GetWindowLong(hprop,w.GWL_STYLE);
 		and(!(w.WS_SIZEBOX),eax);
 		w.SetWindowLong(hprop,w.GWL_STYLE,eax);
-		w.SetParent(hprop,hwnd);
+		w.SetParent(hprop,core.hwnd);
 		mov(eax,oldhprop);
 		or(PROP_D,settings.winview);	
 
@@ -1310,7 +1310,7 @@ begin Property_View;
 	
     endif;
     
-    w.SendMessage(hwnd,w.WM_SIZE,0,0);
+    w.SendMessage(core.hwnd,w.WM_SIZE,0,0);
  //   w.SetFocus(settings.hwnd);
     	
 end Property_View;
@@ -1754,7 +1754,7 @@ _size:
 	jmp _xProc_Properties;
 
 _activate:
-	w.SetForegroundWindow(hwnd);
+	w.SetForegroundWindow(core.hwnd);
 	jmp _xProc_Properties;
 	
 _init:
@@ -1768,7 +1768,7 @@ _init:
 	w.SendMessage(hproplist,w.LB_RESETCONTENT,0,0);
 	w.SendMessage(hproptool,w.TB_BUTTONSTRUCTSIZE,@size(w.TBBUTTON),0);
 
-	mov(hinst,prop_bitmap.hInst);
+	mov(core.hinst,prop_bitmap.hInst);
 	mov(IDB_PROPERTIES,prop_bitmap.nID);
 	w.SendMessage(hproptool,w.TB_ADDBITMAP,1,&prop_bitmap);
 	w.SendMessage(hproptool,w.TB_ADDBUTTONS,npropbtns,&propbtns);
@@ -1807,7 +1807,7 @@ _close:
 	Property_View( w.SW_HIDE);
 	if (testnz (PROP_D, settings.winview)) then
 		PanelFold();
-	    w.SendMessage(hwnd,w.WM_SIZE,0,0);
+	    w.SendMessage(core.hwnd,w.WM_SIZE,0,0);
 	endif;
 	or (PROP_D, settings.winview);	// force docking
 	and (! PROP_A, settings.winview); // remove anchor

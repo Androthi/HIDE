@@ -305,7 +305,7 @@ begin Project_View;
 		w.GetWindowLong(htree,w.GWL_STYLE);
 		and(!(w.WS_SIZEBOX),eax);
 		w.SetWindowLong(htree,w.GWL_STYLE,eax);
-		w.SetParent(htree,hwnd);
+		w.SetParent(htree,core.hwnd);
 		mov(eax,oldhtree);
 		or(TREE_D,settings.winview);
 		
@@ -328,8 +328,8 @@ begin Project_View;
 		w.ShowWindow (htree, w.SW_HIDE);	
     endif;
     
-    w.SendMessage(hwnd,w.WM_SIZE,0,0);
-    w.SetFocus (hwnd);
+    w.SendMessage(core.hwnd,w.WM_SIZE,0,0);
+    w.SetFocus (core.hwnd);
     
 end Project_View;
 
@@ -526,7 +526,7 @@ begin	Proc_ProjectView;
 						endif;
 					endif;
 				endif;
-				w.PostMessage(hwnd, w.WM_SETFOCUS, 0, 0);
+				w.PostMessage(core.hwnd, w.WM_SETFOCUS, 0, 0);
 				jmp xProc_ProjectView;
 
 		_selchanged:
@@ -562,7 +562,7 @@ begin	Proc_ProjectView;
 					mov (eax, pview_curSel);
 					buildProjectViewMenu ([eax]);
 					w.GetCursorPos(&pt);
-					w.TrackPopupMenu (pviewmenu, w.TPM_LEFTALIGN | w.TPM_RIGHTBUTTON, pt.x, pt.y, 0, hwnd, NULL);
+					w.TrackPopupMenu (pviewmenu, w.TPM_LEFTALIGN | w.TPM_RIGHTBUTTON, pt.x, pt.y, 0, core.hwnd, NULL);
 				endif; 
 
 			_exitrightclick:
@@ -584,7 +584,7 @@ begin	Proc_ProjectView;
 		mov (eax, htree);
 		w.ImageList_Create(16,16,w.ILC_COLOR8,TREEICONS,TREEICONS);
 		mov(eax,himl);
-		w.LoadBitmap(hinst,val IDB_TRVMAP);
+		w.LoadBitmap(core.hinst,val IDB_TRVMAP);
 		mov(eax,hbmp);
 		w.ImageList_Add(himl,hbmp,NULL);
 		w.DeleteObject(hbmp);
@@ -599,7 +599,7 @@ begin	Proc_ProjectView;
 		jmp xProc_ProjectView;
 
 	_activate:
-			w.SetForegroundWindow(hwnd);
+			w.SetForegroundWindow(core.hwnd);
 			jmp xProc_ProjectView;
 		
 	_destroy:
@@ -611,7 +611,7 @@ begin	Proc_ProjectView;
 		Project_View( w.SW_HIDE);
 		if (testnz (TREE_D, settings.winview)) then
 			PanelFold();
-		    w.SendMessage(hwnd,w.WM_SIZE,0,0);
+		    w.SendMessage(core.hwnd,w.WM_SIZE,0,0);
 		endif;
 		or (TREE_D, settings.winview);	// force docking
 		and (! TREE_A, settings.winview); // remove anchor

@@ -259,7 +259,7 @@ begin find_next;
 	if (hfind) then
 		w.SetFocus (hfind);
 	else
-		w.SetFocus (hwnd);
+		w.SetFocus (core.hwnd);
 	endif;
 	
 
@@ -344,7 +344,7 @@ begin find_prev;
 	if (hfind) then
 		w.SetFocus (hfind);
 	else
-		w.SetFocus (hwnd);
+		w.SetFocus (core.hwnd);
 	endif;
 	
 	done:
@@ -689,7 +689,7 @@ begin	Proc_FindDlg;
 
 		w.DestroyWindow(hfind);
 		mov	(0,hfind);
-		w.SetFocus (hwnd);
+		w.SetFocus (core.hwnd);
 	else
 		mov	(false, eax);
 		jmp _exitProc_FindDlg;

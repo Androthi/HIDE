@@ -164,6 +164,14 @@ type
 			mouse
 		};
 
+	tCORE:
+		record
+			hout	:dword;
+			houtedt	:dword;
+			hinst	:dword;
+			hwnd	:dword;
+		endrecord;
+	
 
 	WINPOS:	//window position
 		record

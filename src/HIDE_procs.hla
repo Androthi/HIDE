@@ -187,7 +187,7 @@ _lbuttondown:
 _lbuttonup:
 	w.ReleaseCapture();
 	mov(false,split);
-	w.SendMessage(hwnd,w.WM_SIZE,0,0);
+	w.SendMessage(core.hwnd,w.WM_SIZE,0,0);
 	w.UpdateWindow(hwin);
 	jmp _retfalse;
 	
@@ -196,9 +196,9 @@ _mousemove:
 	cmp(split,true);
 	jne _retfalse;
 	w.GetCursorPos(pt);
-	w.ScreenToClient(hwnd,pt);
+	w.ScreenToClient(core.hwnd,pt);
 
-	w.GetClientRect(hwnd,&rect);
+	w.GetClientRect(core.hwnd,&rect);
 	
 	// check for panel
 	if( settings.panelwin != panel_closed ) then
@@ -279,7 +279,7 @@ _lbuttondown:
 _lbuttonup:
 	w.ReleaseCapture();
 	mov(false,split);
-	w.SendMessage(hwnd,w.WM_SIZE,0,0);
+	w.SendMessage(core.hwnd,w.WM_SIZE,0,0);
 	w.UpdateWindow(hwin);
 	jmp _retfalse;
 	
@@ -289,9 +289,9 @@ _mousemove:
 	jne _retfalse;
 
 	w.GetCursorPos(pt);
-	w.ScreenToClient(hwnd,pt);
+	w.ScreenToClient(core.hwnd,pt);
 
-	w.GetClientRect(hwnd,&rect);
+	w.GetClientRect(core.hwnd,&rect);
 	sub (TABHT, rect.right);
 	call _getworkheight;		// modifies &rect to consider other windows
 
@@ -1134,7 +1134,7 @@ begin showAboutWin;
 		mov( &Proc_About, wc.lpfnWndProc );
 		mov( w.COLOR_BTNFACE+1, wc.hbrBackground );
 		mov( AboutClass, wc.lpszClassName );
-		mov( hinst, wc.hInstance );
+		mov( core.hinst, wc.hInstance );
 		w.LoadIcon( NULL, val w.IDI_APPLICATION );
 		mov( eax, wc.hIcon );
 		mov( eax, wc.hIconSm );
@@ -1144,27 +1144,27 @@ begin showAboutWin;
 
 		w.CreateWindowEx(	NULL, AboutClass, NULL,
 							w.WS_CHILD | w.WS_VISIBLE | w.DS_CENTER | w.WS_POPUP,
-							200, 100, 450, 360, hwnd, 0, hinst, NULL );
+							200, 100, 450, 360, core.hwnd, 0, core.hinst, NULL );
 		mov( eax, h_win );
 		w.CreateWindowEx(	0, "BUTTON", "X",
 							w.WS_CHILD | w.WS_VISIBLE | w.BS_FLAT,
-							425, 10, 15, 15, h_win, 0, hinst, NULL );
+							425, 10, 15, 15, h_win, 0, core.hinst, NULL );
 		mov( eax, h_btn_close );
 		// graphic background
 		w.CreateWindowEx(	0, "STATIC", NULL,
 							w.WS_CHILD | w.WS_VISIBLE | w.SS_BITMAP,
-							0, 0, 256, 192, h_win, 0, hinst, NULL );
+							0, 0, 256, 192, h_win, 0, core.hinst, NULL );
 		mov( eax, h_static );
 		// load jpg background
 		
-		GraphicEx.LoadGraphic( hinst, "IDB_ABOUTJPG" );
+		GraphicEx.LoadGraphic( core.hinst, "IDB_ABOUTJPG" );
 		mov( eax, h_back );
 		w.SendMessage( h_static, w.STM_SETIMAGE, w.IMAGE_BITMAP, h_back );
 		
 		// central credits
 		w.CreateWindowEx(	0, "EDIT", txt_credits,
 							w.WS_CHILD | w.WS_VISIBLE | w.ES_MULTILINE | w.WS_VSCROLL | w.ES_READONLY,
-							col_initial, 194, width_visible, 111, h_win, 0, hinst, NULL );
+							col_initial, 194, width_visible, 111, h_win, 0, core.hinst, NULL );
 		mov( eax, h_credits );
 		
 		// subclass it to ignore messages except scrolling
@@ -1293,7 +1293,7 @@ begin getStringInput2;
 	mov (s, eax);
 	mov (eax, getStringRec.dest);
 	mov (0, getStringRec.init);	
-	w.DialogBoxParam (hinst,val ID_GETSTRINGINPUT, hwnd, &Proc_GetString, 0);
+	w.DialogBoxParam (core.hinst,val ID_GETSTRINGINPUT, core.hwnd, &Proc_GetString, 0);
 	if (eax) then
 		str.cpy (s, dest);
 	endif;
@@ -1312,7 +1312,7 @@ begin getStringInput3;
 	pop (getStringRec.dest);
 	push (initial);
 	pop (getStringRec.init);
-	w.DialogBoxParam (hinst,val ID_GETSTRINGINPUT, hwnd, &Proc_GetString, 0);
+	w.DialogBoxParam (core.hinst,val ID_GETSTRINGINPUT, core.hwnd, &Proc_GetString, 0);
 	if (eax) then
 		str.cpy (s, dest);
 	endif;

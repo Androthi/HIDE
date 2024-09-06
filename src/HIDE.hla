@@ -181,7 +181,7 @@ program HIDE_MAIN;
 		w.GetSubMenu (hmenu,0);
 		w.ModifyMenu (eax, 4, w.MF_BYPOSITION | w.MF_POPUP| w.MF_ENABLED ,
 						_hmenu, &_openrecent );
-		w.DrawMenuBar(hwnd);
+		w.DrawMenuBar(core.hwnd);
 		//dbg.put ("done update menu");
 		
 		popad();
@@ -229,7 +229,7 @@ program HIDE_MAIN;
 		endwhile;
 	
 		w.InsertMenu (hmenu, 7, w.MF_BYPOSITION | w.MF_POPUP | w.MF_STRING, usermenu, szUser);
-		w.DrawMenuBar(hwnd);
+		w.DrawMenuBar(core.hwnd);
 		
 		done:
 		ENDUSE;
@@ -884,7 +884,7 @@ program HIDE_MAIN;
 				mov (true, shiftdn);
 				
 			elseif( wparam = w.VK_ESCAPE ) then
-				w.SendMessage(hwnd,w.WM_CLOSE,0,0);				
+				w.SendMessage(core.hwnd,w.WM_CLOSE,0,0);				
 			endif;
 		
 		elseif (eax = w.WM_MBUTTONDOWN) then
@@ -918,7 +918,7 @@ program HIDE_MAIN;
 			w.CallWindowProc ( listebx.oldhwnd, hwin, umsg, wparam, lparam);
 			if (updateIns) then
 				mov (false, updateIns);
-				w.SendMessage(hwnd,HIDE_SETINSERTMODE,0,0);
+				w.SendMessage(core.hwnd,HIDE_SETINSERTMODE,0,0);
 			endif;
 		_exitnocall:
 	ENDUSE;
@@ -1405,7 +1405,7 @@ program HIDE_MAIN;
 		TreeToolSetup();
 		//dbg.put ("/Menu_NewFile");
 		updateDisplay (update_general);
-		w.SetFocus( hwnd );
+		w.SetFocus( core.hwnd );
 		ret();
 	end Menu_NewFile;
 
@@ -2242,7 +2242,7 @@ program HIDE_MAIN;
 		mem2.fillMem ([eax], @size(cc), 0);
 		mov (@size (cc), eax);
 		mov (eax, cc.lStructSize);
-		push (hwnd);
+		push (core.hwnd);
 		pop (cc.hwndOwner);
 		//push (hinst);
 		//pop (cc.hInstance);
@@ -2257,9 +2257,9 @@ program HIDE_MAIN;
 				w.SendMessage (listeax.hwnd, w.EM_REPLACESEL, true, workpath);
 			else
 				str.insert (nl, 0, workpath);
-				w.SendMessage(houtedt,w.EM_REPLACESEL, true,workpath);
+				w.SendMessage(core.houtedt,w.EM_REPLACESEL, true,workpath);
 			endif;
-			w.SetFocus(hwnd);
+			w.SetFocus(core.hwnd);
 		endif;
 		
 	end Menu_ToolsColor;
@@ -2273,7 +2273,7 @@ program HIDE_MAIN;
 	procedure Menu_ProjectMan; @noframe;
 	begin Menu_ProjectMan;
 		if( project.isOpen ) then
-			w.DialogBoxParam (hinst, val ID_MANAGER, hwnd, &Proc_HIDEManager, manager_project );
+			w.DialogBoxParam (core.hinst, val ID_MANAGER, core.hwnd, &Proc_HIDEManager, manager_project );
 		endif;
 		ret();
 	end Menu_ProjectMan;
@@ -2283,7 +2283,7 @@ proc
 	begin Menu_ProjectJob;
 		
 		if( project.isOpen ) then
-			w.DialogBoxParam (hinst, val ID_MANAGER, hwnd, &Proc_HIDEManager, manager_jobs );
+			w.DialogBoxParam (core.hinst, val ID_MANAGER, core.hwnd, &Proc_HIDEManager, manager_jobs );
 		endif;
 		ret();
 	end Menu_ProjectJob;
@@ -2294,7 +2294,7 @@ proc
 	procedure Menu_ProjectNew;	@noframe;
 	begin Menu_ProjectNew;
 		pushabi;
-		w.DialogBoxParam (hinst ,val ID_TEMPLATE, hwnd, &Proc_NewProject, false);
+		w.DialogBoxParam (core.hinst ,val ID_TEMPLATE, core.hwnd, &Proc_NewProject, false);
 		if (eax) then
 			Menu_ProjectMan();
 		endif;
@@ -2429,7 +2429,7 @@ proc
 	Menu_OptionGeneral :procedure {@noframe};
 	begin Menu_OptionGeneral;
 		
-		w.DialogBoxParam( hinst, val ID_MANAGER, hwnd, &Proc_HIDEManager, manager_general );
+		w.DialogBoxParam( core.hinst, val ID_MANAGER, core.hwnd, &Proc_HIDEManager, manager_general );
 		ret();
 		
 	end Menu_OptionGeneral;
@@ -2473,7 +2473,7 @@ proc
 			
 		endif;
 		
-		w.SendMessage( hwnd, HIDE_TOGGLEDEBUG, 0, 0 );
+		w.SendMessage( core.hwnd, HIDE_TOGGLEDEBUG, 0, 0 );
 		
 		popabi;
 		ret();
@@ -2728,7 +2728,7 @@ proc
 			w.ShowWindow(htbr,w.SW_HIDE);
 			w.CheckMenuItem(hmenu,IDM_VIEW_TOOLBAR,(w.MF_BYCOMMAND));						
 	    endif;
-		w.SendMessage(hwnd,w.WM_SIZE,w.SIZENORMAL,1);
+		w.SendMessage(core.hwnd,w.WM_SIZE,w.SIZENORMAL,1);
 		ret();
 	end Menu_ViewToolbar;
 	
@@ -2743,7 +2743,7 @@ proc
 			w.ShowWindow(hsbr,w.SW_HIDE);
 			w.CheckMenuItem(hmenu,IDM_VIEW_STATUS,(w.MF_BYCOMMAND));
 	    endif;
-		w.SendMessage(hwnd,w.WM_SIZE,w.SIZENORMAL,1);
+		w.SendMessage(core.hwnd,w.WM_SIZE,w.SIZENORMAL,1);
 		ret();
 	end Menu_ViewStatusbar;
 	
@@ -2898,7 +2898,7 @@ proc
 			
 			_find:	//dbg.put("creating find dialog");
 					GetSelText(&findbuff);
-					w.CreateDialogParam(hinst,val ID_FINDDLG,hwin,&Proc_FindDlg,false);
+					w.CreateDialogParam(core.hinst,val ID_FINDDLG,hwin,&Proc_FindDlg,false);
 					ret();
 			
 			_findopen:w.SetFocus(hfind);
@@ -2955,14 +2955,14 @@ proc
 			
 			_setrep:
 					GetSelText(&findbuff);
-					w.CreateDialogParam(hinst,val ID_FINDDLG,hwin,&Proc_FindDlg,true);
+					w.CreateDialogParam(core.hinst,val ID_FINDDLG,hwin,&Proc_FindDlg,true);
 					ret();
 			
 			_findfoc:	w.SetFocus(hfind);
 					ret();
 			
 	_megoto::
-			w.DialogBoxParam(hinst,val ID_GOTO,hwin,&Proc_Goto,false);
+			w.DialogBoxParam(core.hinst,val ID_GOTO,hwin,&Proc_Goto,false);
 			ret();
 		
 	_megotobegin::
@@ -3112,7 +3112,7 @@ proc
 			hideini.writeBin ("Colors","col",&col,@size(col));
 			
 		endif;
-		w.SetFocus( hwnd );
+		w.SetFocus( core.hwnd );
 		ret();
 			
 	_molfnt::	
@@ -3137,21 +3137,21 @@ proc
 			hideini.writeBin ("Colors","col",&col,@size(col));
 			
 		endif;
-		w.SetFocus( hwnd );
+		w.SetFocus( core.hwnd );
 	//	ENDUSE;
 		ret();
 	
 	_mokwrds::
-		w.DialogBoxParam( hinst, val ID_MANAGER, hwnd, &Proc_HIDEManager, manager_themes );
+		w.DialogBoxParam( core.hinst, val ID_MANAGER, core.hwnd, &Proc_HIDEManager, manager_themes );
 		ret();
 	
 	_mohide::	// hide/editor options
-		w.DialogBoxParam( hinst, val ID_MANAGER, hwnd, &Proc_HIDEManager, manager_settings );
+		w.DialogBoxParam( core.hinst, val ID_MANAGER, core.hwnd, &Proc_HIDEManager, manager_settings );
 		ret();
 	
 	_mosetp::	// HIDE paths
 		
-		w.DialogBoxParam( hinst, val ID_MANAGER, hwnd, &Proc_HIDEManager, manager_env );
+		w.DialogBoxParam( core.hinst, val ID_MANAGER, core.hwnd, &Proc_HIDEManager, manager_env );
 		ret();
 	
 	_mhabt::	
@@ -3201,7 +3201,7 @@ proc
 		inc( Line );
 		inc( nLines );
 		str.put( strbuf, "Line: ", Line, "        Lines: ", nLines );
-		w.SendMessage( hwnd, HIDE_SETSTATUS, STATUS_POSITION, strbuf );
+		w.SendMessage( core.hwnd, HIDE_SETSTATUS, STATUS_POSITION, strbuf );
 	
 	end ShowPos;
 	
@@ -3404,7 +3404,7 @@ proc
 			if (eax) then
 				CloseOutputDelay(eax);
 			endif;
-			w.SetFocus(hwnd);
+			w.SetFocus(core.hwnd);
 			jmp xWndProc;
 	
 	_toggledebug:
@@ -3455,7 +3455,7 @@ proc
 			
 		endif;
 		
-		w.SendMessage( hwnd, HIDE_SETSTATUS, STATUS_DBG, eax );
+		w.SendMessage( core.hwnd, HIDE_SETSTATUS, STATUS_DBG, eax );
 		jmp xWndProc;
 	
 	_setinsert:
@@ -3471,9 +3471,9 @@ proc
 				w.GetWindowLong( listebx.hwnd, 0 );
 				cmp( (type EDIT_CLASS[eax]).fOvr, 0 );
 				if( @e ) then
-					w.SendMessage( hwnd, HIDE_SETSTATUS, STATUS_INS, &szINS );
+					w.SendMessage( core.hwnd, HIDE_SETSTATUS, STATUS_INS, &szINS );
 				else
-					w.SendMessage( hwnd, HIDE_SETSTATUS, STATUS_INS, &szOVR );
+					w.SendMessage( core.hwnd, HIDE_SETSTATUS, STATUS_INS, &szOVR );
 				endif;
 			
 				if( listebx.isproject ) then
@@ -3486,7 +3486,7 @@ proc
 					
 				endif;
 			
-				w.SendMessage( hwnd, HIDE_SETSTATUS, STATUS_PROJ, eax );
+				w.SendMessage( core.hwnd, HIDE_SETSTATUS, STATUS_PROJ, eax );
 				
 			endif;
 
@@ -3743,7 +3743,7 @@ proc
 		elseif (eax = w.TTN_NEEDTEXT) then
 	
 			mov((type w.NMHDR [edx]).idFrom, edx);
-			w.LoadStringA(hinst,edx,&buffer, @size(buffer));
+			w.LoadStringA(core.hinst,edx,&buffer, @size(buffer));
 			lea(eax,buffer);
 			mov(lparam, edx);
 			mov(eax,(type w.TOOLTIPTEXT [edx]).lpszText);
@@ -3791,8 +3791,8 @@ proc
 			if (hprop) then
 				w.DestroyWindow(hprop);
 			endif;
-			if (hout) then
-	        	w.DestroyWindow(hout);
+			if (core.hout) then
+	        	w.DestroyWindow(core.hout);
 			endif;
 
 	        //dbg.put ("all windows xed");
@@ -3984,7 +3984,7 @@ proc
 			mov(mainrect.right,eax);
 			mov(eax,rect.right);
 	
-			w.MoveWindow(hout,rect.left,rect.top,rect.right,rect.bottom,true);
+			w.MoveWindow(core.hout,rect.left,rect.top,rect.right,rect.bottom,true);
 			mov(settings.vsplitbar.y,eax);
 			mov(eax,mainrect.bottom);
 		
@@ -3997,8 +3997,8 @@ proc
 				w.MoveWindow (listebx.hwnd, 0, mainrect.top, mainrect.right, eax, true);
 			endif;
 	
-			w.GetClientRect(hwnd,&rect);
-			w.InvalidateRect(hwnd,&rect,true);
+			w.GetClientRect(core.hwnd,&rect);
+			w.InvalidateRect(core.hwnd,&rect,true);
 			jmp xWndProc;
 			
 	init_window:
@@ -4025,7 +4025,7 @@ proc
 		// get dialog handles
 
 		mov(hwin,eax);
-		mov(eax,hwnd);
+		mov(eax,core.hwnd);
 	
 		// default position
 		w.MoveWindow(hwin,settings.edtwin.x,settings.edtwin.y,settings.edtwin.wt,settings.edtwin.ht,true);
@@ -4046,7 +4046,7 @@ proc
 						w.TCS_TABS | w.TCS_SINGLELINE | w.TCS_RIGHTJUSTIFY | w.TCS_TOOLTIPS |
 						w.TCS_FOCUSNEVER | w.WS_CHILD | w.WS_CLIPCHILDREN | w.WS_CLIPSIBLINGS |
 						w.WS_TABSTOP | w.WS_VISIBLE, 0, 0, 0, TABHT,
-						hwin, NULL, hinst, NULL );
+						hwin, NULL, core.hinst, NULL );
 		mov (eax, htab);
 		w.SendMessage (eax, w.WM_SETFONT, hdialogfont, false);
 	
@@ -4054,7 +4054,7 @@ proc
 						w.TCS_BOTTOM | w.TCS_TABS | w.TCS_SINGLELINE | w.TCS_VERTICAL |
 						w.TCS_FOCUSNEVER | w.WS_CHILD | w.WS_CLIPCHILDREN | w.WS_CLIPSIBLINGS |
 						w.WS_TABSTOP | w.WS_VISIBLE, 0, 0, TABHT, 0,
-						hwin, NULL, hinst, NULL );
+						hwin, NULL, core.hinst, NULL );
 		mov (eax, hpaneltab);
 		w.SendMessage (eax, w.WM_SETFONT, hdialogfont, false);
 		
@@ -4086,22 +4086,22 @@ proc
 			w.ShowWindow (hsbr, true);
 		_endif;
 		
-		w.CreateDialogParam(hinst,val ID_OUTPUT,hwin,&Proc_Output,false);
+		w.CreateDialogParam(core.hinst,val ID_OUTPUT,hwin,&Proc_Output,false);
 		if( bitSet( OUTPUT, settings.winview ) )then
 
 			w.CheckMenuItem( hmenu, IDM_VIEW_OUTPUT, (w.MF_BYCOMMAND | w.MF_CHECKED) );
-			w.ShowWindow( hout, w.SW_SHOW );
+			w.ShowWindow( core.hout, w.SW_SHOW );
 
 		else
-			w.ShowWindow( hout, w.SW_HIDE );
+			w.ShowWindow( core.hout, w.SW_HIDE );
 		endif;
 	
 		test(OUTPUT_D,settings.winview);
 		_if(@nz);
 			w.CheckMenuItem(hmenu,IDM_VIEW_OUT_DOCK,(w.MF_BYCOMMAND | w.MF_CHECKED));
 		_endif;
-		w.CreateDialogParam(hinst,val ID_TREEWIN, hwin, &Proc_ProjectView,false);
-		w.CreateDialogParam(hinst,val ID_PROPERTIES, hwin, &Proc_Properties,false);
+		w.CreateDialogParam(core.hinst,val ID_TREEWIN, hwin, &Proc_ProjectView,false);
+		w.CreateDialogParam(core.hinst,val ID_PROPERTIES, hwin, &Proc_Properties,false);
 	
 		w.SendMessage(hpaneltab, w.TCM_SETCURSEL, settings.panelwin, 0);
 		
@@ -4131,9 +4131,9 @@ proc
 				sub(eax,settings.vsplitbar.y);
 			_endif;
 		_endif;
-		w.LoadCursor(hinst,val IDC_HSPLITTCUR);
+		w.LoadCursor(core.hinst,val IDC_HSPLITTCUR);
 		mov(eax,hHsplitcursor);
-		w.LoadCursor(hinst,val IDC_VSPLITTCUR);
+		w.LoadCursor(core.hinst,val IDC_VSPLITTCUR);
 		mov(eax,hVsplitcursor);
 	
 		w.SendMessage(hwin,HIDE_TOGGLEDEBUG,0,0);
@@ -4146,7 +4146,7 @@ proc
 		
 		if (hideini.readInt ("HIDE Settings", "TopWindow")) then
 			if( eax ) then
-				w.SetWindowPos(hwnd,w.HWND_TOPMOST,0,0,0,0,3);
+				w.SetWindowPos(core.hwnd,w.HWND_TOPMOST,0,0,0,0,3);
 			endif;
 		endif;
 		
@@ -4495,7 +4495,7 @@ proc
 	WinMain:
 		dbg.put(">>WinMain");
 		w.GetModuleHandle(NULL);
-		mov(eax,hinst);
+		mov(eax,core.hinst);
 		w.InitCommonControls();
 	
 		// install RAEdit.dll
@@ -4519,17 +4519,17 @@ proc
 		mov(&WndProc,wc.lpfnWndProc);
 		mov(NULL,wc.cbClsExtra);
 		mov(w.DLGWINDOWEXTRA,wc.cbWndExtra);
-		mov(hinst,wc.hInstance);
+		mov(core.hinst,wc.hInstance);
 		mov(w.COLOR_BTNFACE+1, wc.hbrBackground);
 		mov(IDR_MENU,wc.lpszMenuName);
 		mov(&ClassName,wc.lpszClassName);
-		w.LoadIcon(hinst,val IDB_JACKALICON);
+		w.LoadIcon(core.hinst,val IDB_JACKALICON);
 		mov(eax,wc.hIcon);
 		mov(eax,wc.hIconSm);
 		w.LoadCursor(NULL,val w.IDC_ARROW);
 		mov(eax,wc.hCursor);
 		w.RegisterClassEx(wc);
-		w.CreateDialogParam(hinst,val IDD_DLG,NULL,&WndProc,NULL);
+		w.CreateDialogParam(core.hinst,val IDD_DLG,NULL,&WndProc,NULL);
 		dbg.put ("dialog created");
 		if(settings.edtwin.fmax) then
 			mov(w.SW_MAXIMIZE,eax);
@@ -4537,10 +4537,10 @@ proc
 			mov(w.SW_SHOWNORMAL,eax);
 		endif;
 
-		w.ShowWindow(hwnd,eax);
-		w.UpdateWindow(hwnd);
+		w.ShowWindow(core.hwnd,eax);
+		w.UpdateWindow(core.hwnd);
 		
-		w.LoadAccelerators(hinst,val IDR_ACCEL);
+		w.LoadAccelerators(core.hinst,val IDR_ACCEL);
 		mov(eax,haccel);
 		dbg.put(">>args");
 		dec (argc);
@@ -4583,9 +4583,9 @@ proc
 
 			w.IsDialogMessage(m_autocompletion.hDialog,msg); and(eax,eax); jnz _msgloop;
 			w.IsDialogMessage(hfind,msg); and(eax,eax); jnz _msgloop;
-			w.IsDialogMessage(hout,msg); and(eax,eax); jnz _msgloop;
+			w.IsDialogMessage(core.hout,msg); and(eax,eax); jnz _msgloop;
 
-			w.TranslateAccelerator(hwnd,haccel,msg);
+			w.TranslateAccelerator(core.hwnd,haccel,msg);
 			cmp(eax,true);
 			je _msgloop;
 			w.TranslateMessage(msg);

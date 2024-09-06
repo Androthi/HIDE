@@ -9,10 +9,9 @@ unit data_unit;
 
 storage
 	align(4);
-	hout			:dword;		// handle for output dialog
-	houtedt			:dword;		// handle for output dialog edit window
-	hinst			:dword;		// instance handle
-	hwnd			:dword;		// main window handle
+	core			:tCORE;		// HIDE global state
+//	hinst			:dword;		// instance handle
+//	hwnd			:dword;		// main window handle
 	hcrtproj		:dword;		// handle for create project dialog
 	htab			:dword;		// tab window handle
 	hpaneltab		:dword;		// handle for side panel

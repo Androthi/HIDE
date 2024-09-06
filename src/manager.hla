@@ -306,7 +306,7 @@ proc
 					
 					
 					saveAll();
-					w.DialogBoxParam( hinst, val ID_ADVANCEDLINK, hwin, &Proc_AdvancedLink, 0 );
+					w.DialogBoxParam( core.hinst, val ID_ADVANCEDLINK, hwin, &Proc_AdvancedLink, 0 );
 					
 					or( 1, eax );
 				
@@ -817,9 +817,9 @@ proc
 		w.IsDlgButtonChecked( optGeneral, IDC_MANAGERGEN_TOPWINDOW );
 		hideini.writeInt( "HIDE Settings", "TopWindow", eax );
 		if( eax ) then
-			w.SetWindowPos(hwnd,w.HWND_TOPMOST,0,0,0,0,3);						
+			w.SetWindowPos(core.hwnd,w.HWND_TOPMOST,0,0,0,0,3);						
 		else
-			w.SetWindowPos(hwnd,w.HWND_NOTOPMOST,0,0,0,0,3);
+			w.SetWindowPos(core.hwnd,w.HWND_NOTOPMOST,0,0,0,0,3);
 		endif;
 
 		w.IsDlgButtonChecked( optGeneral, IDC_MANAGERGEN_OPENLAST );
@@ -1112,7 +1112,7 @@ proc
 		
 		hideini.writeFileName( configmain );		
 		
-		w.SendMessage( hwnd, HIDE_TOGGLEDEBUG, 0, 0 );		
+		w.SendMessage( core.hwnd, HIDE_TOGGLEDEBUG, 0, 0 );		
 		prop_reset();
 		setFormatAll();
 		
@@ -1211,16 +1211,16 @@ proc
 			w.GetDlgItem( hwin, IDC_MANAGEREDIT );
 			mov( eax, optEdit );
 			
-			w.CreateDialogParam( hinst, val ID_MANAGERENV, hwin, &Proc_ManagerEnv, false );
-			w.CreateDialogParam( hinst, val ID_MANAGERGEN, hwin, &Proc_ManagerGen, false );
-			w.CreateDialogParam( hinst, val ID_KEYWORDS, hwin, &Proc_KeyWords, false );
+			w.CreateDialogParam( core.hinst, val ID_MANAGERENV, hwin, &Proc_ManagerEnv, false );
+			w.CreateDialogParam( core.hinst, val ID_MANAGERGEN, hwin, &Proc_ManagerGen, false );
+			w.CreateDialogParam( core.hinst, val ID_KEYWORDS, hwin, &Proc_KeyWords, false );
 			mov( eax, optThemes );
-			w.CreateDialogParam( hinst,val ID_MANAGERSET, hwin, &Proc_ManagerSettings, false );
+			w.CreateDialogParam( core.hinst,val ID_MANAGERSET, hwin, &Proc_ManagerSettings, false );
 			
 			if( project.isOpen ) then
-				w.CreateDialogParam( hinst, val ID_MANAGERPROJ, hwin, &Proc_ManagerProjOpt, false );
+				w.CreateDialogParam( core.hinst, val ID_MANAGERPROJ, hwin, &Proc_ManagerProjOpt, false );
 				
-				w.CreateDialogParam( hinst, val ID_MANAGERJOBS, hwin, &Proc_JobsManager, false );
+				w.CreateDialogParam( core.hinst, val ID_MANAGERJOBS, hwin, &Proc_JobsManager, false );
 				mov( eax, optJobs );
 			endif;
 			

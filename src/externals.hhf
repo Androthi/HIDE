@@ -229,8 +229,9 @@ static	// externals
 		projectpath			:string;				@external;	// holds current path for project folder
 		strbuf				:string;				@external;	// scratch static string
 
-		hwnd				:dword;					@external;	// window handle
-		hinst				:dword;					@external;	// instance handle
+		core				:tCORE;					@external;	// HIDE global state
+//		hwnd				:dword;					@external;	// window handle
+//		hinst				:dword;					@external;	// instance handle
 		hcrtproj			:dword;					@external;	// handle for create project dialog
 		htreeview			:dword;					@external;	// handle for treeview control
 		htree				:dword;					@external;	// handle for treeview window
@@ -239,8 +240,8 @@ static	// externals
 		htab				:dword;					@external;	// tab window handle
 		hpaneltab			:dword;					@external;
 		htaboldproc			:dword;					@external;	// tab window Window Proc address
-		hout				:dword;					@external;	// handle for output dialog
-		houtedt				:dword;					@external;	// handle for output dialog edit window
+//		hout				:dword;					@external;	// handle for output dialog
+//		houtedt				:dword;					@external;	// handle for output dialog edit window
 		htbr				:dword;					@external;		// toolbar handle
 		hlinefont			:dword;					@external;	// line font
 		hmainfont			:dword;					@external;	// main font

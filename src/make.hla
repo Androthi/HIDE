@@ -153,7 +153,7 @@ proc
 							fileio.read (hread, _buffer, @size(_buffer)-1);
 							mov (0, _buffer[eax]);
 							lea (eax, _buffer);
-							SendStr	(houtedt, w.EM_REPLACESEL, false, eax );
+							SendStr	(core.houtedt, w.EM_REPLACESEL, false, eax );
 						endfor;
 					anyexception
 					endtry;
@@ -257,7 +257,7 @@ proc
 			// open the output window and mark is as changed
 			// to toggle it back later.
 			mov( true, outputchanged );
-			w.SendMessage( hwnd, HIDE_TOGGLEOUTPUT, 0, 0 );
+			w.SendMessage( core.hwnd, HIDE_TOGGLEOUTPUT, 0, 0 );
 			
 		else
 			
@@ -275,7 +275,7 @@ proc
 		setOutputView();
 		
 		if( clear ) then
-			w.SendMessage( houtedt, w.WM_SETTEXT, 0, 0 );
+			w.SendMessage( core.houtedt, w.WM_SETTEXT, 0, 0 );
 		endif;
 		
 		if( useoutput ) then
@@ -1202,7 +1202,7 @@ begin MakeProc;
 	
 	if( wparam = mclear_c ) then
 		
-		w.SendMessage( houtedt, w.WM_SETTEXT, 0, 0 );
+		w.SendMessage( core.houtedt, w.WM_SETTEXT, 0, 0 );
 		
 	endif;
 
@@ -1218,7 +1218,7 @@ begin MakeProc;
 	if( testz (OUTPUT, settings.winview) ) then
 
 		mov( true, outputchanged );
-		w.SendMessage( hwnd, HIDE_TOGGLEOUTPUT, 0, 0 );
+		w.SendMessage( core.hwnd, HIDE_TOGGLEOUTPUT, 0, 0 );
 		
 	endif;
 
@@ -1357,7 +1357,7 @@ begin MakeProc;
 		CloseOutputDelay(5000);
 	endif;
 	
-	w.SetFocus(hwnd);
+	w.SetFocus(core.hwnd);
 	projectview_checkUpdates();
 	popad();
 	mov(_exitcode,eax);

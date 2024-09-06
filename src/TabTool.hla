@@ -171,9 +171,9 @@ USE (ESI, ECX, EDI, EBX, EDX);
 	if( listebx.hwnd ) then
 		w.ShowWindow (listebx.hwnd, w.SW_SHOW);		
 	endif;
-	w.SendMessage (hwnd, w.WM_SIZE, 0, 0);
-	w.SendMessage( hwnd, HIDE_TOGGLEDEBUG, 0, 0 );
-	w.SendMessage(hwnd,HIDE_SETINSERTMODE,0,0);
+	w.SendMessage (core.hwnd, w.WM_SIZE, 0, 0);
+	w.SendMessage( core.hwnd, HIDE_TOGGLEDEBUG, 0, 0 );
+	w.SendMessage(core.hwnd,HIDE_SETINSERTMODE,0,0);
 	updateDisplay (update_general);
 	//w.SetFocus (listebx.hwnd);
 
@@ -262,10 +262,10 @@ USE(ebx,edx,esi,edi);
 			
 		endif;
 		SetWindowCaption();
-		w.SetFocus (hwnd);
-		w.SendMessage(hwnd, w.WM_SIZE,0,0);
-		w.SendMessage( hwnd, HIDE_TOGGLEDEBUG, 0, 0 );
-		w.SendMessage(hwnd,HIDE_SETINSERTMODE,0,0);
+		w.SetFocus (core.hwnd);
+		w.SendMessage(core.hwnd, w.WM_SIZE,0,0);
+		w.SendMessage( core.hwnd, HIDE_TOGGLEDEBUG, 0, 0 );
+		w.SendMessage(core.hwnd,HIDE_SETINSERTMODE,0,0);
 	else
 		// no tab windows left open
 		mov (NULL, curnode);
@@ -314,7 +314,7 @@ USE (EBX);
 		mov( 0, curnode );
 	endif;
 	
-	w.SendMessage( hwnd, HIDE_TOGGLEDEBUG, 0, 0 );
+	w.SendMessage( core.hwnd, HIDE_TOGGLEDEBUG, 0, 0 );
 	
 ENDUSE;
 end tabtool_close;
@@ -374,7 +374,7 @@ begin PanelFold;
 	w.ShowWindow (hHSplitBar, w.SW_HIDE);
 	w.SendMessage(hpaneltab, w.TCM_SETCURSEL, panel_closed, 0);	
 	w.CheckMenuItem (hmenu, IDM_VIEW_PANEL, w.MF_BYCOMMAND | w.MF_UNCHECKED);
-	w.SetFocus (hwnd);
+	w.SetFocus (core.hwnd);
 	dbg.put ("/PanelFold");
 	ret();
 end PanelFold;
@@ -421,7 +421,7 @@ begin PanelActivate;
 			anchor_reset();
 		endif;
 	endif;
-	w.SendMessage (hwnd, w.WM_SIZE, 0, 0);
+	w.SendMessage (core.hwnd, w.WM_SIZE, 0, 0);
 	dbg.put ("/panel activate");
 end PanelActivate;
 
@@ -500,7 +500,7 @@ begin PanelViewWin;
 	default
 		PanelFold();
 	endswitch;
-	w.SendMessage (hwnd, w.WM_SIZE, 0, 0);
+	w.SendMessage (core.hwnd, w.WM_SIZE, 0, 0);
 	ret();
 end PanelViewWin;
 
@@ -520,7 +520,7 @@ begin PanelViewActive;
 	else
 		PanelFold();
 	endif;
-	w.SendMessage (hwnd, w.WM_SIZE, 0, 0);
+	w.SendMessage (core.hwnd, w.WM_SIZE, 0, 0);
 	ret();
 end PanelViewActive;
 
