@@ -285,7 +285,7 @@ program HIDE_MAIN;
 			buf		:tBuffer;
 			
 	begin expandPathMacs;
-		dbg.enters("expandPathMacs");
+//		dbg.enters("expandPathMacs");
 		pushabi;
 		
 		buf.create();
@@ -333,7 +333,7 @@ program HIDE_MAIN;
 				buf.puts( dest );
 			else
 				// unknown, just skip it.
-				dbg.put("other");
+//				dbg.put("other");
 				buf.right( 1 );
 				continue;
 			endif;
@@ -341,9 +341,9 @@ program HIDE_MAIN;
 		endfor;
 		buf.writeString( dest );
 		buf.destroy();
-		dbg.put( "expanded :", dest );
+//		dbg.put( "expanded :", dest );
 		popabi;
-		dbg.exits("expandPathMacs");
+//		dbg.exits("expandPathMacs");
 	end expandPathMacs;
 	
 	dispProp	:procedure { @noframe };
@@ -3178,14 +3178,14 @@ proc
 	_ctrltab::
 		if ( tabtool_getindex (curnode) != -1) then
 			push (eax);
-			w.SendMessage(htab, w.TCM_GETITEMCOUNT, 0, 0);
+			w.SendMessage(core.htab, w.TCM_GETITEMCOUNT, 0, 0);
 			pop (ecx);
 			inc (ecx);
 			cmp (ecx, eax);
 			jl _ctrltab01;
 			xor (ecx, ecx);
 		_ctrltab01:
-			w.SendMessage(htab,w.TCM_SETCURSEL, ecx,0);
+			w.SendMessage(core.htab,w.TCM_SETCURSEL, ecx,0);
 			setupFind();
 			call tabtool_activate;
 			prop_update();
@@ -3530,7 +3530,7 @@ proc
 				w.GetSubMenu(eax,1);
 				w.TrackPopupMenu(eax, w.TPM_LEFTALIGN | w.TPM_RIGHTBUTTON, pt.x,pt.y,0,hwin,NULL); 
 			
-			elseif (eax = htab) then
+			elseif (eax = core.htab) then
 				w.GetMenu(hwin);
 				w.GetSubMenu(eax,0);
 				w.TrackPopupMenu(eax, w.TPM_LEFTALIGN | w.TPM_RIGHTBUTTON, pt.x,pt.y,0,hwin,NULL); 
@@ -3751,7 +3751,7 @@ proc
 		elseif (eax = w.TCN_SELCHANGE) then
 		
 			mov((type w.NMHDR [edx]).hwndFrom, eax);
-			if (eax = htab) then
+			if (eax = core.htab) then
 				setupFind();
 				call tabtool_activate;
 				prop_update();
@@ -3943,7 +3943,7 @@ proc
 		mov (eax, settings.vsplitbar.wt);
 		
 		// size tab window
-		w.MoveWindow(htab,-1,mainrect.top,mainrect.right,TABHT,true);
+		w.MoveWindow(core.htab,-1,mainrect.top,mainrect.right,TABHT,true);
 		add(TABHT,mainrect.top);
 		
 		// check for output
@@ -4047,7 +4047,7 @@ proc
 						w.TCS_FOCUSNEVER | w.WS_CHILD | w.WS_CLIPCHILDREN | w.WS_CLIPSIBLINGS |
 						w.WS_TABSTOP | w.WS_VISIBLE, 0, 0, 0, TABHT,
 						hwin, NULL, core.hinst, NULL );
-		mov (eax, htab);
+		mov (eax, core.htab);
 		w.SendMessage (eax, w.WM_SETFONT, hdialogfont, false);
 	
 		w.CreateWindowEx (0, w.WC_TABCONTROL, NULL,
@@ -4152,9 +4152,9 @@ proc
 		
 		
 		// subclass the tab tool for context menu
-		w.GetWindowLong (htab, w.GWL_WNDPROC);
+		w.GetWindowLong (core.htab, w.GWL_WNDPROC);
 		mov (eax, htaboldproc);
-		w.SetWindowLong (htab, w.GWL_WNDPROC, &Proc_TabToolSubclass);
+		w.SetWindowLong (core.htab, w.GWL_WNDPROC, &Proc_TabToolSubclass);
 	
 		// load user menu
 		if (hideini.isSectionDefined ("User Menu")) then

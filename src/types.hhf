@@ -166,10 +166,11 @@ type
 
 	tCORE:
 		record
-			hout	:dword;
-			houtedt	:dword;
-			hinst	:dword;
-			hwnd	:dword;
+			hout		:dword;
+			houtedt		:dword;
+			hinst		:dword;
+			hwnd		:dword;
+			htab		:dword;
 		endrecord;
 	
 

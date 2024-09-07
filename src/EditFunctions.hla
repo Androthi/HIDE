@@ -1042,13 +1042,13 @@ procedure setFormatAll;
 begin setFormatAll;
 	// cycle through all open tabs and set format
 	USE (EBX, ESI, EDI);
-	w.SendMessage (htab, w.TCM_GETITEMCOUNT, 0, 0);
+	w.SendMessage (core.htab, w.TCM_GETITEMCOUNT, 0, 0);
 	mov (eax, count);
 	if (eax) then
 		mov	(w.TCIF_PARAM, tci.imask);
 		while (count >=0) do
 			dec (count);
-			w.SendMessage (htab, w.TCM_GETITEM, count, &tci);
+			w.SendMessage (core.htab, w.TCM_GETITEM, count, &tci);
 			breakif (!eax);
 			mov (tci.lParam, ebx);
 			RAEdit_setFormat( [ebx] );
@@ -1065,17 +1065,17 @@ procedure closeAll;
 		
 begin closeAll;
 	USE (EBX, ESI, EDI);
-	w.SendMessage (htab, w.TCM_GETITEMCOUNT, 0, 0);
+	w.SendMessage (core.htab, w.TCM_GETITEMCOUNT, 0, 0);
 	mov (eax, count);
 	if (eax) then
 		mov	(w.TCIF_PARAM, tci.imask);
 		while (count >=0) do
 			dec (count);
-			w.SendMessage (htab, w.TCM_GETITEM, count, &tci);
+			w.SendMessage (core.htab, w.TCM_GETITEM, count, &tci);
 			breakif (!eax);
 			mov (tci.lParam, ebx);
 			breakif (querySave ([ebx]));
-			w.SendMessage (htab, w.TCM_DELETEITEM, count,0);
+			w.SendMessage (core.htab, w.TCM_DELETEITEM, count,0);
 			
 			// if this is a project file, hide the window, else destroy the window .
 			w.DestroyWindow (listebx.hwnd);

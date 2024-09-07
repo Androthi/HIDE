@@ -1,6 +1,6 @@
 const
 
-	version	:string := "HIDE 1.7.11";
+	version	:string := "HIDE 1.7.12";
 	hlaversion :string := "hla 2.16/stdlib 8.0";
 
 	#includeonce	("os.hhf")

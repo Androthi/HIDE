@@ -10,10 +10,7 @@ unit data_unit;
 storage
 	align(4);
 	core			:tCORE;		// HIDE global state
-//	hinst			:dword;		// instance handle
-//	hwnd			:dword;		// main window handle
-	hcrtproj		:dword;		// handle for create project dialog
-	htab			:dword;		// tab window handle
+//	htab			:dword;		// tab window handle
 	hpaneltab		:dword;		// handle for side panel
 	htaboldproc		:dword;		// original window proc for tab window
 	htbr			:dword;		// toolbar handle

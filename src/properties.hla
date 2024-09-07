@@ -1481,13 +1481,13 @@ begin prop_updateView;
 		endif;
 		
 	case (propview_open)
-		w.SendMessage (htab, w.TCM_GETITEMCOUNT, 0, 0);
+		w.SendMessage (core.htab, w.TCM_GETITEMCOUNT, 0, 0);
 		mov (eax, count);
 		if (eax) then
 			mov	(w.TCIF_PARAM, tci.imask);
 			while (count >=0) do
 				dec (count);
-				w.SendMessage (htab, w.TCM_GETITEM, count, &tci);
+				w.SendMessage (core.htab, w.TCM_GETITEM, count, &tci);
 				breakif (!eax);
 				mov (tci.lParam, ebx);
 				mov (listebx.props, esi);

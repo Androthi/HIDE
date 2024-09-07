@@ -36,17 +36,17 @@ procedure selectOpen (id:string);
 		
 begin selectOpen;
 USE (EBX, ESI, EDI);
-	w.SendMessage (htab, w.TCM_GETITEMCOUNT, 0, 0);
+	w.SendMessage (core.htab, w.TCM_GETITEMCOUNT, 0, 0);
 	mov (eax, count);
 	if (eax) then
 		mov	(w.TCIF_PARAM, tci.imask);
 		while (count >=0) do
 			dec (count);
-			w.SendMessage (htab, w.TCM_GETITEM, count, &tci);
+			w.SendMessage (core.htab, w.TCM_GETITEM, count, &tci);
 			breakif (!eax);
 			mov (tci.lParam, ebx);
 			if (str.eq (listebx.fullname, id)) then
-				w.SendMessage (htab, w.TCM_SETCURSEL, count, 0);
+				w.SendMessage (core.htab, w.TCM_SETCURSEL, count, 0);
 				tabtool_activate();
 				mov (curnode, eax);
 				break;
@@ -68,17 +68,17 @@ procedure selectOpenMem (var node:fList.fnode);
 		
 begin selectOpenMem;
 USE (EBX, ESI, EDI, EDX);
-	w.SendMessage (htab, w.TCM_GETITEMCOUNT, 0, 0);
+	w.SendMessage (core.htab, w.TCM_GETITEMCOUNT, 0, 0);
 	mov (eax, count);
 	if (eax) then
 		mov	(w.TCIF_PARAM, tci.imask);
 		while (count >=0) do
 			dec (count);
-			w.SendMessage (htab, w.TCM_GETITEM, count, &tci);
+			w.SendMessage (core.htab, w.TCM_GETITEM, count, &tci);
 			breakif (!eax);
 			mov (tci.lParam, ebx);
 			if (ebx = node) then
-				w.SendMessage (htab, w.TCM_SETCURSEL, count, 0);
+				w.SendMessage (core.htab, w.TCM_SETCURSEL, count, 0);
 				tabtool_activate();
 				mov (true, eax);
 				break;
@@ -101,13 +101,13 @@ procedure tabtool_isOpen( var node:fList.fnode );
 
 begin tabtool_isOpen;
 USE (EBX, ESI, EDI, EDX);
-	w.SendMessage (htab, w.TCM_GETITEMCOUNT, 0, 0);
+	w.SendMessage (core.htab, w.TCM_GETITEMCOUNT, 0, 0);
 	mov (eax, count);
 	if (eax) then
 		mov	(w.TCIF_PARAM, tci.imask);
 		while (count >=0) do
 			dec (count);
-			w.SendMessage (htab, w.TCM_GETITEM, count, &tci);
+			w.SendMessage (core.htab, w.TCM_GETITEM, count, &tci);
 			breakif (!eax);
 			mov (tci.lParam, ebx);
 			if (ebx = node) then
@@ -161,8 +161,8 @@ USE (ESI, ECX, EDI, EBX, EDX);
 	mov (listebx.id, eax);
 	mov (eax, tci.pszText);
 	mov (ebx, tci.lParam);
-	w.SendMessage(htab,w.TCM_INSERTITEM, 999, &tci);
-	w.SendMessage(htab,w.TCM_SETCURSEL, eax,0);
+	w.SendMessage(core.htab,w.TCM_INSERTITEM, 999, &tci);
+	w.SendMessage(core.htab,w.TCM_SETCURSEL, eax,0);
 	mov (ebx, curnode);
 
 	
@@ -196,7 +196,7 @@ USE (EBX);
 	mov(true, eax);
 	while(eax) do
 		inc	(index);
-		w.SendMessage (htab, w.TCM_GETITEM, index, &tci);
+		w.SendMessage (core.htab, w.TCM_GETITEM, index, &tci);
 		if (eax) then 
 			mov	(tci.lParam, eax);
 			if (eax = node) then
@@ -205,7 +205,7 @@ USE (EBX);
 				mov (listebx.id, eax);
 				mov (eax, tci.pszText);
 				mov (ebx, tci.lParam);
-				w.SendMessage (htab, w.TCM_SETITEM, index, &tci);
+				w.SendMessage (core.htab, w.TCM_SETITEM, index, &tci);
 				break;
 			endif;
 		endif;
@@ -229,7 +229,7 @@ USE (EBX);
 		mov(true, eax);
 		while(eax) do
 			inc	(index);
-			if (w.SendMessage (htab, w.TCM_GETITEM, index, &tci)) then
+			if (w.SendMessage (core.htab, w.TCM_GETITEM, index, &tci)) then
 				mov	(tci.lParam, eax);
 				breakif (eax = node);
 			endif;
@@ -246,10 +246,10 @@ procedure tabtool_activate;	@noframe;
 begin tabtool_activate;
 USE(ebx,edx,esi,edi);	
 	//dbg.put("tabtool_activate");
-	w.SendMessage(htab, w.TCM_GETCURSEL, 0,0);
+	w.SendMessage(core.htab, w.TCM_GETCURSEL, 0,0);
 	if (eax != -1) then
 		mov	(w.TCIF_PARAM, tci.imask);
-		w.SendMessage(htab,w.TCM_GETITEM, eax, &tci);
+		w.SendMessage(core.htab,w.TCM_GETITEM, eax, &tci);
 		mov (tci.lParam, eax);
 		if (eax <> curnode) then
 			mov (curnode, ebx);
@@ -288,26 +288,26 @@ USE (EBX);
 	mov	(true, eax);
 	while (eax) do
 		inc	(index);
-		w.SendMessage (htab, w.TCM_GETITEM, index, &tci);
+		w.SendMessage (core.htab, w.TCM_GETITEM, index, &tci);
 		if(eax) then
 			mov	(tci.lParam, ebx);
 			if (ebx = node) then
-				w.SendMessage (htab, w.TCM_DELETEITEM, index, 0);
+				w.SendMessage (core.htab, w.TCM_DELETEITEM, index, 0);
 				break;
 			endif;
 		endif;
 	endwhile;
 	
-	w.SendMessage (htab, w.TCM_GETITEMCOUNT, 0, 0);
+	w.SendMessage (core.htab, w.TCM_GETITEMCOUNT, 0, 0);
 	if (eax) then
 		l0:
-		w.SendMessage (htab, w.TCM_SETCURSEL, index, 0);
-		w.SendMessage(htab,w.TCM_GETCURSEL,0,0);
+		w.SendMessage (core.htab, w.TCM_SETCURSEL, index, 0);
+		w.SendMessage(core.htab,w.TCM_GETCURSEL,0,0);
 		if (eax = -1) then
 			dec	(index);
 			jmp	l0;
 		endif;
-		w.SendMessage (htab, w.TCM_GETITEM, index, &tci);
+		w.SendMessage (core.htab, w.TCM_GETITEM, index, &tci);
 		mov (ebx, curnode);
 		call tabtool_activate;
 	else
@@ -352,7 +352,7 @@ USE(edi, esi, ebx);
 		w.SendMessage(hpaneltab,w.TCM_INSERTITEM, 999, &tci);
 		add (4, edi);
 	endfor;
-	w.SendMessage(htab,w.TCM_SETCURSEL, 0,0);
+	w.SendMessage(core.htab,w.TCM_SETCURSEL, 0,0);
 	mov (0, panel_from);
 	
 	// need to clear these in case there is junk there from previous settings versions
