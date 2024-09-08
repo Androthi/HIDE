@@ -318,18 +318,18 @@ proc
 							
 					if( w.IsDlgButtonChecked( hwin, ID_HIDE_THREADSAFE ) = w.BST_CHECKED ) then
 					
-						str.put( strbuf, "hlalib.lib" );
+						str.put( stringbuffer, "hlalib.lib" );
 						str.put( workpath, "hlalib_safe.lib" );
 						
 					else
 
-						str.put( strbuf, "hlalib_safe.lib" );
+						str.put( stringbuffer, "hlalib_safe.lib" );
 						str.put( workpath, "hlalib.lib" );
 					
 						
 					endif;
 	
-					w.SendDlgItemMessage( hwin, IDC_MANAGERSET_LIST, w.LB_FINDSTRINGEXACT, -1, strbuf );
+					w.SendDlgItemMessage( hwin, IDC_MANAGERSET_LIST, w.LB_FINDSTRINGEXACT, -1, stringbuffer );
 					w.SendDlgItemMessage( hwin, IDC_MANAGERSET_LIST, w.LB_DELETESTRING, eax, 0 );
 					w.SendDlgItemMessage( hwin, IDC_MANAGERSET_LIST, w.LB_ADDSTRING, 0, workpath );
 					
@@ -459,9 +459,9 @@ proc
 		
 		w.SendDlgItemMessage( optProject, IDC_MANAGERPROJ_FOLDERS, w.LB_RESETCONTENT, 0, 0);
 		
-		str.put( strbuf, project.id );
-		filesys.deleteExt( strbuf, strbuf );
-		w.SendDlgItemMessage( optProject, IDC_MANAGERPROJ_FOLDERS, w.LB_ADDSTRING, 0, strbuf );
+		str.put( stringbuffer, project.id );
+		filesys.deleteExt( stringbuffer, stringbuffer );
+		w.SendDlgItemMessage( optProject, IDC_MANAGERPROJ_FOLDERS, w.LB_ADDSTRING, 0, stringbuffer );
 		w.SendDlgItemMessage( optProject, IDC_MANAGERPROJ_FOLDERS, w.LB_SETCURSEL, eax, 0 );
 		
 		// user folders
@@ -471,8 +471,8 @@ proc
 			xor( ebx, ebx );
 			while( ebx < count ) do
 
-				iniesi.readItem( "HPR Folders", ebx, strbuf );
-				w.SendDlgItemMessage( optProject, IDC_MANAGERPROJ_FOLDERS, w.LB_ADDSTRING, 0, strbuf );
+				iniesi.readItem( "HPR Folders", ebx, stringbuffer );
+				w.SendDlgItemMessage( optProject, IDC_MANAGERPROJ_FOLDERS, w.LB_ADDSTRING, 0, stringbuffer );
 				inc (ebx);
 				
 			endwhile;			
@@ -496,23 +496,23 @@ proc
 				
 				if( eax = IDC_MANAGERPROJ_RENAME ) then
 					//dbg.enters( "Rename Project" );
-					if( getStringInput( "Rename Project To", strbuf ) ) then
+					if( getStringInput( "Rename Project To", stringbuffer ) ) then
 						
 						// rename hpr
 						mov (&project.hpr, esi);
-						filesys.deleteExt( strbuf, strbuf );
-						str.put2 (strbuf, ".hpr");
-						iniesi.writeFileName( strbuf );
+						filesys.deleteExt( stringbuffer, stringbuffer );
+						str.put2 (stringbuffer, ".hpr");
+						iniesi.writeFileName( stringbuffer );
 						filesys.delete (project.id);
 						str.free( project.id );
-						str.a_cpy( strbuf );
+						str.a_cpy( stringbuffer );
 						mov( eax, project.id );
 						
 						// rename project folder
-						filesys.deleteExt( strbuf, strbuf );
+						filesys.deleteExt( stringbuffer, stringbuffer );
 						str.cpy( project.folder, workpath );
 						filesys.extractPath( workpath, workpath );
-						str.put2( workpath, dirsep_c, strbuf );
+						str.put2( workpath, dirsep_c, stringbuffer );
 						filesys.cd( projectpath );
 						filesys.rename( project.folder, workpath );
 						str.free( project.folder );
@@ -543,22 +543,22 @@ proc
 				elseif( eax = IDC_MANAGERPROJ_NEWFOLDER ) then
 					
 					writeMessage( "TODO: NEW FOLDER" );
-					if( getStringInput( "Create new Project folder", strbuf ) ) then
+					if( getStringInput( "Create new Project folder", stringbuffer ) ) then
 						
-						if( filesys.exists( strbuf ) ) then
+						if( filesys.exists( stringbuffer ) ) then
 							
 							writeMessage( "Folder already exists" );
 							
 						else
 							
-							filesys.mkdir( strbuf );
+							filesys.mkdir( stringbuffer );
 							
 						endif;
 						
 						mov( &project.hpr, esi );
-						if( iniesi.findItem( "HPR Folders", strbuf ) = -1 ) then
+						if( iniesi.findItem( "HPR Folders", stringbuffer ) = -1 ) then
 								
-							iniesi.writeItem( "HPR Folders", -1, strbuf );
+							iniesi.writeItem( "HPR Folders", -1, stringbuffer );
 								
 						endif;
 							
@@ -725,9 +725,9 @@ proc
 					w.SendDlgItemMessage( hwin, IDC_MANAGERPROJ_FOLDERS, w.LB_GETCURSEL, 0, 0 );
 					w.SendDlgItemMessage( hwin, IDC_MANAGERPROJ_FOLDERS, w.LB_GETTEXT, eax, &buffer );
 					str.cpyz( &buffer, workpath );
-					str.cpy( project.id, strbuf );
-					filesys.deleteExt( strbuf, strbuf );
-					if( ! str.eq (workpath, strbuf )) then
+					str.cpy( project.id, stringbuffer );
+					filesys.deleteExt( stringbuffer, stringbuffer );
+					if( ! str.eq (workpath, stringbuffer )) then
 
 						// not root folder, so activate delete button
 						w.GetDlgItem( hwin, IDC_MANAGERPROJ_DELFOLDER );
@@ -860,15 +860,15 @@ proc
 
 		if( newCodeFont ) then
 			
-			w.DeleteObject( hmainfont );
+			w.DeleteObject( core.hmainfont );
 			mov( mainfont.lfItalic, al );
 			push( eax );
 			w.CreateFontIndirect( &mainfont );
-			mov( eax, hmainfont );
-			w.DeleteObject( hitalic );
+			mov( eax, core.hmainfont );
+			w.DeleteObject( core.hitalic );
 			mov( true, mainfont.lfItalic );
 			w.CreateFontIndirect( &mainfont );
-			mov( eax, hitalic );
+			mov( eax, core.hitalic );
 			pop( eax );
 			mov( al, mainfont.lfItalic );
 			mov( fnt.rgbColors, col.txtcol );
@@ -884,9 +884,9 @@ proc
 		endif;
 
 		if( newLineFont ) then
-			w.DeleteObject( hlinefont );
+			w.DeleteObject( core.hlinefont );
 			w.CreateFontIndirect( &linefont );
-			mov( eax, hlinefont );
+			mov( eax, core.hlinefont );
 			mov( fnt.rgbColors,col.lnrcol );
 			mov( curnode, eax );
 			if( eax ) then
@@ -906,12 +906,12 @@ proc
 		
 		if( w.GetDlgItemTextA( optEnv, IDC_MANAGERENV_PATH, &buffer, @size(buffer) )) then
 			
-			env2.get( "PATH", strbuf );
-			str.cpyz( &buffer, strbuf );
-			hideini.writeString( "HIDE Settings", "UserPath", strbuf );
-			expandPathMacs( strbuf, strbuf );
-			str.put2( strbuf, ';', homepath, dirsep_c, "bin;" );
-			env2.put( "PATH", strbuf );
+			env2.get( "PATH", stringbuffer );
+			str.cpyz( &buffer, stringbuffer );
+			hideini.writeString( "HIDE Settings", "UserPath", stringbuffer );
+			expandPathMacs( stringbuffer, stringbuffer );
+			str.put2( stringbuffer, ';', homepath, dirsep_c, "bin;" );
+			env2.put( "PATH", stringbuffer );
 			
 		else
 			
@@ -921,10 +921,10 @@ proc
 			
 		if( w.GetDlgItemTextA( optEnv, IDC_MANAGERENV_PROJECT, &buffer, @size(buffer) )) then
 
-			str.cpyz( &buffer, strbuf );
-			hideini.writeString( "HIDE Settings", "ProjFold", strbuf );
-			expandPathMacs( strbuf, strbuf );
-			str.cpy( strbuf, projectpath );
+			str.cpyz( &buffer, stringbuffer );
+			hideini.writeString( "HIDE Settings", "ProjFold", stringbuffer );
+			expandPathMacs( stringbuffer, stringbuffer );
+			str.cpy( stringbuffer, projectpath );
 			
 		else
 
@@ -935,8 +935,8 @@ proc
 
 		if( w.GetDlgItemTextA( optEnv, IDC_MANAGERENV_DEBUG, &buffer, @size(buffer) )) then
 
-			str.cpyz( &buffer, strbuf );
-			hideini.writeString( "HIDE Settings", "debugger", strbuf );
+			str.cpyz( &buffer, stringbuffer );
+			hideini.writeString( "HIDE Settings", "debugger", stringbuffer );
 
 		else
 			
@@ -946,8 +946,8 @@ proc
 
 		if( w.GetDlgItemTextA( optEnv, IDC_MANAGERENV_HELP, &buffer, @size(buffer) )) then
 
-			str.cpyz( &buffer, strbuf );
-			hideini.writeString( "Help", "1", strbuf );
+			str.cpyz( &buffer, stringbuffer );
+			hideini.writeString( "Help", "1", stringbuffer );
 
 		else
 			
@@ -957,39 +957,39 @@ proc
 			
 		if( w.GetDlgItemTextA( optEnv, IDC_MANAGERENV_HLALIB, &buffer, @size(buffer) )) then
 
-			str.cpyz( &buffer, strbuf );
-			hideini.writeString( "HIDE Settings", "hlalib", strbuf );
-			expandPathMacs( strbuf, strbuf );
-			env2.put( "hlalib", strbuf );
+			str.cpyz( &buffer, stringbuffer );
+			hideini.writeString( "HIDE Settings", "hlalib", stringbuffer );
+			expandPathMacs( stringbuffer, stringbuffer );
+			env2.put( "hlalib", stringbuffer );
 			
 		else
 			
-			str.put( strbuf, homepath, dirsep_c, "hlalib" );
-			hideini.writeString( "HIDE Settings", "hlalib", strbuf );
-			env2.put( "hlalib", strbuf );
+			str.put( stringbuffer, homepath, dirsep_c, "hlalib" );
+			hideini.writeString( "HIDE Settings", "hlalib", stringbuffer );
+			env2.put( "hlalib", stringbuffer );
 			
 		endif;
 
 		if( w.GetDlgItemTextA ( optEnv, IDC_MANAGERENV_HLAINC, &buffer, @size(buffer) )) then
 
-			str.cpyz( &buffer, strbuf );
-			hideini.writeString( "HIDE Settings", "hlainc", strbuf );
-			expandPathMacs( strbuf, strbuf );
-			env2.put( "hlainc", strbuf );
+			str.cpyz( &buffer, stringbuffer );
+			hideini.writeString( "HIDE Settings", "hlainc", stringbuffer );
+			expandPathMacs( stringbuffer, stringbuffer );
+			env2.put( "hlainc", stringbuffer );
 		
 		else
 			
-			str.put( strbuf, homepath, dirsep_c, "hlainc" );
-			hideini.writeString( "HIDE Settings", "hlainc", strbuf );
-			env2.put( "hlainc", strbuf );
+			str.put( stringbuffer, homepath, dirsep_c, "hlainc" );
+			hideini.writeString( "HIDE Settings", "hlainc", stringbuffer );
+			env2.put( "hlainc", stringbuffer );
 		
 		endif;
 		
  		w.GetDlgItemTextA( optEnv, IDC_MANAGERENV_HLAOPT, &buffer, @size(buffer) );
-		str.cpyz( &buffer, strbuf );
-		hideini.writeString( "HIDE Settings", "hlaopt", strbuf );
-		expandPathMacs( strbuf, strbuf );
-		env2.put( "hlaopt", strbuf );
+		str.cpyz( &buffer, stringbuffer );
+		hideini.writeString( "HIDE Settings", "hlaopt", stringbuffer );
+		expandPathMacs( stringbuffer, stringbuffer );
+		env2.put( "hlaopt", stringbuffer );
 
 		
 		//==========================================================
@@ -1088,11 +1088,11 @@ proc
 				while( ecx < ebx ) do
 					
 					push( ecx );
-					w.SendDlgItemMessage( optSettings, IDC_MANAGERSET_LIST, w.LB_GETTEXT, ecx, strbuf );
-					mov( strbuf, ecx );
+					w.SendDlgItemMessage( optSettings, IDC_MANAGERSET_LIST, w.LB_GETTEXT, ecx, stringbuffer );
+					mov( stringbuffer, ecx );
 					mov( eax, (type str.strRec[ecx]).length );
 					pop( ecx );
-					optBuffer.insert( strbuf, nl );
+					optBuffer.insert( stringbuffer, nl );
 					inc( ecx );
 					
 				endwhile;

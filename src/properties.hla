@@ -297,13 +297,13 @@ procedure prop_parseInclude (src:dword in esi);
 				mov (eax, lindex);
 				bufesi.right (1);
 				bufesi.searchf ("""");
-				bufesi.extract (lindex, eax, strbuf);
-				str.trim (strbuf);
+				bufesi.extract (lindex, eax, stringbuffer);
+				str.trim (stringbuffer);
 				
-				//dbg.put ("innerscan found include: ", strbuf);
+				//dbg.put ("innerscan found include: ", stringbuffer);
 
 				USE (ESI, EDI);
-					if (fileList.findFullname (strbuf) || fileList.findID (strbuf)) then
+					if (fileList.findFullname (stringbuffer) || fileList.findID (stringbuffer)) then
 						recursiveScan ([eax]);
 					else
 						xor (eax, eax); 
@@ -482,7 +482,7 @@ begin prop_parseVariable;
 		
 		case (gen_colon)
 			//dbg.put ("label = ", genID);
-			str.cpy (genID, strbuf);
+			str.cpy (genID, stringbuffer);
 			move (genLine, line);
 			mov (edi, startID);
 			getEOI (esi);
@@ -502,7 +502,7 @@ begin prop_parseVariable;
 
 			USE (ESI, EDI);
 				mov (curtable, esi);
-				tableesi.getNode (strbuf); 
+				tableesi.getNode (stringbuffer); 
 			ENDUSE;
 			mov (eax, ebx);
 			if (tablenodeebx.Value = 0 ) then
@@ -526,8 +526,8 @@ begin prop_parseVariable;
 					genExtract();
 				ENDUSE;
 				//dbg.put ("var type = ", genID);
-				formatString( genID, strbuf );
-				str.a_cpy (strbuf);
+				formatString( genID, stringbuffer );
+				str.a_cpy (stringbuffer);
 				mov (eax, propedx.typestr);
 				move (scanNode, propedx.fnode);
 				move (line, propedx.line);
@@ -592,7 +592,7 @@ begin prop_parseProc;
 		case (gen_colon)
 			//dbg.put ("label = ", genID);
 
-			str.cpy (genID, strbuf);	// strbuf = procedure id
+			str.cpy (genID, stringbuffer);	// stringbuffer = procedure id
 			
 			// identifies procedure, iterator, etc.
 			genLex( esi );
@@ -638,8 +638,8 @@ begin prop_parseProc;
 			
 			USE (ESI, EDI);
 				mov (curtable, esi);
-				//dbg.put("looking for:", strbuf );
-				tableesi.getNode (strbuf);
+				//dbg.put("looking for:", stringbuffer );
+				tableesi.getNode (stringbuffer);
 			ENDUSE;
 			mov (eax, ebx);
 			
@@ -647,7 +647,7 @@ begin prop_parseProc;
 			// if unique, allocate memory and enter into symbol space
 			if (tablenodeebx.Value = 0) then
 		
-				//dbg.put ("new node :", strbuf);
+				//dbg.put ("new node :", stringbuffer);
 				mem.zalloc ( @size(propNode_t));
 				mov (eax, curprop);
 				mov (eax, tablenodeebx.Value);
@@ -688,8 +688,8 @@ begin prop_parseProc;
 				ENDUSE;
 				
 				mov (curprop, edx);
-				formatString( genID, strbuf );
-				str.a_cpy (strbuf);
+				formatString( genID, stringbuffer );
+				str.a_cpy (stringbuffer);
 				mov (eax, propedx.typestr);
 				move (scanNode, propedx.fnode);
 				move (line, propedx.line);  //dbg.put ("line = ", line );
@@ -705,7 +705,7 @@ begin prop_parseProc;
 				saveToken( tkn );
 				genLex( esi ); // eat begin
 				genLex( esi ); // get label
-				if( str.eq ( genID, strbuf ) ) then
+				if( str.eq ( genID, stringbuffer ) ) then
 					// we have procedure body, find the end
 					findToken (tkn_end);
 					if (eax = gen_eof || eax = gen_error) then
@@ -758,7 +758,7 @@ begin prop_parseProcedure;
 	// get the procedure id
 	genLex (esi);
 	move (genLine, line);
-	str.cpy (genID, strbuf);
+	str.cpy (genID, stringbuffer);
 	
 	// find start and end of typestr
 	peek (esi);
@@ -792,13 +792,13 @@ begin prop_parseProcedure;
 	
 	USE (ESI, EDI);
 		mov (curtable, esi);
-		tableesi.getNode (strbuf);
+		tableesi.getNode (stringbuffer);
 	ENDUSE;
 	mov (eax, ebx);
 
 	if (tablenodeebx.Value = 0) then
 
-		//dbg.put ("new node :", strbuf);
+		//dbg.put ("new node :", stringbuffer);
 		mem.zalloc ( @size(propNode_t));
 		mov (eax, curprop);
 		mov (eax, tablenodeebx.Value);
@@ -840,8 +840,8 @@ begin prop_parseProcedure;
 		
 		//dbg.put ("var type = ", genID);
 		mov (curprop, edx);
-		formatString( genID, strbuf );
-		str.a_cpy (strbuf);
+		formatString( genID, stringbuffer );
+		str.a_cpy (stringbuffer);
 		mov (eax, propedx.typestr);
 		move (scanNode, propedx.fnode);
 		move (line, propedx.line);
@@ -912,8 +912,8 @@ begin prop_parseMacro;
 		endwhile;
 		
 		mov (curprop, edx);
-		formatString( genID, strbuf );
-		str.a_cpy (strbuf);
+		formatString( genID, stringbuffer );
+		str.a_cpy (stringbuffer);
 		mov (eax, propedx.typestr);
 
 	endif;
@@ -986,8 +986,8 @@ begin prop_parseType;
 				done:
 				genExtract();		
 				mov (curprop, edx);
-				formatString( genID, strbuf );
-				str.a_cpy (strbuf);
+				formatString( genID, stringbuffer );
+				str.a_cpy (stringbuffer);
 				mov (eax, propedx.typestr);
 
 				//dbg.put ("type id = ", genlcID);
@@ -1142,8 +1142,8 @@ begin prop_scanHLA;
 				USE (ESI);
 					mov (scanNode, ebx);
 					mov (listebx.props, esi);
-					str.put (strbuf, "__jobMain__");
-					tableesi.getNode (strbuf);
+					str.put (stringbuffer, "__jobMain__");
+					tableesi.getNode (stringbuffer);
 					if (tablenodeeax.Value = 0) then
 						mov (eax, ecx);
 						mem.zalloc (@size (propNode_t));

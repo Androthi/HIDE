@@ -134,8 +134,8 @@ proc
 				mov(w.STARTF_USESHOWWINDOW | w.STARTF_USESTDHANDLES,startinfo.dwFlags);
 				mov(w.SW_HIDE,startinfo.wShowWindow);
 				
-				filesys.gwd( strbuf );
-				dbg.put(" PIPE path :", strbuf, nl, "source :", source );
+				filesys.gwd( stringbuffer );
+				dbg.put(" PIPE path :", stringbuffer, nl, "source :", source );
 				
 				w.CreateProcess(NULL, source, NULL,NULL, true, NULL,NULL,NULL,&startinfo, &pinfo);
 				
@@ -410,8 +410,8 @@ proc
 		
 		mov( node, ebx );		
 		setJobInfo( [ebx] );
-		setRunPath( [ebx], strbuf ); jnc done;
-		buildRunPath( strbuf, workpath, runwithdebugger ); jnc done;
+		setRunPath( [ebx], stringbuffer ); jnc done;
+		buildRunPath( stringbuffer, workpath, runwithdebugger ); jnc done;
 		
 		if( bitSet( opt_windows, buildOpt )) then
 			
@@ -452,9 +452,9 @@ proc
 			launchProgram( src, true, false );
 			if (! eax ) then
 
-				env2.get( "hlatmp", strbuf );
+				env2.get( "hlatmp", stringbuffer );
 				mov( curnode, eax );
-				str.put( workpath, strbuf, dirsep_c, listeax.id );
+				str.put( workpath, stringbuffer, dirsep_c, listeax.id );
 				filesys.deleteExt( workpath, workpath );
 				str.put2( workpath, ".asm");
 				hide_openFile( workpath );
@@ -762,8 +762,8 @@ proc
 			str.put2( tmpStr, exe_c );
 			linkfile.append( "-out:", tmpStr, nl, linkobjs, nl );
 			
-			hideini.readSection ("default libs", strbuf );
-			linkfile.append( strbuf, nl );
+			hideini.readSection ("default libs", stringbuffer );
+			linkfile.append( stringbuffer, nl );
 			
 			env2.get( "hlatmp", tmpStr );
 			str.put2( tmpStr, dirsep_c, listebx.id, ".link" );
@@ -822,8 +822,8 @@ procedure compile (var node:baseNode_t; force:BOOL); @returns ("EAX");
 		toOutput ('-', listebx.relative, nl);
 
 		// build file
-		//env2.get( "hlaopt", strbuf );
-		str.put( strbuf, "-@ -win32" );
+		//env2.get( "hlaopt", stringbuffer );
+		str.put( stringbuffer, "-@ -win32" );
 		
 		if( ! listebx.isproject ) then
 			
@@ -832,7 +832,7 @@ procedure compile (var node:baseNode_t; force:BOOL); @returns ("EAX");
 		endif;
 		
 		mov( hlalevel, eax );
-		str.put (tmpStr, hla_compiler, ' ', strbuf, ' ', hla_level_strings[eax*4], ' ');
+		str.put (tmpStr, hla_compiler, ' ', stringbuffer, ' ', hla_level_strings[eax*4], ' ');
 
 	
 		if( testnz (opt_usedebuglib, buildOpt )) then
@@ -1094,9 +1094,9 @@ begin build_job;
 		
 		mov (&project.hpr, esi);
 		
-		if (iniesi._readString (jobebx.id, "target", strbuf)) then
+		if (iniesi._readString (jobebx.id, "target", stringbuffer)) then
 			try
-				buf.create (strbuf);
+				buf.create (stringbuffer);
 				buf.toString();
 				mov (eax, str0);
 				mov ( (type str.strRec[eax]).length, eax);
@@ -1104,8 +1104,8 @@ begin build_job;
 				str.alloc (eax);
 				mov (eax, str1);
 				
-				filesys.extractFilename( strbuf, strbuf );
-				str.put (s0, "temp_", strbuf );	// dest filename
+				filesys.extractFilename( stringbuffer, stringbuffer );
+				str.put (s0, "temp_", stringbuffer );	// dest filename
 				
 				buf.erase();
 				expandPathMacs (str0, str1);
@@ -1129,7 +1129,7 @@ begin build_job;
 
 			anyexception
 				
-				error.fileopenfailure (strbuf);
+				error.fileopenfailure (stringbuffer);
 			
 			endtry;
 			
@@ -1169,8 +1169,8 @@ begin build_project;
 	xor (ebx, ebx);
 	while (ebx < count ) do
 		mov (&project.hpr, esi);
-		iniesi.readItem ("HPR Jobs", ebx, strbuf);
-		jobList.findID (strbuf);
+		iniesi.readItem ("HPR Jobs", ebx, stringbuffer);
+		jobList.findID (stringbuffer);
 		build_job ([eax], force);
 		inc (ebx);
 	endwhile;
@@ -1327,12 +1327,12 @@ begin MakeProc;
  
 			if( listebx.isproject ) then
 				filesys.cd( project.folder );
-				str.put( strbuf, listebx.relative );
+				str.put( stringbuffer, listebx.relative );
 			else
-				filesys.extractPath( listebx.fullname, strbuf );
-				filesys.cd( strbuf );
-				dbg.put("curdir = ", strbuf );
-				filesys.extractFilename( listebx.fullname, strbuf );
+				filesys.extractPath( listebx.fullname, stringbuffer );
+				filesys.cd( stringbuffer );
+				dbg.put("curdir = ", stringbuffer );
+				filesys.extractFilename( listebx.fullname, stringbuffer );
 			endif;
 			
 			str.put( s, "hla " );
@@ -1340,7 +1340,7 @@ begin MakeProc;
 				str.put2( s, workpath, ' ' );
 			endif;
 			
-			str.put2( s, '"', strbuf, '"' );
+			str.put2( s, '"', stringbuffer, '"' );
 			
 			toOutput( ">", s, nl );
 			pipeExec( s );

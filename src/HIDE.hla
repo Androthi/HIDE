@@ -162,11 +162,11 @@ program HIDE_MAIN;
 		xor (ecx, ecx);
 		while (ecx < count ) do
 			
-			if (hideini.readItem ("Recent Files", ecx, strbuf)) then
+			if (hideini.readItem ("Recent Files", ecx, stringbuffer)) then
 		
 				USE (ecx, ebx);
 					w.AppendMenu ( _hmenu, w.MF_BYPOSITION | w.MF_ENABLED | w.MF_STRING,
-									ebx, strbuf);
+									ebx, stringbuffer);
 				ENDUSE;
 				
 			else
@@ -214,16 +214,16 @@ program HIDE_MAIN;
 	
 		sub (ebx, ebx);
 		while (ebx < nmenus) do
-			hideini.readItem ("User Menu", ebx, strbuf);
-			mov (strbuf, esi);
-			scan.getToken( strbuf );
-			str.trim( strbuf );
+			hideini.readItem ("User Menu", ebx, stringbuffer);
+			mov (stringbuffer, esi);
+			scan.getToken( stringbuffer );
+			str.trim( stringbuffer );
 			
 			mov (ebx, eax);
 			add (USER_MENU_START, eax);
 			USE (EBX);
 				w.AppendMenu ( usermenu, w.MF_ENABLED | w.MF_STRING,
-									eax, strbuf);
+									eax, stringbuffer);
 			ENDUSE;
 			inc (ebx);
 		endwhile;
@@ -356,38 +356,38 @@ program HIDE_MAIN;
 	
 		switch (eax);
 		case (id_procedure)
-			str.cpy ("proc: ", strbuf);
+			str.cpy ("proc: ", stringbuffer);
 		case (id_type)
-			str.cpy ("type: ", strbuf);
+			str.cpy ("type: ", stringbuffer);
 		case (id_val)
-			str.cpy ("val: ", strbuf);
+			str.cpy ("val: ", stringbuffer);
 		case (id_var)
-			str.cpy ("var: ", strbuf);
+			str.cpy ("var: ", stringbuffer);
 		case (id_static)
-			str.cpy ("static: ", strbuf);
+			str.cpy ("static: ", stringbuffer);
 		case (id_readonly)
-			str.cpy ("rd.only: ", strbuf);
+			str.cpy ("rd.only: ", stringbuffer);
 		case (id_macro)
-			str.cpy ("macro: ", strbuf);
+			str.cpy ("macro: ", stringbuffer);
 		case (id_const)
-			str.cpy ("const: ", strbuf);
+			str.cpy ("const: ", stringbuffer);
 		case (id_storage)
-			str.cpy ("stor: ", strbuf);
+			str.cpy ("stor: ", stringbuffer);
 		case (id_class)
-			str.cpy ("class: ", strbuf);
+			str.cpy ("class: ", stringbuffer);
 		default
-			str.cpy ("", strbuf);
+			str.cpy ("", stringbuffer);
 		endswitch;
 
 		if (propebx.typestr > 0 ) then
-			str.put2 (strbuf, propebx.typestr);
+			str.put2 (stringbuffer, propebx.typestr);
 		endif;
 	
 		//if (propebx.valuestr > 0 ) then
-		//	str.put2 (strbuf, ":= ", propebx.valuestr);
+		//	str.put2 (stringbuffer, ":= ", propebx.valuestr);
 		//endif;
 	
-		w.SendMessage(hsbr,w.SB_SETTEXT,STATUS_INFO, strbuf);
+		w.SendMessage(hsbr,w.SB_SETTEXT,STATUS_INFO, stringbuffer);
 
 		ENDUSE;	
 		ret();
@@ -937,7 +937,7 @@ program HIDE_MAIN;
 				w.EnableMenuItem (hmenu, edx, eax);
 			ENDUSE;
 			USE (EAX, EDX);
-				w.SendMessage(htbr, w.TB_ENABLEBUTTON,edx,eax);
+				w.SendMessage(core.htbr, w.TB_ENABLEBUTTON,edx,eax);
 			ENDUSE;
 			ret();
 		end Toggle;
@@ -1217,22 +1217,22 @@ program HIDE_MAIN;
 		
 		try
 			filesys.cd (tplpath);
-			str.put (strbuf, "standard", dirsep_c);
+			str.put (stringbuffer, "standard", dirsep_c);
 	
 			mov (ftype, eax);
 			switch (eax);
 			
 			case ( type_hla )
 			
-				str.put2 (strbuf, "program.txt");
+				str.put2 (stringbuffer, "program.txt");
 			
 			case ( type_unit )
 			
-				str.put2 (strbuf, "unit.txt");
+				str.put2 (stringbuffer, "unit.txt");
 			
 			case ( type_def )
 			
-				str.put2 (strbuf, "dll.txt");
+				str.put2 (stringbuffer, "dll.txt");
 				
 			default
 			
@@ -1245,10 +1245,10 @@ program HIDE_MAIN;
 			
 			endswitch;
 			
-			if (! filesys.exists (strbuf)) then
+			if (! filesys.exists (stringbuffer)) then
 				jmp _default;
 			endif;
-			dest.create (strbuf);	// load the template
+			dest.create (stringbuffer);	// load the template
 			str.put (tpl, "$(filename)");
 			// scan the template and replace $(filename) with target
 			forever
@@ -1615,10 +1615,10 @@ program HIDE_MAIN;
 		
 		USE (ESI, EBX);
 		sub (USER_MENU_START, ecx);
-		if (hideini.readItem ("User Menu", ecx, strbuf)) then
+		if (hideini.readItem ("User Menu", ecx, stringbuffer)) then
 			
 			scan.setDelimiters( commaDelimcst );
-			mov( strbuf, esi );
+			mov( stringbuffer, esi );
 			scan.getToken( taskstr );	// ignore the 1st one
 			
 			dbg.put("item: ", taskstr );
@@ -1660,9 +1660,9 @@ program HIDE_MAIN;
 				
 			else
 				
-				if (findExecutable (taskstr, strbuf)) then
-					str.put2 (strbuf, " """, taskstr, '"');
-					str.cpy (strbuf,taskstr);
+				if (findExecutable (taskstr, stringbuffer)) then
+					str.put2 (stringbuffer, " """, taskstr, '"');
+					str.cpy (stringbuffer,taskstr);
 				endif;
 				
 
@@ -1701,8 +1701,8 @@ program HIDE_MAIN;
 				UpdateMenu(); // rebuild recent menu
 			endif;
 			
-			filesys.extractExt( workpath, strbuf );
-			if( str.ieq( strbuf, "hpr" )) then
+			filesys.extractExt( workpath, stringbuffer );
+			if( str.ieq( stringbuffer, "hpr" )) then
 
 				project.open (workpath);
 
@@ -1712,8 +1712,8 @@ program HIDE_MAIN;
 						hide_openFile (workpath);
 					endif;
 				else
-					str.put (strbuf, "File not found :", workpath);
-					error.warning (strbuf);
+					str.put (stringbuffer, "File not found :", workpath);
+					error.warning (stringbuffer);
 				endif;
 			endif;
 		endif;
@@ -2214,11 +2214,11 @@ program HIDE_MAIN;
 	begin Menu_ToolsRun;
 		pushabi;
 		
-		if (! hideini._readString ("HIDE Settings", "command", strbuf)) then
-			str.cpy ("", strbuf);
+		if (! hideini._readString ("HIDE Settings", "command", stringbuffer)) then
+			str.cpy ("", stringbuffer);
 		endif;
 		
-		if ( getStringInput( "Enter Command", strbuf, workpath )) then
+		if ( getStringInput( "Enter Command", stringbuffer, workpath )) then
 
 			hideini.writeString ("HIDE Settings", "command", workpath);
 			expandPathMacs (workpath, workpath);
@@ -2346,17 +2346,17 @@ proc
 			saveAll();
 				
 			mov( &project.hpr, esi );
-			if ( iniesi._readString ("HPR Settings", "wscan header", strbuf)) then
+			if ( iniesi._readString ("HPR Settings", "wscan header", stringbuffer)) then
 				
 				// header dedication exists, proceed.
-				if (filesys.exists (strbuf)) then
+				if (filesys.exists (stringbuffer)) then
 					str.put (s, "wscan ", project.id, " -w", homepath,
-							dirsep_c, "hlainc\w32\win32.hhf -o", strbuf);
+							dirsep_c, "hlainc\w32\win32.hhf -o", stringbuffer);
 					
 					launchProgram( s, true, true );
 					
 				else
-					str.cpy (strbuf, s);
+					str.cpy (stringbuffer, s);
 					toOutput (nl
 						"Header File dedicated to wscan :", s, " no longer exists." nl
 						"It may have been deleted or moved to another location." nl
@@ -2688,11 +2688,11 @@ proc
 		mov( curnode, eax );
 		test( eax, eax );
 		jz done;
-		str.put (strbuf, "Enter a label for bookmark");
-			if (getStringInput (strbuf, workpath)) then
-				str.put( strbuf, "//bm=", workpath, nl);
+		str.put (stringbuffer, "Enter a label for bookmark");
+			if (getStringInput (stringbuffer, workpath)) then
+				str.put( stringbuffer, "//bm=", workpath, nl);
 				mov( curnode, ecx );
-				w.SendMessage(listecx.hwnd,w.EM_REPLACESEL,true, strbuf);
+				w.SendMessage(listecx.hwnd,w.EM_REPLACESEL,true, stringbuffer);
 				RAEdit_SaveFile (curnode);
 			endif;
 		done:
@@ -2722,10 +2722,10 @@ proc
 		xor(TOOL,settings.winview);
 		test(TOOL,settings.winview);
 		if (@nz) then
-			w.ShowWindow(htbr,w.SW_SHOWNA);
+			w.ShowWindow(core.htbr,w.SW_SHOWNA);
 			w.CheckMenuItem(hmenu,IDM_VIEW_TOOLBAR,(w.MF_BYCOMMAND | w.MF_CHECKED));
 		else
-			w.ShowWindow(htbr,w.SW_HIDE);
+			w.ShowWindow(core.htbr,w.SW_HIDE);
 			w.CheckMenuItem(hmenu,IDM_VIEW_TOOLBAR,(w.MF_BYCOMMAND));						
 	    endif;
 		w.SendMessage(core.hwnd,w.WM_SIZE,w.SIZENORMAL,1);
@@ -3093,15 +3093,15 @@ proc
 		//mov(curnode, ebx);
 		w._ChooseFont(&cf);
 		if (eax) then
-			w.DeleteObject(hmainfont);
+			w.DeleteObject(core.hmainfont);
 			mov	(mainfont.lfItalic, al);
 			push (eax);
 			w.CreateFontIndirect(&mainfont);
-			mov	(eax, hmainfont);
-			w.DeleteObject(hitalic);
+			mov	(eax, core.hmainfont);
+			w.DeleteObject(core.hitalic);
 			mov	(true, mainfont.lfItalic);
 			w.CreateFontIndirect(&mainfont);
-			mov	(eax, hitalic);
+			mov	(eax, core.hitalic);
 			pop	(eax);
 			mov	(al, mainfont.lfItalic);
 			mov	(cf.rgbColors, col.txtcol);
@@ -3126,9 +3126,9 @@ proc
 		//mov (curnode, ebx);
 		w._ChooseFont(&cf);
 		if (eax) then
-			w.DeleteObject(hlinefont);
+			w.DeleteObject(core.hlinefont);
 			w.CreateFontIndirect(&linefont);
-			mov(eax, hlinefont);
+			mov(eax, core.hlinefont);
 			mov(cf.rgbColors,col.lnrcol);
 			//w.SendMessage(listebx.hwnd,REM_SETCOLOR,0,&col);
 			setFormatAll();
@@ -3160,15 +3160,15 @@ proc
 		
 	_mhapi::
 		mov(0,buffer[0]);
-		if (hideini._readString ("Help", "1", strbuf)) then
-			expandPathMacs (strbuf, strbuf);		
-			if (str.length (strbuf) > 0) then
+		if (hideini._readString ("Help", "1", stringbuffer)) then
+			expandPathMacs (stringbuffer, stringbuffer);		
+			if (str.length (stringbuffer) > 0) then
 				mov (curnode, eax);
 				w.SendMessage(listeax.hwnd,REM_GETWORD,@size(buffer),&buffer);
 				if(buffer[0] <> 0) then
-					w.WinHelp(hwin,strbuf, w.HELP_KEY,&buffer);
+					w.WinHelp(hwin,stringbuffer, w.HELP_KEY,&buffer);
 				else
-					w.WinHelp(hwin,strbuf, w.HELP_INDEX,NULL);
+					w.WinHelp(hwin,stringbuffer, w.HELP_INDEX,NULL);
 				endif;				
 			endif;
 
@@ -3200,8 +3200,8 @@ proc
 		
 		inc( Line );
 		inc( nLines );
-		str.put( strbuf, "Line: ", Line, "        Lines: ", nLines );
-		w.SendMessage( core.hwnd, HIDE_SETSTATUS, STATUS_POSITION, strbuf );
+		str.put( stringbuffer, "Line: ", Line, "        Lines: ", nLines );
+		w.SendMessage( core.hwnd, HIDE_SETSTATUS, STATUS_POSITION, stringbuffer );
 	
 	end ShowPos;
 	
@@ -3543,8 +3543,8 @@ proc
 			str.a_cpyz(&buffer);
 			mov(eax,openfile_s);
 			//dbg.put ("buffer:", openfile_s);
-			filesys.extractExt( openfile_s, strbuf );
-			if( str.ieq( strbuf, "hpr" ) ) then
+			filesys.extractExt( openfile_s, stringbuffer );
+			if( str.ieq( stringbuffer, "hpr" ) ) then
 			
 				dbg.put ("open proj");
 				project.open (openfile_s);
@@ -3755,13 +3755,13 @@ proc
 				setupFind();
 				call tabtool_activate;
 				prop_update();
-			elseif (eax = hpaneltab) then
+			elseif (eax = core.hpaneltab) then
 				call PanelActivate;
 			endif;
 			
 		elseif (eax = w.TCN_SELCHANGING) then
 			mov((type w.NMHDR [edx]).hwndFrom, eax);
-			if (eax = hpaneltab) then
+			if (eax = core.hpaneltab) then
 				panel_setfrom();
 			endif;
 		endif;
@@ -3823,13 +3823,13 @@ proc
 	
 			if (pathbuf[0] <> 0 ) then
 				
-				str.cpyz (&pathbuf, strbuf);
-				if( filesys.hasExtension( strbuf ) ) then
+				str.cpyz (&pathbuf, stringbuffer);
+				if( filesys.hasExtension( stringbuffer ) ) then
 					
-					filesys.extractPath( strbuf, strbuf );
+					filesys.extractPath( stringbuffer, stringbuffer );
 
 				endif;
-				hideini.writeString( "HIDE Settings", "LastPath", strbuf );
+				hideini.writeString( "HIDE Settings", "LastPath", stringbuffer );
 			endif;
 			
 			
@@ -3863,15 +3863,15 @@ proc
 		// check for active tool window
 		if (testz (TOOL,settings.winview)) then
 			// hide
-			w.ShowWindow(htbr,w.SW_HIDE);
+			w.ShowWindow(core.htbr,w.SW_HIDE);
 		else
 			// show toolbar
 			mov (lparam, eax);  // lparam = client x/y
 			if (eax) then
-				w.MoveWindow(htbr,0,0,0,0,true);	
+				w.MoveWindow(core.htbr,0,0,0,0,true);	
 			endif;
 			
-			w.GetWindowRect (htbr, toolrect);
+			w.GetWindowRect (core.htbr, toolrect);
 			mov (toolrect.bottom, eax);
 			sub (toolrect.top, eax);
 			add (eax, mainrect.top);
@@ -3906,7 +3906,7 @@ proc
 		// set vertical tab window
 		mov (TABHT, eax);
 		sub (eax, mainrect.right);
-		w.MoveWindow (hpaneltab, mainrect.right, mainrect.top, TABHT, mainrect.bottom, true);
+		w.MoveWindow (core.hpaneltab, mainrect.right, mainrect.top, TABHT, mainrect.bottom, true);
 			
 		// see if panel is active
 		mov (settings.panelwin, eax);
@@ -4008,19 +4008,19 @@ proc
 	
 		// create fonts
 		w.CreateFontIndirect(&linefont);
-		mov(eax,hlinefont);
+		mov(eax,core.hlinefont);
 		w.CreateFontIndirect(&mainfont);
-		mov(eax,hmainfont);
+		mov(eax,core.hmainfont);
 		mov(mainfont.lfItalic,al);
 		push(eax);
 		mov(true,mainfont.lfItalic);
 		w.CreateFontIndirect(&mainfont);
-		mov(eax,hitalic);
+		mov(eax,core.hitalic);
 		pop(eax);
 		mov(al,mainfont.lfItalic);
 	
 		w.CreateFontIndirect (&dialogfont);
-		mov (eax, hdialogfont);
+		mov (eax, core.hdialogfont);
 		
 		// get dialog handles
 
@@ -4048,15 +4048,15 @@ proc
 						w.WS_TABSTOP | w.WS_VISIBLE, 0, 0, 0, TABHT,
 						hwin, NULL, core.hinst, NULL );
 		mov (eax, core.htab);
-		w.SendMessage (eax, w.WM_SETFONT, hdialogfont, false);
+		w.SendMessage (eax, w.WM_SETFONT, core.hdialogfont, false);
 	
 		w.CreateWindowEx (0, w.WC_TABCONTROL, NULL,
 						w.TCS_BOTTOM | w.TCS_TABS | w.TCS_SINGLELINE | w.TCS_VERTICAL |
 						w.TCS_FOCUSNEVER | w.WS_CHILD | w.WS_CLIPCHILDREN | w.WS_CLIPSIBLINGS |
 						w.WS_TABSTOP | w.WS_VISIBLE, 0, 0, TABHT, 0,
 						hwin, NULL, core.hinst, NULL );
-		mov (eax, hpaneltab);
-		w.SendMessage (eax, w.WM_SETFONT, hdialogfont, false);
+		mov (eax, core.hpaneltab);
+		w.SendMessage (eax, w.WM_SETFONT, core.hdialogfont, false);
 		
 		PanelSetup (hwin);
 	
@@ -4077,7 +4077,7 @@ proc
 		test(TOOL,settings.winview);
 		_if(@nz)
 			w.CheckMenuItem(hmenu,IDM_VIEW_TOOLBAR,(w.MF_BYCOMMAND | w.MF_CHECKED));
-			w.ShowWindow (htbr, true);
+			w.ShowWindow (core.htbr, true);
 		_endif;
 		
 		test(STATUS,settings.winview);
@@ -4103,7 +4103,7 @@ proc
 		w.CreateDialogParam(core.hinst,val ID_TREEWIN, hwin, &Proc_ProjectView,false);
 		w.CreateDialogParam(core.hinst,val ID_PROPERTIES, hwin, &Proc_Properties,false);
 	
-		w.SendMessage(hpaneltab, w.TCM_SETCURSEL, settings.panelwin, 0);
+		w.SendMessage(core.hpaneltab, w.TCM_SETCURSEL, settings.panelwin, 0);
 		
 		PanelViewWin();
 				
@@ -4139,8 +4139,8 @@ proc
 		w.SendMessage(hwin,HIDE_TOGGLEDEBUG,0,0);
 		w.SendMessage(hwin, w.WM_SIZE, 0, 0);
 	
-		if (hideini._readString ("HIDE Settings","LastPath", strbuf)) then
-			mov (strbuf, eax);
+		if (hideini._readString ("HIDE Settings","LastPath", stringbuffer)) then
+			mov (stringbuffer, eax);
 			zstr.cpy(eax,&pathbuf);
 		endif;
 		
@@ -4153,7 +4153,7 @@ proc
 		
 		// subclass the tab tool for context menu
 		w.GetWindowLong (core.htab, w.GWL_WNDPROC);
-		mov (eax, htaboldproc);
+		mov (eax, core.htaboldproc);
 		w.SetWindowLong (core.htab, w.GWL_WNDPROC, &Proc_TabToolSubclass);
 	
 		// load user menu
@@ -4168,8 +4168,8 @@ proc
 		mov( eax, ecx );
 		xor( edx, edx );
 		while( edx < ecx ) do
-			hideini.readItem( "Recent Files", edx, strbuf );
-			if( ! filesys.exists( strbuf ) ) then
+			hideini.readItem( "Recent Files", edx, stringbuffer );
+			if( ! filesys.exists( stringbuffer ) ) then
 				hideini.deleteItem( "Recent Files", edx );
 				dec( ecx );
 			else
@@ -4193,9 +4193,9 @@ proc
 	
 	_destroy:
 			SetupToolBar ( false ); // destroy it
-			w.DeleteObject(hitalic);
-			w.DeleteObject(hmainfont);
-			w.DeleteObject(hlinefont);
+			w.DeleteObject(core.hitalic);
+			w.DeleteObject(core.hmainfont);
+			w.DeleteObject(core.hlinefont);
 			w.DestroyCursor(hVsplitcursor);
 			w.DestroyCursor(hHsplitcursor);
 			dbg.put ("done all destroy");
@@ -4216,7 +4216,7 @@ proc
 		move( str.alloc (worksize_c), workpath);
 		move( str.alloc (pathsize_c), projectpath);
 		move( str.alloc (pathsize_c), tplpath);
-		move( str.alloc (mastersize_c), strbuf);
+		move( str.alloc (mastersize_c), stringbuffer);
 	
 		GraphicEx.Init();
 		make_init();
@@ -4304,8 +4304,8 @@ proc
 		endif;
 		
 		if (! hideini.isSectionDefined ("default libs")) then
-			hidesysini.readSection ("default libs", strbuf);
-			hideini.writeSection ("default libs", strbuf);
+			hidesysini.readSection ("default libs", stringbuffer);
+			hideini.writeSection ("default libs", stringbuffer);
 			
 			// append the appropriate hlalib to the default libs list
 			// note this is done only if "default libs" is undefined
@@ -4319,61 +4319,61 @@ proc
 		endif;
 		
 		if (! hideini.isSectionDefined ("default link")) then
-			hidesysini.readSection ("default link", strbuf);
-			hideini.writeSection ("default link", strbuf);
+			hidesysini.readSection ("default link", stringbuffer);
+			hideini.writeSection ("default link", stringbuffer);
 		endif;
 		
 		hideini.readBin ("Colors", "user", &CustColors, @size(CustColors));
 		hideini.readInt ("HIDE Settings", "AutoUntitled");
 		mov (al, autountitled);
 
-		str.cpy ("", strbuf);	
-		if (hideini._readString ("HIDE Settings", "UserPath", strbuf)) then
-			expandPathMacs (strbuf, strbuf);
-			str.put2 (strbuf, ';');
+		str.cpy ("", stringbuffer);	
+		if (hideini._readString ("HIDE Settings", "UserPath", stringbuffer)) then
+			expandPathMacs (stringbuffer, stringbuffer);
+			str.put2 (stringbuffer, ';');
 		endif;
 
-		str.put2 (strbuf, homepath, dirsep_c, "bin;");
-		env2.put ("PATH", strbuf);
-		if (hideini._readString ("HIDE Settings", "ProjFold", strbuf)) then
-			expandPathMacs (strbuf, strbuf);
-			str.cpy (strbuf, projectpath);
+		str.put2 (stringbuffer, homepath, dirsep_c, "bin;");
+		env2.put ("PATH", stringbuffer);
+		if (hideini._readString ("HIDE Settings", "ProjFold", stringbuffer)) then
+			expandPathMacs (stringbuffer, stringbuffer);
+			str.cpy (stringbuffer, projectpath);
 		else
 			// default project folder
 			str.put (projectpath, homepath, dirsep_c, "Projects");
 		endif;
 		
-		if( ! hideini._readString( "HIDE Settings", "hlaopt", strbuf)) then
-			hidesysini._readString("HIDE Settings", "hlaopt", strbuf);
-			hideini.writeString("HIDE Settings", "hlaopt", strbuf );
+		if( ! hideini._readString( "HIDE Settings", "hlaopt", stringbuffer)) then
+			hidesysini._readString("HIDE Settings", "hlaopt", stringbuffer);
+			hideini.writeString("HIDE Settings", "hlaopt", stringbuffer );
 		else
-			expandPathMacs( strbuf, strbuf );
+			expandPathMacs( stringbuffer, stringbuffer );
 		endif;
 		
-		env2.put("hlaopt", strbuf );
+		env2.put("hlaopt", stringbuffer );
 
 		str.put (workpath, homepath, dirsep_c, "hlalib");
 		env2.put ("lib", workpath);
 
-		if (! hideini._readString ("HIDE Settings", "hlalib", strbuf)) then
+		if (! hideini._readString ("HIDE Settings", "hlalib", stringbuffer)) then
 		
 			// write in default location for hlalib
-			str.put (strbuf, "%h", dirsep_c, "hlalib");
-			hideini.writeString ("HIDE Settings", "hlalib", strbuf);
+			str.put (stringbuffer, "%h", dirsep_c, "hlalib");
+			hideini.writeString ("HIDE Settings", "hlalib", stringbuffer);
 
 		endif;
 		
-		expandPathMacs (strbuf, strbuf);
-		env2.put ("hlalib", strbuf);
+		expandPathMacs (stringbuffer, stringbuffer);
+		env2.put ("hlalib", stringbuffer);
 
-		if (! hideini._readString ("HIDE Settings", "hlainc", strbuf)) then
+		if (! hideini._readString ("HIDE Settings", "hlainc", stringbuffer)) then
 			
 			// write in default location for hlainc
-			str.put (strbuf, "%h", dirsep_c, "hlainc");
-			hideini.writeString ("HIDE Settings", "hlainc", strbuf);
+			str.put (stringbuffer, "%h", dirsep_c, "hlainc");
+			hideini.writeString ("HIDE Settings", "hlainc", stringbuffer);
 		endif;
-		expandPathMacs (strbuf, strbuf);
-		env2.put ("hlainc", strbuf);
+		expandPathMacs (stringbuffer, stringbuffer);
+		env2.put ("hlainc", stringbuffer);
 
 		str.put (workpath, homepath, dirsep_c, "temp");
 		env2.put ("hlatmp", workpath);
@@ -4437,8 +4437,8 @@ proc
 					arg.v (2);
 					mov (eax, openfile_s);
 					
-					filesys.extractExt( openfile_s, strbuf );
-					if( str.ine( strbuf, "hpr" ) ) then
+					filesys.extractExt( openfile_s, stringbuffer );
+					if( str.ine( stringbuffer, "hpr" ) ) then
 
 						error.fatal ("Must specify a project for building");
 						mov (mode_gui, mode);	// reset mode for normal operation
@@ -4549,8 +4549,8 @@ proc
 				arg.v (argc);
 				mov (eax, openfile_s);
 				
-				filesys.extractExt( openfile_s, strbuf );
-				if( str.ieq( strbuf, "hpr" ) ) then
+				filesys.extractExt( openfile_s, stringbuffer );
+				if( str.ieq( stringbuffer, "hpr" ) ) then
 					project.open (openfile_s);
 					Recent_Insert( openfile_s );
 					jmp _nxtarg;

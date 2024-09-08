@@ -10,14 +10,6 @@ unit data_unit;
 storage
 	align(4);
 	core			:tCORE;		// HIDE global state
-//	htab			:dword;		// tab window handle
-	hpaneltab		:dword;		// handle for side panel
-	htaboldproc		:dword;		// original window proc for tab window
-	htbr			:dword;		// toolbar handle
-	hlinefont		:dword;		// line font
-	hmainfont		:dword;		// main font
-	hitalic			:dword;		// italic font
-	hdialogfont		:dword;		// handle for font selection dialog
 	hfind			:dword;		// find dialog handle
 	htreeview		:dword;		// handle for treeview control
 	htree			:dword;		// handle for treeview window
@@ -32,7 +24,7 @@ storage
 	tplpath			:string;	// path to template directory
 	workpath		:string;	// a string buffer for working paths, scratch path buffer  ** use with caution, should be depricated eventually
 	projectpath		:string;	// stores path of projects folder
-	strbuf			:string;	// scratch string buffer ** use with caution, do not expect contents to be preserved across funtion calls
+	stringbuffer			:string;	// scratch string buffer ** use with caution, do not expect contents to be preserved across funtion calls
 
 	settings		:EDITOPTS;	// main settings for HIDE
 	col				:RACOLOR;	// hilite color settings

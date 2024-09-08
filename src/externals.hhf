@@ -227,21 +227,13 @@ static	// externals
 		workpath			:string;				@external;	// a string buffer for working paths
 		tplpath				:string;				@external;	// a path holding templates directory
 		projectpath			:string;				@external;	// holds current path for project folder
-		strbuf				:string;				@external;	// scratch static string
+		stringbuffer				:string;				@external;	// scratch static string
 
 		core				:tCORE;					@external;	// HIDE global state
 		htreeview			:dword;					@external;	// handle for treeview control
 		htree				:dword;					@external;	// handle for treeview window
 		hprop				:dword;					@external;	// handle for properties window
 		hmenu				:dword;					@external;	// menu handle
-//		htab				:dword;					@external;	// tab window handle
-		hpaneltab			:dword;					@external;
-		htaboldproc			:dword;					@external;	// tab window Window Proc address
-		htbr				:dword;					@external;		// toolbar handle
-		hlinefont			:dword;					@external;	// line font
-		hmainfont			:dword;					@external;	// main font
-		hdialogfont			:dword;					@external;
-		hitalic				:dword;					@external;	// italic font (for comments)
 		hfind				:dword;					@external;	// find dialog handle
 		hVSplitBar			:dword;					@external;
 		hHSplitBar			:dword;					@external;

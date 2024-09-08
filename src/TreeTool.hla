@@ -76,12 +76,12 @@ USE (EBX);
 			mov (eax,tvi.hItem);
 			mov (w.TVIF_TEXT, tvi.imask);
 			mov (@size(treebuffer),tvi.cchTextMax);
-			str.cpy ("", strbuf);
+			str.cpy ("", stringbuffer);
 			if (changed) then
-				str.put (strbuf, "* ");
+				str.put (stringbuffer, "* ");
 			endif;
-			str.put2 (strbuf, listebx.id);
-			move (strbuf, tvi.pszText);
+			str.put2 (stringbuffer, listebx.id);
+			move (stringbuffer, tvi.pszText);
 			w.SendMessage (htreeview, w.TVM_SETITEM, 0, &tvi);
 		endif;
 	endif;
@@ -135,8 +135,8 @@ procedure TreeToolSetup;
 		mov (node, ebx);		
 		if (jobebx.ftype = jobtype_target) then
 			mov (&project.hpr, esi);
-			if (iniesi._readString (jobebx.id, "target", strbuf)) then
-				fileList.findJobRelative ([ebx], strbuf);
+			if (iniesi._readString (jobebx.id, "target", stringbuffer)) then
+				fileList.findJobRelative ([ebx], stringbuffer);
 			else
 				mov (NULL, eax);
 			endif;
@@ -252,8 +252,8 @@ USE (ESI, EDI, EBX);
 		xor (ebx, ebx);
 		while (ebx < count) do
 			mov (&project.hpr, esi);
-			iniesi.readItem ("HPR Jobs", ebx, strbuf);
-			jobList.findID (strbuf);
+			iniesi.readItem ("HPR Jobs", ebx, stringbuffer);
+			jobList.findID (stringbuffer);
 			projectview_readJob ([eax]);
 			inc (ebx);
 		endwhile;
@@ -265,8 +265,8 @@ USE (ESI, EDI, EBX);
 		xor (ebx, ebx);
 		while (ebx < count) do
 			mov (&project.hpr, esi);
-			iniesi.readItem ("Held Jobs", ebx, strbuf);
-			jobList.findID (strbuf);
+			iniesi.readItem ("Held Jobs", ebx, stringbuffer);
+			jobList.findID (stringbuffer);
 			projectview_readJob ([eax]);
 			inc (ebx);
 		endwhile;
@@ -555,8 +555,8 @@ begin	Proc_ProjectView;
 				w.SendMessage(htreeview,w.TVM_SELECTITEM,w.TVGN_CARET,tvi.hItem);
 				w.SendMessage(htreeview,w.TVM_GETITEM,0,&tvi);
 				
-				str.cpyz (&treebuffer, strbuf);
-				dbg.put ("right click on ", strbuf);
+				str.cpyz (&treebuffer, stringbuffer);
+				dbg.put ("right click on ", stringbuffer);
 				mov (tvi.lParam, eax);
 				if (eax) then
 					mov (eax, pview_curSel);

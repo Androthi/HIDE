@@ -254,9 +254,9 @@ begin 	Proc_Output;
 			mov(eax,core.houtedt);
 			dbg.put("houtedit = ", core.houtedt);
 	
-			mov(hmainfont,rafnt.hFont);
-			mov(hitalic,rafnt.hIFont);
-			mov(hlinefont,rafnt.hLnrFont);
+			mov(core.hmainfont,rafnt.hFont);
+			mov(core.hitalic,rafnt.hIFont);
+			mov(core.hlinefont,rafnt.hLnrFont);
 
 			w.SendMessage(core.houtedt,REM_SETFONT,0,&rafnt);
 			w.SendMessage(core.houtedt,REM_SETCOLOR,0,&col);

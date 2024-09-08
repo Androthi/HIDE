@@ -210,12 +210,12 @@ USE (EBX, EAX, ECX, EDX);
 							 button_size, button_size, button_size, button_size,
 							 @size(w.TBBUTTON) );
 	
-		mov (eax, htbr);
+		mov (eax, core.htbr);
 		w.SendMessage (eax, w.TB_SETIMAGELIST, 0, image_list_n);
-		w.SendMessage (htbr, w.TB_SETHOTIMAGELIST, 0, image_list_h);
-		w.SendMessage (htbr, w.TB_SETDISABLEDIMAGELIST, 0, image_list_d);
-		w.SendMessage( htbr, w.TB_AUTOSIZE, 0, 0 );
-		w.ShowWindow (htbr, w.SW_SHOWNA);
+		w.SendMessage (core.htbr, w.TB_SETHOTIMAGELIST, 0, image_list_h);
+		w.SendMessage (core.htbr, w.TB_SETDISABLEDIMAGELIST, 0, image_list_d);
+		w.SendMessage( core.htbr, w.TB_AUTOSIZE, 0, 0 );
+		w.ShowWindow (core.htbr, w.SW_SHOWNA);
 		w.SendMessage (core.hwnd, w.WM_SIZE, 0, 0);
 	
 	else
@@ -423,21 +423,21 @@ proc
 		USE( EBX, EAX );
 		mov( fnode, ebx );
 		
-		filesys.extractExt( listebx.id, strbuf );
+		filesys.extractExt( listebx.id, stringbuffer );
 		
-		if( str.ieq( strbuf, "hla" ) ) then
+		if( str.ieq( stringbuffer, "hla" ) ) then
 	
 			mov( type_hla, listebx.ftype );
 		
-		elseif( str.ieq( strbuf, "hhf") ) then
+		elseif( str.ieq( stringbuffer, "hhf") ) then
 	
 			mov( type_hhf, listebx.ftype );
 		
-		elseif( str.ieq( strbuf, "odin" )) then
+		elseif( str.ieq( stringbuffer, "odin" )) then
 			
 			mov( type_odin, listebx.ftype );
 			
-		elseif( str.ieq( strbuf, "go" )) then
+		elseif( str.ieq( stringbuffer, "go" )) then
 			
 			mov( type_go, listebx.ftype );
 		
@@ -544,8 +544,8 @@ proc
 	
 		if( listebx.ftype = type_bin ) then
 	
-			move (hmainfont, hexfont.hFont);
-			move (hlinefont, hexfont.hLnrFont);
+			move (core.hmainfont, hexfont.hFont);
+			move (core.hlinefont, hexfont.hLnrFont);
 			lea (eax, hexfont);
 			w.SendMessage (listebx.hwnd, HEM_SETFONT, 0, eax);
 	
@@ -570,9 +570,9 @@ proc
 			w.GetWindowLong(listebx.hwnd,w.GWL_STYLE);
 			mov (eax, gwstyle);
 			
-			move (hmainfont, rafnt.hFont);
-			move (hitalic, rafnt.hIFont);
-			move (hlinefont, rafnt.hLnrFont);
+			move (core.hmainfont, rafnt.hFont);
+			move (core.hitalic, rafnt.hIFont);
+			move (core.hlinefont, rafnt.hLnrFont);
 	
 			if (testnz (opt_exptabs, options)) then
 				mov (true, eax);
@@ -685,15 +685,15 @@ USE (EBX);
 	if ( str.eq (listebx.id, "Untitled")) then
 		if (autountitled) then
 			
-			env2.get ("hlatmp", strbuf);
+			env2.get ("hlatmp", stringbuffer);
 			if(eax) then
-				str.put2 ( strbuf, dirsep_c, "temp.hla");
-				WriteToFile (listebx.hwnd, strbuf);
+				str.put2 ( stringbuffer, dirsep_c, "temp.hla");
+				WriteToFile (listebx.hwnd, stringbuffer);
 				GetFileTime (listebx.relative, listebx.writetime);
 				str.cpy ("temp.hla", listebx.id);
 				mov( type_hla, listebx.ftype );
 				str.free (listebx.fullname);
-				str.a_cpy (strbuf);
+				str.a_cpy (stringbuffer);
 				mov (eax, listebx.fullname);
 				tabtool_update ([ebx]);
 				prop_updateMem ([ebx]);
@@ -775,8 +775,8 @@ USE (ebx, esi, edi, ecx, edx);
 		// get first file with match
 		if (backindex = 0) then		
 			lea (edi, filestruc);
-			str.put (strbuf, backpath, "[*]", listebx.id);
-			w.FindFirstFile ( strbuf, filestruc);
+			str.put (stringbuffer, backpath, "[*]", listebx.id);
+			w.FindFirstFile ( stringbuffer, filestruc);
 			if (eax <> w.INVALID_HANDLE_VALUE) then
 				mov(eax, nextfile);
 				inc (backindex);
@@ -799,8 +799,8 @@ USE (ebx, esi, edi, ecx, edx);
 		if (backindex > eax ) then
 			mov (1, backindex);
 		endif;
-		str.put (strbuf, backpath, '[', backindex, ']', listebx.id);
-		WriteToFile (listebx.hwnd, strbuf);
+		str.put (stringbuffer, backpath, '[', backindex, ']', listebx.id);
+		WriteToFile (listebx.hwnd, stringbuffer);
 	endif;
 	
 	if (! saveAsed) then
@@ -1001,12 +1001,12 @@ begin GetOpenProjectName;
 	mov(eax,of.lpstrInitialDir);
 	w.GetOpenFileName(&of);
 	if (eax) then
-		str.cpyz(&ofBuffer, strbuf);
+		str.cpyz(&ofBuffer, stringbuffer);
 		mov(of.nFileOffset,ax);
 		dec(ax);
 		movzx(ax,eax);
 		mov(0,ofBuffer[eax]);
-		str.a_cpy (strbuf);
+		str.a_cpy (stringbuffer);
 	else
 		xor(eax,eax);		
 	endif;

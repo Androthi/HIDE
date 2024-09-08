@@ -94,9 +94,9 @@ proc
 				listebx.ftype = type_hhf ) then
 			while( index < 3 ) do  // items for HLA files
 				mov( index, eax );
-				str.put( strbuf, homepath, dirsep_c, GroupFiles[eax*4] );
-				if( filesys.exists( strbuf )) then
-					buf.create( strbuf );
+				str.put( stringbuffer, homepath, dirsep_c, GroupFiles[eax*4] );
+				if( filesys.exists( stringbuffer )) then
+					buf.create( stringbuffer );
 					mov( index, edi );
 					mov( [ebx+edi*4], edi );
 					mov( buf.cursor, eax );
@@ -109,18 +109,18 @@ proc
 				
 			endwhile;	
 		elseif( listedx.ftype = type_odin ) then
-			str.put( strbuf, homepath, dirsep_c, GroupFiles[3*4] ); // this is hacky! 3 == custom
-			if( filesys.exists( strbuf )) then
-				buf.create( strbuf );
+			str.put( stringbuffer, homepath, dirsep_c, GroupFiles[3*4] ); // this is hacky! 3 == custom
+			if( filesys.exists( stringbuffer )) then
+				buf.create( stringbuffer );
 				mov( [ebx+3*4], edi );
 				mov( buf.cursor, eax );
 				mov( node, edx );
 				w.SendMessage( listedx.hwnd, REM_SETHILITEWORDS, edi, eax );
 				buf.destroy();
 			endif;
-			str.put( strbuf, homepath, dirsep_c, GroupFiles[4*4] ); // 4 == odin
-			if( filesys.exists( strbuf )) then
-				buf.create( strbuf );
+			str.put( stringbuffer, homepath, dirsep_c, GroupFiles[4*4] ); // 4 == odin
+			if( filesys.exists( stringbuffer )) then
+				buf.create( stringbuffer );
 				mov( [ebx+4*4], edi );
 				mov( buf.cursor, eax );
 				mov( node, edx );
@@ -129,18 +129,18 @@ proc
 			endif;
 			
 		elseif( listedx.ftype = type_go ) then
-			str.put( strbuf, homepath, dirsep_c, GroupFiles[3] );
-			if( filesys.exists( strbuf )) then
-				buf.create( strbuf );
+			str.put( stringbuffer, homepath, dirsep_c, GroupFiles[3] );
+			if( filesys.exists( stringbuffer )) then
+				buf.create( stringbuffer );
 				mov( [ebx+3*4], edi );
 				mov( buf.cursor, eax );
 				mov( node, edx );
 				w.SendMessage( listedx.hwnd, REM_SETHILITEWORDS, edi, eax );
 				buf.destroy();
 			endif;
-			str.put( strbuf, homepath, dirsep_c, GroupFiles[5] ); // 5 == go
-			if( filesys.exists( strbuf )) then
-				buf.create( strbuf );
+			str.put( stringbuffer, homepath, dirsep_c, GroupFiles[5] ); // 5 == go
+			if( filesys.exists( stringbuffer )) then
+				buf.create( stringbuffer );
 				mov( [ebx+5*4], edi );
 				mov( buf.cursor, eax );
 				mov( node, edx );
@@ -175,17 +175,17 @@ proc
 			dbg.put("looping index at :", index );
 
 			mov( index, ecx );
-			str.put( strbuf, homepath, dirsep_c, GroupFiles[ecx*4] );
+			str.put( stringbuffer, homepath, dirsep_c, GroupFiles[ecx*4] );
 			
 			
-			dbg.put(" using list :", strbuf );
-			buf.create( strbuf );
+			dbg.put(" using list :", stringbuffer );
+			buf.create( stringbuffer );
 		else
 			
-			str.put( strbuf, homepath, dirsep_c, "Data\holdgroup.ini" );
-			if( filesys.exists( strbuf ) ) then
+			str.put( stringbuffer, homepath, dirsep_c, "Data\holdgroup.ini" );
+			if( filesys.exists( stringbuffer ) ) then
 				
-				buf.create( strbuf );
+				buf.create( stringbuffer );
 			
 			else
 				
@@ -195,7 +195,7 @@ proc
 			
 		endif;
 		
-		dbg.put(" group in use :", strbuf );
+		dbg.put(" group in use :", stringbuffer );
 		buf.eof();
 		mov( 0, (type byte[eax]) );
 		buf.bof();
@@ -205,9 +205,9 @@ proc
 		move( index, nKWInx );
 		dbg.put(" in index :", nKWInx);
 		scan_buffer: 
-			buf.getToken( strbuf );
+			buf.getToken( stringbuffer );
 			jnc check_marks;
-			w.SendDlgItemMessage( hwin, idLst, w.LB_ADDSTRING, 0, strbuf );
+			w.SendDlgItemMessage( hwin, idLst, w.LB_ADDSTRING, 0, stringbuffer );
 			jmp scan_buffer;
 			
 		check_marks:
@@ -257,11 +257,11 @@ proc
 		buf.create( GROUPSIZE );
 		xor( ebx, ebx );
 		forever
-			w.SendDlgItemMessage( hwin, idlst, w.LB_GETTEXT, ebx, strbuf );
+			w.SendDlgItemMessage( hwin, idlst, w.LB_GETTEXT, ebx, stringbuffer );
 			breakif( eax = w.LB_ERR );
-			mov( strbuf, edx );
+			mov( stringbuffer, edx );
 			mov( eax, ( type str.strRec[edx]).length );
-			buf.puts( strbuf );
+			buf.puts( stringbuffer );
 			buf.putByte( ' ' );
 			inc( ebx );
 		endfor;
@@ -272,17 +272,17 @@ proc
 		if( eax < nColorGroups ) then
 			
 			
-			str.put( strbuf, homepath, dirsep_c, GroupFiles[eax*4] );
+			str.put( stringbuffer, homepath, dirsep_c, GroupFiles[eax*4] );
 			
 		else
 			
-			str.put( strbuf, homepath, dirsep_c, "Data\holdgroup.ini" );
+			str.put( stringbuffer, homepath, dirsep_c, "Data\holdgroup.ini" );
 			
 		endif;
 		
-		dbg.put("writing :", strbuf );
+		dbg.put("writing :", stringbuffer );
 		
-		buf.writeFileName( strbuf );
+		buf.writeFileName( stringbuffer );
 		buf.destroy();
 		
 		popad();
@@ -383,8 +383,8 @@ proc
 			xor( ebx, ebx );
 			while( ebx < count ) do
 			
-				hideini.readItem( "Themes", ebx, strbuf );
-				w.SendMessage( hcbthemes, w.CB_ADDSTRING, 0, strbuf );
+				hideini.readItem( "Themes", ebx, stringbuffer );
+				w.SendMessage( hcbthemes, w.CB_ADDSTRING, 0, stringbuffer );
 				w.SendMessage( hcbthemes, w.CB_SETITEMDATA, EAX, Theme_User_c );
 				inc( ebx );
 			
@@ -398,8 +398,8 @@ proc
 		xor( ebx, ebx );
 		while( ebx < count ) do
 			
-			hidesysini.readItem( "Themes", ebx, strbuf );
-			w.SendMessage( hcbthemes, w.CB_ADDSTRING, 0, strbuf );
+			hidesysini.readItem( "Themes", ebx, stringbuffer );
+			w.SendMessage( hcbthemes, w.CB_ADDSTRING, 0, stringbuffer );
 			w.SendMessage( hcbthemes, w.CB_SETITEMDATA, EAX, Theme_System_c );
 			inc( ebx );
 			
@@ -627,11 +627,11 @@ proc
 					
 					pop (eax);
 					w.SendMessage (hcbthemes, w.CB_GETLBTEXT, eax, &buffer);
-					str.cpyz (&buffer, strbuf);
-					str.put2 (strbuf, ".theme");
-					//dbg.put ("loading :", strbuf);
-					ini.readBin (strbuf, "col", &col, @size(col));
-					ini.readBin (strbuf, "usrcol", &usrcol, @size(usrcol));
+					str.cpyz (&buffer, stringbuffer);
+					str.put2 (stringbuffer, ".theme");
+					//dbg.put ("loading :", stringbuffer);
+					ini.readBin (stringbuffer, "col", &col, @size(col));
+					ini.readBin (stringbuffer, "usrcol", &usrcol, @size(usrcol));
 					setupLists (hwin);
 	
 					keywordsUpdate( hwin );
@@ -649,11 +649,11 @@ proc
 					pop (eax);
 					w.SendMessage (hcbthemes, w.CB_DELETESTRING, eax, 0); 
 					
-					str.cpyz (&buffer, strbuf);
-					hideini.findItem ("Themes", strbuf);
+					str.cpyz (&buffer, stringbuffer);
+					hideini.findItem ("Themes", stringbuffer);
 					hideini.deleteItem ("Themes", eax);
-					str.put2 (strbuf, ".theme");
-					hideini.deleteSection (strbuf);
+					str.put2 (stringbuffer, ".theme");
+					hideini.deleteSection (stringbuffer);
 					
 				elseif (eax = IDC_CB_SAVE) then
 					
@@ -666,12 +666,12 @@ proc
 					endif;
 					if (eax <> w.CB_ERR) then
 						w.SendMessage (hcbthemes, w.CB_SETITEMDATA, eax, Theme_User_c);
-						str.cpyz (&buffer, strbuf);
-						hideini.findItem ("Themes", strbuf);
-						hideini.writeItem ("Themes", eax, strbuf); // replace or append new
-						str.put2 (strbuf, ".theme");
-						hideini.writeBin (strbuf, "col", &col, @size(col));
-						hideini.writeBin (strbuf, "usrcol", &usrcol, @size(usrcol));
+						str.cpyz (&buffer, stringbuffer);
+						hideini.findItem ("Themes", stringbuffer);
+						hideini.writeItem ("Themes", eax, stringbuffer); // replace or append new
+						str.put2 (stringbuffer, ".theme");
+						hideini.writeBin (stringbuffer, "col", &col, @size(col));
+						hideini.writeBin (stringbuffer, "usrcol", &usrcol, @size(usrcol));
 	
 					endif;				
 					

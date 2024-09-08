@@ -218,7 +218,7 @@ begin createListbox;
 	mov(w.SetWindowLong(m_autocompletion.hListbox, w.GWL_WNDPROC, &SubListbox),
 		 m_autocompletion.oldProcListbox);
 	
-	w.SendMessage (m_autocompletion.hListbox, w.WM_SETFONT, hmainfont, true);
+	w.SendMessage (m_autocompletion.hListbox, w.WM_SETFONT, core.hmainfont, true);
 	ReadWordlist(); 
 	ret();
 end createListbox;
@@ -905,7 +905,7 @@ USE(edx);
 	
 			createListbox();					                 
 		endif;
-		w.SendMessage (m_autocompletion.hListbox, w.WM_SETFONT, hmainfont, true);
+		w.SendMessage (m_autocompletion.hListbox, w.WM_SETFONT, core.hmainfont, true);
 		w.SetWindowPos(m_autocompletion.hDialog,NULL,p.x,p.y,203, 110, w.SWP_NOZORDER /*| w.SWP_NOMOVE*/ | $20 /*w.SWP_DRAWFRAME*/ );
 		w.ShowWindow( m_autocompletion.hDialog, w.SW_SHOW);
 		w.SetFocus(m_autocompletion.hListbox);

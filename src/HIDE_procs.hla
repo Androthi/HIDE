@@ -328,7 +328,7 @@ _retfalse:
 _getworkheight:
 	test(TOOL,settings.winview);
 	_if(@nz)
-		w.GetWindowRect(htbr,_rect);
+		w.GetWindowRect(core.htbr,_rect);
 		mov(_rect.bottom,eax);
 		sub(_rect.top,eax);
 		add(eax,rect.top);
@@ -815,8 +815,8 @@ proc
 			
 			w.SendDlgItemMessage (hwin, ADVLINK_FYES, w.BM_SETCHECK, w.BST_CHECKED, 0);	
 		
-			if (thisini.readSection (linksec_s, strbuf)) then
-				LinkScanner (strbuf, hwin);
+			if (thisini.readSection (linksec_s, stringbuffer)) then
+				LinkScanner (stringbuffer, hwin);
 			else
 				error.warning("Link Section not found");
 				w.SendMessage(hwin,w.WM_CLOSE,0,0);
@@ -1005,8 +1005,8 @@ procedure Start_SoundTrack;
 			
 	begin Start_SoundTrack;
 		
-		str.put (strbuf, homepath, dirsep_c, "data", dirsep_c, "aRC_XM.dll");
-		w.LoadLibrary (strbuf);
+		str.put (stringbuffer, homepath, dirsep_c, "data", dirsep_c, "aRC_XM.dll");
+		w.LoadLibrary (stringbuffer);
 		if ( eax) then
 
 			mov (eax, h_dll);
@@ -1280,6 +1280,7 @@ begin Proc_GetString;
 	endif;	
 	xor (eax, eax);
 end Proc_GetString;
+
 
 procedure getStringInput2 (title:string; dest:string);
 	var

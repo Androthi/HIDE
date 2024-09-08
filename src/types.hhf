@@ -3,20 +3,20 @@
 	#macro toOutput ( _parms_[]): __parms, __counter, __buildstr;
 		?__parms := @elements( _parms_);
 		?__counter := 0;
-		?__buildstr := "str.put ( strbuf, ";
+		?__buildstr := "str.put ( stringbuffer, ";
 		#while ( __counter < __parms-1 )
 			?__buildstr += _parms_[__counter]+ ", ";
 			?__counter += 1;
 		#endwhile
 		?__buildstr += _parms_[__counter] + ");";
 		@text (__buildstr);
-		WriteOutput ( strbuf );
+		WriteOutput ( stringbuffer );
 	#endmacro
 
 	#macro verbOut ( _parms_[]): __parms, __counter, __buildstr;
 		?__parms := @elements( _parms_);
 		?__counter := 0;
-		?__buildstr := "str.put ( strbuf, ";
+		?__buildstr := "str.put ( stringbuffer, ";
 		#while ( __counter < __parms-1 )
 			?__buildstr += _parms_[__counter]+ ", ";
 			?__counter += 1;
@@ -26,7 +26,7 @@
 		
 		hideini.readInt( "HIDE Settings", "Verbose HLA" );
 		if( eax ) then
-			WriteOutput ( strbuf );
+			WriteOutput ( stringbuffer );
 		endif;
 	#endmacro
 	
@@ -171,6 +171,13 @@ type
 			hinst		:dword;
 			hwnd		:dword;
 			htab		:dword;
+			hpaneltab	:dword;
+			htaboldproc	:dword;
+			htbr		:dword;
+			hlinefont	:dword;
+			hmainfont	:dword;
+			hitalic		:dword;		
+			hdialogfont	:dword;	
 		endrecord;
 	
 
