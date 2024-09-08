@@ -14,12 +14,8 @@ storage
 	hideini			:tConfig;	// HIDE.ini configuration file in memory
 	hidesysini		:tConfig;	// hide_system.ini configuration file in memory
 	
-	configmain		:string;	// path for the main configuration hide\data\hide.ini
-	homepath		:string;	// path to HIDE home directory
-	tplpath			:string;	// path to template directory
 	workpath		:string;	// a string buffer for working paths, scratch path buffer  ** use with caution, should be depricated eventually
-	projectpath		:string;	// stores path of projects folder
-	stringbuffer			:string;	// scratch string buffer ** use with caution, do not expect contents to be preserved across funtion calls
+	stringbuffer	:string;	// scratch string buffer ** use with caution, do not expect contents to be preserved across funtion calls
 
 	settings		:EDITOPTS;	// main settings for HIDE
 	usrcol			:dword[nUserColors];	// custom user colors

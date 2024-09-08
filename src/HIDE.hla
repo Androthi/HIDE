@@ -296,13 +296,13 @@ program HIDE_MAIN;
 			mov( buf.cursor,eax );
 			mov( (type byte[eax+1]), bl );
 			if (bl = 'p') then
-				buf.puts( projectpath );
+				buf.puts( core.projectpath );
 			elseif (bl = 'c') then
 				if (project.isOpen) then
 					buf.puts( project.folder );
 				endif;
 			elseif (bl = 'h') then
-				buf.puts( homepath );
+				buf.puts( core.homepath );
 			elseif (bl = 't') then
 				env2.get ("hlatmp", dest);
 				buf.puts( dest );
@@ -326,7 +326,7 @@ program HIDE_MAIN;
 					buf.puts( dest );
 				endif;
 			elseif (bl = 'x') then
-				buf.puts( tplpath );
+				buf.puts( core.tplpath );
 			elseif( bl = '$') then
 				
 				filesys.gwd( dest );
@@ -1216,7 +1216,7 @@ program HIDE_MAIN;
 		filesys.gwd (curdir);
 		
 		try
-			filesys.cd (tplpath);
+			filesys.cd (core.tplpath);
 			str.put (stringbuffer, "standard", dirsep_c);
 	
 			mov (ftype, eax);
@@ -2350,7 +2350,7 @@ proc
 				
 				// header dedication exists, proceed.
 				if (filesys.exists (stringbuffer)) then
-					str.put (s, "wscan ", project.id, " -w", homepath,
+					str.put (s, "wscan ", project.id, " -w", core.homepath,
 							dirsep_c, "hlainc\w32\win32.hhf -o", stringbuffer);
 					
 					launchProgram( s, true, true );
@@ -2490,9 +2490,9 @@ proc
 		
 		toOutput (	"HIDE Environment and Related Macros" nl
 					"===================================" nl
-					"%h home    : ", homepath,nl
-					"%p projects: ", projectpath,nl
-					"%x templts : ", tplpath,nl);
+					"%h home    : ", core.homepath,nl
+					"%p projects: ", core.projectpath,nl
+					"%x templts : ", core.tplpath,nl);
 		if (project.isOpen) then
 			toOutput ( "%c project : ", project.folder, nl); 
 		endif;
@@ -2553,7 +2553,7 @@ proc
 	
 	procedure Menu_Help_Tutes; @noframe;
 	begin Menu_Help_Tutes;
-		str.put (workpath, homepath, dirsep_c, "Documents", dirsep_c, "Tutorials",
+		str.put (workpath, core.homepath, dirsep_c, "Documents", dirsep_c, "Tutorials",
 				dirsep_c, "Tutorial.khelp");
 		startHelp (workpath);
 		ret();
@@ -2561,14 +2561,14 @@ proc
 
 	procedure Menu_Help_Hidelib; @noframe;
 	begin Menu_Help_Hidelib;
-		str.put (workpath, homepath, dirsep_c, "Documents", dirsep_c, "hidelib.khelp");
+		str.put (workpath, core.homepath, dirsep_c, "Documents", dirsep_c, "hidelib.khelp");
 		startHelp (workpath);
 		ret();
 	end Menu_Help_Hidelib;
 
 	procedure Menu_Help_Hlalib; @noframe;
 	begin Menu_Help_Hlalib;
-		str.put (workpath, homepath, dirsep_c, "Documents", dirsep_c, "hlalib.khelp");
+		str.put (workpath, core.homepath, dirsep_c, "Documents", dirsep_c, "hlalib.khelp");
 		startHelp (workpath);
 		ret();
 	end Menu_Help_Hlalib;
@@ -2576,7 +2576,7 @@ proc
 
 	procedure Menu_Help_Hide; @noframe;
 	begin Menu_Help_Hide;
-		str.put (workpath, homepath, dirsep_c, "Documents", dirsep_c, "hide.khelp");
+		str.put (workpath, core.homepath, dirsep_c, "Documents", dirsep_c, "hide.khelp");
 		startHelp (workpath);
 		ret();
 	end Menu_Help_Hide;
@@ -2584,7 +2584,7 @@ proc
 
 	procedure Menu_Help_Tools; @noframe;
 	begin Menu_Help_Tools;
-		str.put (workpath, homepath, dirsep_c, "Documents", dirsep_c, "Tools.khelp");
+		str.put (workpath, core.homepath, dirsep_c, "Documents", dirsep_c, "Tools.khelp");
 		startHelp (workpath);
 		ret();
 	end Menu_Help_Tools;
@@ -3834,7 +3834,7 @@ proc
 			
 			
 			hideini.writeBin ("HIDE Settings", "pos", &settings, @size(settings));
-			hideini.write (configmain);
+			hideini.write (core.configmain);
 			GraphicEx.Deinit();
 			//dbg.put ("quitting");
 			w.PostQuitMessage(0);
@@ -4210,12 +4210,12 @@ proc
 	
 		// general settings
 		dbg.put ("Initialize");
-		move( str.alloc (pathsize_c), homepath);
+		move( str.alloc (pathsize_c), core.homepath);
 
-		move( str.alloc (pathsize_c), configmain);
+		move( str.alloc (pathsize_c), core.configmain);
 		move( str.alloc (worksize_c), workpath);
-		move( str.alloc (pathsize_c), projectpath);
-		move( str.alloc (pathsize_c), tplpath);
+		move( str.alloc (pathsize_c), core.projectpath);
+		move( str.alloc (pathsize_c), core.tplpath);
 		move( str.alloc (mastersize_c), stringbuffer);
 	
 		GraphicEx.Init();
@@ -4226,14 +4226,14 @@ proc
 		
 		call arg.c;
 		mov (eax,argc);
-		os2.getmodulepath (homepath);
+		os2.getmodulepath (core.homepath);
 		
-		filesys.extractPath( homepath, homepath );
-		dbg.put ("homepath = ", homepath);
+		filesys.extractPath( core.homepath, core.homepath );
+		dbg.put ("core.homepath = ", core.homepath);
 	
-		str.put (configmain, homepath, dirsep_c, HIDE_INI);	
-		str.put (tplpath, homepath, dirsep_c, HIDE_TPL);	
-		filesys.cd (homepath);		
+		str.put (core.configmain, core.homepath, dirsep_c, HIDE_INI);	
+		str.put (core.tplpath, core.homepath, dirsep_c, HIDE_TPL);	
+		filesys.cd (core.homepath);		
 		hidesysini.create_file ( HIDE_SYSTEMINI );
 
 		if (hidesysini.readInt ("Internal", "iniversion")) then
@@ -4242,9 +4242,9 @@ proc
 			error.fatal ("Could not read 'iniversion' from Data\hide_system.ini");
 		endif;
 	
-		if ( filesys.exists (configmain)) then
+		if ( filesys.exists (core.configmain)) then
 			
-			hideini.create_file(configmain);
+			hideini.create_file(core.configmain);
 			
 			// update HIDE.ini version info
 			hideini.readInt ("HIDE Settings", "iniversion");
@@ -4268,7 +4268,7 @@ proc
 				endif;
 				
 				if (eax < 4) then
-					hideini.deleteKey ("HIDE Settings", "homepath");
+					hideini.deleteKey ("HIDE Settings", "core.homepath");
 				endif;
 				
 				// update the iniversion of HIDE Settings
@@ -4333,14 +4333,14 @@ proc
 			str.put2 (stringbuffer, ';');
 		endif;
 
-		str.put2 (stringbuffer, homepath, dirsep_c, "bin;");
+		str.put2 (stringbuffer, core.homepath, dirsep_c, "bin;");
 		env2.put ("PATH", stringbuffer);
 		if (hideini._readString ("HIDE Settings", "ProjFold", stringbuffer)) then
 			expandPathMacs (stringbuffer, stringbuffer);
-			str.cpy (stringbuffer, projectpath);
+			str.cpy (stringbuffer, core.projectpath);
 		else
 			// default project folder
-			str.put (projectpath, homepath, dirsep_c, "Projects");
+			str.put (core.projectpath, core.homepath, dirsep_c, "Projects");
 		endif;
 		
 		if( ! hideini._readString( "HIDE Settings", "hlaopt", stringbuffer)) then
@@ -4352,7 +4352,7 @@ proc
 		
 		env2.put("hlaopt", stringbuffer );
 
-		str.put (workpath, homepath, dirsep_c, "hlalib");
+		str.put (workpath, core.homepath, dirsep_c, "hlalib");
 		env2.put ("lib", workpath);
 
 		if (! hideini._readString ("HIDE Settings", "hlalib", stringbuffer)) then
@@ -4375,7 +4375,7 @@ proc
 		expandPathMacs (stringbuffer, stringbuffer);
 		env2.put ("hlainc", stringbuffer);
 
-		str.put (workpath, homepath, dirsep_c, "temp");
+		str.put (workpath, core.homepath, dirsep_c, "temp");
 		env2.put ("hlatmp", workpath);
 		
 		// default editor settings		

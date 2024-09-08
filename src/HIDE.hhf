@@ -1,6 +1,6 @@
 const
 
-	version	:string := "HIDE 1.7.13";
+	version	:string := "HIDE 1.7.14";
 	hlaversion :string := "hla 2.16/stdlib 8.0";
 
 	#includeonce	("os.hhf")
@@ -145,7 +145,7 @@ const
 	level_machine	:= 3;
 	
 	// winview settings	
-	dummy_sym_0038938 := @{0};	// required or HLA linux can't find next symbol
+	dummy_sym_0038938 := @{0};	// required or HLA linux can't find next symbol --- why do i even care?
 	TOOL	:= @{0};
 	STATUS	:= @{1};
 	OUTPUT	:= @{2};
@@ -175,12 +175,12 @@ const
 	// Private messages
 	HIDE_BASE			:=w.WM_USER+2000;
 	HIDE_TOGGLEOUTPUT	:=HIDE_BASE+1;		// wParam=0, lParam=n	0 > n = start close output delay timer 
-	HIDE_TOGGLEDEBUG		:=HIDE_BASE+2;		// wParam=0, lParam=0
+	HIDE_TOGGLEDEBUG	:=HIDE_BASE+2;		// wParam=0, lParam=0
 	HIDE_SETSTATUS		:=HIDE_BASE+3;		// wParam=item index,	lParam=pointer to string
 	HIDE_SETINSERTMODE	:=HIDE_BASE+4;		// wParam=0, lParam=0   updates status bar INS/OVR display based on edit setting
 	
 	// some general string sized
-	pathsize_c		:= 300;
+	pathsize_c		:= 400;
 	worksize_c		:= 4096;
 	mastersize_c	:= $10000;
 	dirsep_c		:= '\';
@@ -209,10 +209,9 @@ const
 		type_bin		:= 6;		// binary file
 		type_misc		:= 7;		// misc file
 		type_kmake		:= 8;		// kmake file\
-		type_odin		:= 9;		// odin source files
-		type_go			:= 10;		// go source files
+		type_odin		:= 9;		// odin source files -- unused for now
+		type_go			:= 10;		// go source files -- unused for now
 		
-	
 	// file types not coverd above,
 	// these are not counted in string array
 	// but used for file filters

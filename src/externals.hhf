@@ -219,12 +219,8 @@ static	// externals
 		replacebuf			:byte[300];				@external;		// buffer for replace dialog
 		CustColors			:dword[16];				@external;		// storage for custom colors
 		pathbuf				:byte[300];				@external;		// keeps track of last directory visited
-		configmain			:string;				@external;	// holds initialization file for session
 		
-		homepath			:string;				@external;	// current directory
 		workpath			:string;				@external;	// a string buffer for working paths
-		tplpath				:string;				@external;	// a path holding templates directory
-		projectpath			:string;				@external;	// holds current path for project folder
 		stringbuffer				:string;				@external;	// scratch static string
 
 		core				:tCORE;					@external;	// HIDE global state

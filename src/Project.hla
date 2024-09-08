@@ -249,7 +249,7 @@ USE (ESI, EDI, EBX);
 	str.cpy (projname, pname);
 	project.close();	// close existing project, if any
 	
-	str.put (stringbuffer, projectpath, dirsep_c, pname);
+	str.put (stringbuffer, core.projectpath, dirsep_c, pname);
 	dbg.put ("New project at: ", stringbuffer);
 	try
 		filesys.mkdir( stringbuffer );
@@ -268,7 +268,7 @@ USE (ESI, EDI, EBX);
 		iniesi.write (pname);
 		iniesi.destroy();
 		
-		filesys.cd (projectpath);
+		filesys.cd (core.projectpath);
 		project.open (pname);
 		or (1, eax);
 
@@ -948,7 +948,7 @@ begin open;
 
 	else
 
-		str.put (stringbuffer, projectpath, dirsep_c, hprname_s);
+		str.put (stringbuffer, core.projectpath, dirsep_c, hprname_s);
 		filesys.deleteExt( stringbuffer, stringbuffer );
 		
 		if( filesys.exists( stringbuffer ) ) then
@@ -1249,7 +1249,7 @@ USE (EBX, ESI, EDI);
 		move (settings.findscope, project.findscope);
 
 		// reset environment for temp
-		str.put (workpath, homepath, dirsep_c, "temp");
+		str.put (workpath, core.homepath, dirsep_c, "temp");
 		env2.put ("hlatmp", workpath);
 			
 		mov (false, project.isOpen);
@@ -1258,9 +1258,9 @@ USE (EBX, ESI, EDI);
 		mov (&project.hpr, eax);
 		mov (0, (type dword [eax]));
 		updateDisplay (update_general);
-		dbg.put ("changing to path:", projectpath);
+		dbg.put ("changing to path:", core.projectpath);
 		try
-			filesys.cd (projectpath);
+			filesys.cd (core.projectpath);
 		anyexception
 			error.warning("Project folder no longer exists, please fix project path");
 		endtry;
@@ -3090,7 +3090,7 @@ begin CreateProjectFromTemplate;
 
 	pushabi;
 	filesys.gwd (curdir);
-	filesys.cd(projectpath);
+	filesys.cd(core.projectpath);
 	
 	str.put (tplwork, "kmake.exe filename=");
 		
@@ -3110,7 +3110,7 @@ begin CreateProjectFromTemplate;
 	
 	w.SendDlgItemMessage(hwin, IDC_PROJECT_NAME, w.WM_GETTEXT, @size(buffer),&buffer);
 
-	str.put (tplwork, projectpath, dirsep_c);
+	str.put (tplwork, core.projectpath, dirsep_c);
 	str.catz (&buffer, tplwork);
 	str.put2 (tplwork, dirsep_c);
 	str.catz (&buffer, tplwork);
@@ -3131,7 +3131,7 @@ begin Proc_NewProject;
 		// look for custom projects folder
 		w.SendDlgItemMessage(hwin,IDC_PROJECT_FOLDER,w.EM_LIMITTEXT,w.MAX_PATH,0);
 		w.SendDlgItemMessage(hwin,IDC_PROJECT_TEMPLATE,w.EM_LIMITTEXT,w.MAX_PATH,0);
-		w.SendDlgItemMessage(hwin,IDC_PROJECT_FOLDER,w.WM_SETTEXT,0,projectpath);
+		w.SendDlgItemMessage(hwin,IDC_PROJECT_FOLDER,w.WM_SETTEXT,0,core.projectpath);
 		w.SendDlgItemMessage(hwin,IDC_PROJECT_NAME,w.WM_SETFOCUS,0,0);
 		w.CheckDlgButton(hwin, ID_RBN_NONE, w.BST_CHECKED);
 		str.cpy ("", workpath);
@@ -3183,22 +3183,22 @@ begin Proc_NewProject;
 			str.cpy ("", workpath);
 
 		elseif (eax = ID_RBN_HLA) then
-			str.put (workpath, tplpath, dirsep_c, "Standard", dirsep_c, "HLA_Program.kmk");
+			str.put (workpath, core.tplpath, dirsep_c, "Standard", dirsep_c, "HLA_Program.kmk");
 			w.SendDlgItemMessage(hwin, IDC_PROJECT_TEMPLATE, w.WM_SETTEXT, 0, workpath);
 			displayTemplate (hwin, workpath);
 			
 		elseif (eax = ID_RBN_MODULAR) then
-			str.put (workpath, tplpath, dirsep_c, "Standard", dirsep_c, "HLA_Modular.kmk");
+			str.put (workpath, core.tplpath, dirsep_c, "Standard", dirsep_c, "HLA_Modular.kmk");
 			w.SendDlgItemMessage(hwin, IDC_PROJECT_TEMPLATE, w.WM_SETTEXT, 0, workpath);
 			displayTemplate (hwin, workpath);
 			
 		elseif (eax = ID_RBN_LIB) then
-			str.put (workpath, tplpath, dirsep_c, "Standard", dirsep_c, "HLA_Lib.kmk");
+			str.put (workpath, core.tplpath, dirsep_c, "Standard", dirsep_c, "HLA_Lib.kmk");
 			w.SendDlgItemMessage(hwin, IDC_PROJECT_TEMPLATE, w.WM_SETTEXT, 0, workpath);
 			displayTemplate (hwin, workpath);
 			
 		elseif (eax = ID_RBN_DLL) then
-			str.put (workpath, tplpath, dirsep_c, "Standard", dirsep_c, "HLA_DLL.kmk");
+			str.put (workpath, core.tplpath, dirsep_c, "Standard", dirsep_c, "HLA_DLL.kmk");
 			w.SendDlgItemMessage(hwin, IDC_PROJECT_TEMPLATE, w.WM_SETTEXT, 0, workpath);
 			displayTemplate (hwin, workpath);
 			

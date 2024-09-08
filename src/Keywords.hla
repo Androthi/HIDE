@@ -94,7 +94,7 @@ proc
 				listebx.ftype = type_hhf ) then
 			while( index < 3 ) do  // items for HLA files
 				mov( index, eax );
-				str.put( stringbuffer, homepath, dirsep_c, GroupFiles[eax*4] );
+				str.put( stringbuffer, core.homepath, dirsep_c, GroupFiles[eax*4] );
 				if( filesys.exists( stringbuffer )) then
 					buf.create( stringbuffer );
 					mov( index, edi );
@@ -109,7 +109,7 @@ proc
 				
 			endwhile;	
 		elseif( listedx.ftype = type_odin ) then
-			str.put( stringbuffer, homepath, dirsep_c, GroupFiles[3*4] ); // this is hacky! 3 == custom
+			str.put( stringbuffer, core.homepath, dirsep_c, GroupFiles[3*4] ); // this is hacky! 3 == custom
 			if( filesys.exists( stringbuffer )) then
 				buf.create( stringbuffer );
 				mov( [ebx+3*4], edi );
@@ -118,7 +118,7 @@ proc
 				w.SendMessage( listedx.hwnd, REM_SETHILITEWORDS, edi, eax );
 				buf.destroy();
 			endif;
-			str.put( stringbuffer, homepath, dirsep_c, GroupFiles[4*4] ); // 4 == odin
+			str.put( stringbuffer, core.homepath, dirsep_c, GroupFiles[4*4] ); // 4 == odin
 			if( filesys.exists( stringbuffer )) then
 				buf.create( stringbuffer );
 				mov( [ebx+4*4], edi );
@@ -129,7 +129,7 @@ proc
 			endif;
 			
 		elseif( listedx.ftype = type_go ) then
-			str.put( stringbuffer, homepath, dirsep_c, GroupFiles[3] );
+			str.put( stringbuffer, core.homepath, dirsep_c, GroupFiles[3] );
 			if( filesys.exists( stringbuffer )) then
 				buf.create( stringbuffer );
 				mov( [ebx+3*4], edi );
@@ -138,7 +138,7 @@ proc
 				w.SendMessage( listedx.hwnd, REM_SETHILITEWORDS, edi, eax );
 				buf.destroy();
 			endif;
-			str.put( stringbuffer, homepath, dirsep_c, GroupFiles[5] ); // 5 == go
+			str.put( stringbuffer, core.homepath, dirsep_c, GroupFiles[5] ); // 5 == go
 			if( filesys.exists( stringbuffer )) then
 				buf.create( stringbuffer );
 				mov( [ebx+5*4], edi );
@@ -175,14 +175,14 @@ proc
 			dbg.put("looping index at :", index );
 
 			mov( index, ecx );
-			str.put( stringbuffer, homepath, dirsep_c, GroupFiles[ecx*4] );
+			str.put( stringbuffer, core.homepath, dirsep_c, GroupFiles[ecx*4] );
 			
 			
 			dbg.put(" using list :", stringbuffer );
 			buf.create( stringbuffer );
 		else
 			
-			str.put( stringbuffer, homepath, dirsep_c, "Data\holdgroup.ini" );
+			str.put( stringbuffer, core.homepath, dirsep_c, "Data\holdgroup.ini" );
 			if( filesys.exists( stringbuffer ) ) then
 				
 				buf.create( stringbuffer );
@@ -272,11 +272,11 @@ proc
 		if( eax < nColorGroups ) then
 			
 			
-			str.put( stringbuffer, homepath, dirsep_c, GroupFiles[eax*4] );
+			str.put( stringbuffer, core.homepath, dirsep_c, GroupFiles[eax*4] );
 			
 		else
 			
-			str.put( stringbuffer, homepath, dirsep_c, "Data\holdgroup.ini" );
+			str.put( stringbuffer, core.homepath, dirsep_c, "Data\holdgroup.ini" );
 			
 		endif;
 		

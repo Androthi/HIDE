@@ -194,6 +194,12 @@ type
 			tci				:w.TC_ITEM;
 			col				:RACOLOR;
 
+			// string data
+			projectpath		:string;
+			tplpath			:string;
+			configmain		:string;
+			homepath		:string;
+
 
 		endrecord;
 	

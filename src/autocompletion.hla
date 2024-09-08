@@ -927,7 +927,7 @@ end AutoCompletion_DOIT;
 // using the autocompletion-ini file
 procedure AutoCompletion_INIT;@noframe;
 begin AutoCompletion_INIT;
-//dbg.put("AutoCompletion_INIT :", homepath);
+//dbg.put("AutoCompletion_INIT :", core.homepath);
 
 	CWordlist.create();	
 	mov(0, m_autocompletion.hListbox);
@@ -935,8 +935,8 @@ begin AutoCompletion_INIT;
 	mov( str.alloc (pathsize_c), autohomepath);
 	mov( str.alloc (pathsize_c), pathwordlist);
 	
-	str.put (autohomepath, homepath, dirsep_c, AUTOCOMPLETION_INI);
-	str.put (pathwordlist, homepath, dirsep_c, WORDLISTDEFAULT);
+	str.put (autohomepath, core.homepath, dirsep_c, AUTOCOMPLETION_INI);
+	str.put (pathwordlist, core.homepath, dirsep_c, WORDLISTDEFAULT);
 
 	if ( filesys.exists (autohomepath)) then
 		autocompleteini.create_file ( autohomepath  );

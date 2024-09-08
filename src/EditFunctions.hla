@@ -768,7 +768,7 @@ USE (ebx, esi, edi, ecx, edx);
 			
 			// save backups in the HIDE\Temp folder
 			useHIDETemp:
-			str.put (backpath, homepath, dirsep_c, "temp", dirsep_c);
+			str.put (backpath, core.homepath, dirsep_c, "temp", dirsep_c);
 			
 		endif;
 		
@@ -898,7 +898,7 @@ begin InitOF;
 		if (project.isOpen) then
 			mov(project.folder,eax);
 		else
-			mov(homepath,eax);
+			mov(core.homepath,eax);
 		endif;
 	endif;
 	mov(eax,of.lpstrInitialDir);
@@ -974,7 +974,7 @@ end GetOpenName;
 
 procedure GetOpenTemplateName;	@noframe;
 begin GetOpenTemplateName;
-	push(tplpath);
+	push(core.tplpath);
 	pop(of.lpstrInitialDir);
 	w.GetOpenFileName(&of);
 	if (eax) then
@@ -985,7 +985,7 @@ end GetOpenTemplateName;
 
 procedure GetSaveTemplateName; @noframe;
 begin GetSaveTemplateName;
-	push (tplpath);
+	push (core.tplpath);
 	pop (of.lpstrInitialDir);
 	w.GetSaveFileName (&of);
 	if (eax) then
@@ -997,7 +997,7 @@ end GetSaveTemplateName;
 
 procedure GetOpenProjectName;	@noframe;
 begin GetOpenProjectName;
-	mov(projectpath,eax);
+	mov(core.projectpath,eax);
 	mov(eax,of.lpstrInitialDir);
 	w.GetOpenFileName(&of);
 	if (eax) then

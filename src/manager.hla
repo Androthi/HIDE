@@ -513,7 +513,7 @@ proc
 						str.cpy( project.folder, workpath );
 						filesys.extractPath( workpath, workpath );
 						str.put2( workpath, dirsep_c, stringbuffer );
-						filesys.cd( projectpath );
+						filesys.cd( core.projectpath );
 						filesys.rename( project.folder, workpath );
 						str.free( project.folder );
 						str.a_cpy( workpath );
@@ -611,7 +611,7 @@ proc
 					else
 							
 						iniesi.writeBool( "HPR Settings", "usetemp", false );
-						str.put( workpath, homepath, dirsep_c, "temp" );
+						str.put( workpath, core.homepath, dirsep_c, "temp" );
 						env2.put( "hlatmp", workpath );
 						
 
@@ -910,7 +910,7 @@ proc
 			str.cpyz( &buffer, stringbuffer );
 			hideini.writeString( "HIDE Settings", "UserPath", stringbuffer );
 			expandPathMacs( stringbuffer, stringbuffer );
-			str.put2( stringbuffer, ';', homepath, dirsep_c, "bin;" );
+			str.put2( stringbuffer, ';', core.homepath, dirsep_c, "bin;" );
 			env2.put( "PATH", stringbuffer );
 			
 		else
@@ -924,12 +924,12 @@ proc
 			str.cpyz( &buffer, stringbuffer );
 			hideini.writeString( "HIDE Settings", "ProjFold", stringbuffer );
 			expandPathMacs( stringbuffer, stringbuffer );
-			str.cpy( stringbuffer, projectpath );
+			str.cpy( stringbuffer, core.projectpath );
 			
 		else
 
 			hideini.deleteKey( "HIDE Settings", "ProjFold" );
-			str.put( projectpath, homepath, dirsep_c, "Projects" );
+			str.put( core.projectpath, core.homepath, dirsep_c, "Projects" );
 
 		endif;
 
@@ -964,7 +964,7 @@ proc
 			
 		else
 			
-			str.put( stringbuffer, homepath, dirsep_c, "hlalib" );
+			str.put( stringbuffer, core.homepath, dirsep_c, "hlalib" );
 			hideini.writeString( "HIDE Settings", "hlalib", stringbuffer );
 			env2.put( "hlalib", stringbuffer );
 			
@@ -979,7 +979,7 @@ proc
 		
 		else
 			
-			str.put( stringbuffer, homepath, dirsep_c, "hlainc" );
+			str.put( stringbuffer, core.homepath, dirsep_c, "hlainc" );
 			hideini.writeString( "HIDE Settings", "hlainc", stringbuffer );
 			env2.put( "hlainc", stringbuffer );
 		
@@ -1110,7 +1110,7 @@ proc
 			
 		endif;
 		
-		hideini.writeFileName( configmain );		
+		hideini.writeFileName( core.configmain );		
 		
 		w.SendMessage( core.hwnd, HIDE_TOGGLEDEBUG, 0, 0 );		
 		prop_reset();

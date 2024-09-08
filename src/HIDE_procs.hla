@@ -730,7 +730,7 @@ proc
 					// read and save all the info from the dialog
 					SaveLinkResponse (linksec_s, hwin, thisjob);
 					if (thisjob = 0) then
-						hideini.write ( configmain );
+						hideini.write ( core.configmain );
 					endif;
 					
 				_cancel:
@@ -1005,7 +1005,7 @@ procedure Start_SoundTrack;
 			
 	begin Start_SoundTrack;
 		
-		str.put (stringbuffer, homepath, dirsep_c, "data", dirsep_c, "aRC_XM.dll");
+		str.put (stringbuffer, core.homepath, dirsep_c, "data", dirsep_c, "aRC_XM.dll");
 		w.LoadLibrary (stringbuffer);
 		if ( eax) then
 
