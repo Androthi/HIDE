@@ -1474,7 +1474,7 @@ TextOut: procedure
 
 AppendMenu: procedure
 	( 
-		hMenu			:dword; 
+		hmenu			:dword; 
 		uFlags			:dword; 
 		uIDNewItem		:dword; 
 		lpNewItem		:string
@@ -1563,7 +1563,7 @@ CreateWindowEx: procedure
 			nWidth			:dword; 
 			nHeight			:dword; 
 			hWndParent		:dword; 
-			hMenu			:dword; 
+			hmenu			:dword; 
 			hInstance		:dword; 
 		var	lpParam			:var
 	);
@@ -1592,7 +1592,7 @@ DestroyCursor: procedure
 
 DestroyMenu: procedure
 	( 
-		hMenu			:dword
+		hmenu			:dword
 	);
 		@stdcall;
 		@returns( "eax" );
@@ -1647,7 +1647,7 @@ DrawMenuBar: procedure
 
 EnableMenuItem: procedure
 	( 
-		hMenu			:dword; 
+		hmenu			:dword; 
 		uIDEnableItem	:dword; 
 		uEnable			:dword
 	);
@@ -1800,7 +1800,7 @@ GetProp: procedure
 
 GetSubMenu: procedure
 	( 
-		hMenu			:dword; 
+		hmenu			:dword; 
 		nPos			:dword
 	);
 		@stdcall;
@@ -1861,7 +1861,7 @@ InflateRect: procedure
 
 InsertMenu: procedure
 	( 
-			hMenu		:dword; 
+			hmenu		:dword; 
 			uPosition	:dword; 
 			uFlags		:dword; 
 			uIDNewItem	:dword; 
@@ -2277,7 +2277,7 @@ ToAscii: procedure
 
 TrackPopupMenu: procedure
 	( 
-			hMenu		:dword; 
+			hmenu		:dword; 
 			uFlags		:dword; 
 			x			:dword; 
 			y			:dword; 

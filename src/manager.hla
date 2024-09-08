@@ -93,7 +93,7 @@ proc
 		mov( @size(fnt), fnt.lStructSize );
 		mov( hwin, fnt.hWndOwner );
 		mov( w.CF_SCREENFONTS | w.CF_EFFECTS | w.CF_INITTOLOGFONTSTRUCT, fnt.Flags );
-		mov( col.txtcol, fnt.rgbColors );
+		mov( core.col.txtcol, fnt.rgbColors );
 		
 	end setupForFont;
 
@@ -871,15 +871,15 @@ proc
 			mov( eax, core.hitalic );
 			pop( eax );
 			mov( al, mainfont.lfItalic );
-			mov( fnt.rgbColors, col.txtcol );
+			mov( fnt.rgbColors, core.col.txtcol );
 			mov( curnode, eax );
 			if( eax ) then
-				w.SendMessage( listeax.hwnd, REM_SETCOLOR, 0, &col );
+				w.SendMessage( listeax.hwnd, REM_SETCOLOR, 0, &core.col );
 			endif;
 			setFormatAll();
 			
 			hideini.writeBin( "Fonts", "code", &mainfont, @size(mainfont) );
-			hideini.writeBin( "Colors", "col", &col,@size(col) );
+			hideini.writeBin( "Colors", "col", &core.col,@size(core.col) );
 			
 		endif;
 
@@ -887,16 +887,16 @@ proc
 			w.DeleteObject( core.hlinefont );
 			w.CreateFontIndirect( &linefont );
 			mov( eax, core.hlinefont );
-			mov( fnt.rgbColors,col.lnrcol );
+			mov( fnt.rgbColors,core.col.lnrcol );
 			mov( curnode, eax );
 			if( eax ) then
-				w.SendMessage( listeax.hwnd, REM_SETCOLOR, 0, &col );
+				w.SendMessage( listeax.hwnd, REM_SETCOLOR, 0, &core.col );
 			endif;
 			
 			setFormatAll();
 
 			hideini.writeBin( "Fonts", "line", &linefont, @size(linefont) );
-			hideini.writeBin( "Colors","col",&col, @size(col) );
+			hideini.writeBin( "Colors","col",&core.col, @size(core.col) );
 
 		endif;
 		
@@ -1170,6 +1170,7 @@ proc
 			
 		case( manager_project )
 		
+
 			writeMessage( zProjectHelp );
 
 			w.MoveWindow( optProject, client_r.x, client_r.y, client_r.width, client_r.height, false );

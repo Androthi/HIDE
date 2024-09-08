@@ -180,7 +180,7 @@ _defproc:
 
 _lbuttondown:
 	w.SetCapture(hwin);
-	w.SetCursor(hHsplitcursor);
+	w.SetCursor(core.hHsplitcursor);
 	mov(true,split);
 	jmp _retfalse;
 	
@@ -192,7 +192,7 @@ _lbuttonup:
 	jmp _retfalse;
 	
 _mousemove:
-	w.SetCursor(hHsplitcursor);
+	w.SetCursor(core.hHsplitcursor);
 	cmp(split,true);
 	jne _retfalse;
 	w.GetCursorPos(pt);
@@ -272,7 +272,7 @@ _defproc:
 	
 _lbuttondown:
 	w.SetCapture(hwin);
-	w.SetCursor(hVsplitcursor);
+	w.SetCursor(core.hVsplitcursor);
 	mov(true,split);
 	jmp _retfalse;
 	
@@ -284,7 +284,7 @@ _lbuttonup:
 	jmp _retfalse;
 	
 _mousemove:
-	w.SetCursor(hVsplitcursor);
+	w.SetCursor(core.hVsplitcursor);
 	cmp(split,true);
 	jne _retfalse;
 
@@ -335,7 +335,7 @@ _getworkheight:
 	_endif;
 	test(STATUS,settings.winview);
 	_if(@nz)
-		w.GetWindowRect(hsbr,_rect);
+		w.GetWindowRect(core.hsbr,_rect);
 		mov(_rect.bottom,eax);
 		sub(_rect.top,eax);			// get height of statusbar
 		sub(eax,rect.bottom);	// shrink the main client area from bottom
@@ -1277,6 +1277,7 @@ begin Proc_GetString;
 
 	elseif (eax = w.WM_CLOSE) then
 		w.EndDialog(hwin,wparam);
+
 	endif;	
 	xor (eax, eax);
 end Proc_GetString;

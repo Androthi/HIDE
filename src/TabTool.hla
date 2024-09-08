@@ -39,12 +39,12 @@ USE (EBX, ESI, EDI);
 	w.SendMessage (core.htab, w.TCM_GETITEMCOUNT, 0, 0);
 	mov (eax, count);
 	if (eax) then
-		mov	(w.TCIF_PARAM, tci.imask);
+		mov	(w.TCIF_PARAM, core.tci.imask);
 		while (count >=0) do
 			dec (count);
-			w.SendMessage (core.htab, w.TCM_GETITEM, count, &tci);
+			w.SendMessage (core.htab, w.TCM_GETITEM, count, &core.tci);
 			breakif (!eax);
-			mov (tci.lParam, ebx);
+			mov (core.tci.lParam, ebx);
 			if (str.eq (listebx.fullname, id)) then
 				w.SendMessage (core.htab, w.TCM_SETCURSEL, count, 0);
 				tabtool_activate();
@@ -71,12 +71,12 @@ USE (EBX, ESI, EDI, EDX);
 	w.SendMessage (core.htab, w.TCM_GETITEMCOUNT, 0, 0);
 	mov (eax, count);
 	if (eax) then
-		mov	(w.TCIF_PARAM, tci.imask);
+		mov	(w.TCIF_PARAM, core.tci.imask);
 		while (count >=0) do
 			dec (count);
-			w.SendMessage (core.htab, w.TCM_GETITEM, count, &tci);
+			w.SendMessage (core.htab, w.TCM_GETITEM, count, &core.tci);
 			breakif (!eax);
-			mov (tci.lParam, ebx);
+			mov (core.tci.lParam, ebx);
 			if (ebx = node) then
 				w.SendMessage (core.htab, w.TCM_SETCURSEL, count, 0);
 				tabtool_activate();
@@ -104,12 +104,12 @@ USE (EBX, ESI, EDI, EDX);
 	w.SendMessage (core.htab, w.TCM_GETITEMCOUNT, 0, 0);
 	mov (eax, count);
 	if (eax) then
-		mov	(w.TCIF_PARAM, tci.imask);
+		mov	(w.TCIF_PARAM, core.tci.imask);
 		while (count >=0) do
 			dec (count);
-			w.SendMessage (core.htab, w.TCM_GETITEM, count, &tci);
+			w.SendMessage (core.htab, w.TCM_GETITEM, count, &core.tci);
 			breakif (!eax);
-			mov (tci.lParam, ebx);
+			mov (core.tci.lParam, ebx);
 			if (ebx = node) then
 				mov (true, eax);
 				break;
@@ -155,13 +155,13 @@ USE (ESI, ECX, EDI, EBX, EDX);
 	if (eax && eax <> node) then
 		w.ShowWindow (listeax.hwnd, w.SW_HIDE);
 	endif;
-	mov (w.TCIF_TEXT | w.TCIF_PARAM, tci.imask);
-	mov (30, tci.cchTextMax);
+	mov (w.TCIF_TEXT | w.TCIF_PARAM, core.tci.imask);
+	mov (30, core.tci.cchTextMax);
 	mov (node, ebx);
 	mov (listebx.id, eax);
-	mov (eax, tci.pszText);
-	mov (ebx, tci.lParam);
-	w.SendMessage(core.htab,w.TCM_INSERTITEM, 999, &tci);
+	mov (eax, core.tci.pszText);
+	mov (ebx, core.tci.lParam);
+	w.SendMessage(core.htab,w.TCM_INSERTITEM, 999, &core.tci);
 	w.SendMessage(core.htab,w.TCM_SETCURSEL, eax,0);
 	mov (ebx, curnode);
 
@@ -192,20 +192,20 @@ begin tabtool_update;
 USE (EBX);
 	//dbg.put ("tabtool_update");
 	mov (-1, index);
-	mov(w.TCIF_PARAM, tci.imask);
+	mov(w.TCIF_PARAM, core.tci.imask);
 	mov(true, eax);
 	while(eax) do
 		inc	(index);
-		w.SendMessage (core.htab, w.TCM_GETITEM, index, &tci);
+		w.SendMessage (core.htab, w.TCM_GETITEM, index, &core.tci);
 		if (eax) then 
-			mov	(tci.lParam, eax);
+			mov	(core.tci.lParam, eax);
 			if (eax = node) then
-				mov (w.TCIF_TEXT | w.TCIF_PARAM, tci.imask);
+				mov (w.TCIF_TEXT | w.TCIF_PARAM, core.tci.imask);
 				mov (node, ebx);
 				mov (listebx.id, eax);
-				mov (eax, tci.pszText);
-				mov (ebx, tci.lParam);
-				w.SendMessage (core.htab, w.TCM_SETITEM, index, &tci);
+				mov (eax, core.tci.pszText);
+				mov (ebx, core.tci.lParam);
+				w.SendMessage (core.htab, w.TCM_SETITEM, index, &core.tci);
 				break;
 			endif;
 		endif;
@@ -225,12 +225,12 @@ USE (EBX);
 	mov (node, ebx);
 	mov (-1, index);
 	if (ebx) then
-		mov(w.TCIF_PARAM, tci.imask);
+		mov(w.TCIF_PARAM, core.tci.imask);
 		mov(true, eax);
 		while(eax) do
 			inc	(index);
-			if (w.SendMessage (core.htab, w.TCM_GETITEM, index, &tci)) then
-				mov	(tci.lParam, eax);
+			if (w.SendMessage (core.htab, w.TCM_GETITEM, index, &core.tci)) then
+				mov	(core.tci.lParam, eax);
 				breakif (eax = node);
 			endif;
 		welse
@@ -248,9 +248,9 @@ USE(ebx,edx,esi,edi);
 	//dbg.put("tabtool_activate");
 	w.SendMessage(core.htab, w.TCM_GETCURSEL, 0,0);
 	if (eax != -1) then
-		mov	(w.TCIF_PARAM, tci.imask);
-		w.SendMessage(core.htab,w.TCM_GETITEM, eax, &tci);
-		mov (tci.lParam, eax);
+		mov	(w.TCIF_PARAM, core.tci.imask);
+		w.SendMessage(core.htab,w.TCM_GETITEM, eax, &core.tci);
+		mov (core.tci.lParam, eax);
 		if (eax <> curnode) then
 			mov (curnode, ebx);
 			mov (eax, curnode);
@@ -284,13 +284,13 @@ procedure tabtool_close (var node:fList.fnode);
 begin tabtool_close;
 USE (EBX);
 	mov (-1, index);
-	mov	(w.TCIF_PARAM, tci.imask);
+	mov	(w.TCIF_PARAM, core.tci.imask);
 	mov	(true, eax);
 	while (eax) do
 		inc	(index);
-		w.SendMessage (core.htab, w.TCM_GETITEM, index, &tci);
+		w.SendMessage (core.htab, w.TCM_GETITEM, index, &core.tci);
 		if(eax) then
-			mov	(tci.lParam, ebx);
+			mov	(core.tci.lParam, ebx);
 			if (ebx = node) then
 				w.SendMessage (core.htab, w.TCM_DELETEITEM, index, 0);
 				break;
@@ -307,7 +307,7 @@ USE (EBX);
 			dec	(index);
 			jmp	l0;
 		endif;
-		w.SendMessage (core.htab, w.TCM_GETITEM, index, &tci);
+		w.SendMessage (core.htab, w.TCM_GETITEM, index, &core.tci);
 		mov (ebx, curnode);
 		call tabtool_activate;
 	else
@@ -323,13 +323,13 @@ procedure Panel_HideDocked; @noframe;
 begin Panel_HideDocked;
 	dbg.put("Panel_HideDocked");	
 	mov (settings.panelactive, eax);
-	if (eax = htree) then
+	if (eax = core.htree) then
 		if (testnz (TREE_D, settings.winview)) then
-			w.ShowWindow (htree, w.SW_HIDE);
+			w.ShowWindow (core.htree, w.SW_HIDE);
 		endif;
-	elseif (eax = hprop) then
+	elseif (eax = core.hprop) then
 		if (testnz (PROP_D, settings.winview)) then
-			w.ShowWindow (hprop, w.SW_HIDE);
+			w.ShowWindow (core.hprop, w.SW_HIDE);
 		endif;
 	endif;
 	dbg.put("/Panel_HideDocked");
@@ -340,16 +340,16 @@ procedure PanelSetup (hwin:dword);
 begin PanelSetup;
 USE(edi, esi, ebx);
 	//dbg.put ("panelSetup");
-	mov (w.TCIF_TEXT, tci.imask);
-	mov (20, tci.cchTextMax);
+	mov (w.TCIF_TEXT, core.tci.imask);
+	mov (20, core.tci.cchTextMax);
 
 	mov (&strs, edi);
 	forever
 		mov ([edi], eax);
 		breakif (! eax);
 		mov ([eax], eax);
-		mov (eax, tci.pszText);
-		w.SendMessage(core.hpaneltab,w.TCM_INSERTITEM, 999, &tci);
+		mov (eax, core.tci.pszText);
+		w.SendMessage(core.hpaneltab,w.TCM_INSERTITEM, 999, &core.tci);
 		add (4, edi);
 	endfor;
 	w.SendMessage(core.htab,w.TCM_SETCURSEL, 0,0);
@@ -371,9 +371,9 @@ begin PanelFold;
 	dbg.put ("PanelFold");	
 	mov (panel_closed, settings.panelwin);
 	Panel_HideDocked();
-	w.ShowWindow (hHSplitBar, w.SW_HIDE);
+	w.ShowWindow (core.hHSplitBar, w.SW_HIDE);
 	w.SendMessage(core.hpaneltab, w.TCM_SETCURSEL, panel_closed, 0);	
-	w.CheckMenuItem (hmenu, IDM_VIEW_PANEL, w.MF_BYCOMMAND | w.MF_UNCHECKED);
+	w.CheckMenuItem (core.hmenu, IDM_VIEW_PANEL, w.MF_BYCOMMAND | w.MF_UNCHECKED);
 	w.SetFocus (core.hwnd);
 	dbg.put ("/PanelFold");
 	ret();
@@ -397,12 +397,12 @@ begin PanelActivate;
 	dbg.put ("panel activate");
 	mov (str.talloc (128), s);
 
-	mov (w.TCIF_TEXT, tci.imask);
-	mov (&buffer, tci.pszText);
-	mov (@elements(buffer)-1, tci.cchTextMax);
+	mov (w.TCIF_TEXT, core.tci.imask);
+	mov (&buffer, core.tci.pszText);
+	mov (@elements(buffer)-1, core.tci.cchTextMax);
 	w.SendMessage(core.hpaneltab, w.TCM_GETCURSEL, 0,0);
-	w.SendMessage(core.hpaneltab ,w.TCM_GETITEM, EAX, &tci);
-	mov (tci.pszText, eax);
+	w.SendMessage(core.hpaneltab ,w.TCM_GETITEM, EAX, &core.tci);
+	mov (core.tci.pszText, eax);
 	str.cpyz (eax, s);
 	if (str.eq (s, s_project)) then
 		if (testz (TREE_A, settings.winview)) then
@@ -433,12 +433,12 @@ begin panel_setfrom;
 
 	mov (str.talloc (128), s);
 
-	mov (w.TCIF_TEXT, tci.imask);
-	mov (&buffer, tci.pszText);
-	mov (@elements(buffer)-1, tci.cchTextMax);
+	mov (w.TCIF_TEXT, core.tci.imask);
+	mov (&buffer, core.tci.pszText);
+	mov (@elements(buffer)-1, core.tci.cchTextMax);
 	w.SendMessage(core.hpaneltab, w.TCM_GETCURSEL, 0,0);
-	w.SendMessage(core.hpaneltab ,w.TCM_GETITEM, EAX, &tci);
-	mov (tci.pszText, eax);
+	w.SendMessage(core.hpaneltab ,w.TCM_GETITEM, EAX, &core.tci);
+	mov (core.tci.pszText, eax);
 	str.cpyz (eax, s);
 
 	if (str.eq (s, s_project)) then
@@ -461,11 +461,11 @@ begin PanelProject;
 	Project_View (DOCK_YES);
 	mov (panel_project, settings.panelwin);
 	Panel_HideDocked();
-	move (htree, settings. panelactive);
-	w.ShowWindow (htree, w.SW_SHOW);
-	w.ShowWindow (hHSplitBar, w.SW_SHOW);
+	move (core.htree, settings. panelactive);
+	w.ShowWindow (core.htree, w.SW_SHOW);
+	w.ShowWindow (core.hHSplitBar, w.SW_SHOW);
 	w.SendMessage(core.hpaneltab, w.TCM_SETCURSEL, panel_project, 0);	
-	w.CheckMenuItem (hmenu,IDM_VIEW_PANEL,w.MF_BYCOMMAND | w.MF_CHECKED);
+	w.CheckMenuItem (core.hmenu,IDM_VIEW_PANEL,w.MF_BYCOMMAND | w.MF_CHECKED);
 //	dbg.put ("/panelproject");
 	ret();	
 end PanelProject;
@@ -475,11 +475,11 @@ begin PanelProperty;
 	Property_View ( DOCK_YES);
 	mov (panel_prop, settings.panelwin);
 	Panel_HideDocked();
-	move (hprop, settings.panelactive);
-	w.ShowWindow (hprop, w.SW_SHOW);
-	w.ShowWindow (hHSplitBar, w.SW_SHOW);
+	move (core.hprop, settings.panelactive);
+	w.ShowWindow (core.hprop, w.SW_SHOW);
+	w.ShowWindow (core.hHSplitBar, w.SW_SHOW);
 	w.SendMessage(core.hpaneltab, w.TCM_SETCURSEL, panel_prop, 0);	
-	w.CheckMenuItem (hmenu,IDM_VIEW_PANEL,w.MF_BYCOMMAND | w.MF_CHECKED);
+	w.CheckMenuItem (core.hmenu,IDM_VIEW_PANEL,w.MF_BYCOMMAND | w.MF_CHECKED);
 	prop_update();
 	ret();
 end PanelProperty;
@@ -511,9 +511,9 @@ begin PanelViewActive;
 		// panel is closed, open it
 		mov (settings.panelactive, eax);
 		if (eax) then
-			if (eax = htree) then
+			if (eax = core.htree) then
 				PanelProject();
-			elseif (eax = hprop) then
+			elseif (eax = core.hprop) then
 				PanelProperty();
 			endif;
 		endif;

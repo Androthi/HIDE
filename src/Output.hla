@@ -50,19 +50,19 @@ begin Output_View;
 	mov(message,eax);
 	
 	if (eax = w.SW_HIDE) then
-		w.CheckMenuItem(hmenu,IDM_VIEW_OUTPUT,w.MF_BYCOMMAND);
+		w.CheckMenuItem(core.hmenu,IDM_VIEW_OUTPUT,w.MF_BYCOMMAND);
 		w.ShowWindow(core.hout,w.SW_HIDE);
-		w.ShowWindow(hVSplitBar,w.SW_HIDE);
+		w.ShowWindow(core.hVSplitBar,w.SW_HIDE);
 		and(! (VSPLIT), settings.winview);
 		and(! (OUTPUT), settings.winview);
 			
 	elseif (eax = w.SW_SHOW) then
-		w.CheckMenuItem(hmenu,IDM_VIEW_OUTPUT,w.MF_BYCOMMAND |w.MF_CHECKED);
+		w.CheckMenuItem(core.hmenu,IDM_VIEW_OUTPUT,w.MF_BYCOMMAND |w.MF_CHECKED);
 		w.ShowWindow(core.hout,w.SW_SHOW);
 		or(OUTPUT,settings.winview);
 		test(OUTPUT_D,settings.winview);
 		if(@nz) then
-			w.ShowWindow(hVSplitBar,w.SW_SHOW);
+			w.ShowWindow(core.hVSplitBar,w.SW_SHOW);
 			or(VSPLIT,settings.winview);
 		endif;
 
@@ -72,7 +72,7 @@ begin Output_View;
 		w.SetWindowLong(core.hout,w.GWL_STYLE,eax);
 		w.SetParent(core.hout,core.hwnd);
 		mov(eax,oldhout);
-		w.CheckMenuItem(hmenu,IDM_VIEW_OUT_DOCK,(w.MF_BYCOMMAND | w.MF_CHECKED));
+		w.CheckMenuItem(core.hmenu,IDM_VIEW_OUT_DOCK,(w.MF_BYCOMMAND | w.MF_CHECKED));
 		or(OUTPUT_D,settings.winview);
 		test(OUTPUT,settings.winview);
 		if(@nz) then
@@ -85,8 +85,8 @@ begin Output_View;
 		w.GetWindowLong(core.hout,w.GWL_STYLE);
 		or(w.WS_SIZEBOX,eax);
 		w.SetWindowLong(core.hout,w.GWL_STYLE,eax);
-		w.CheckMenuItem(hmenu,IDM_VIEW_OUT_DOCK,(w.MF_BYCOMMAND));
-		w.ShowWindow(hVSplitBar,w.SW_HIDE);
+		w.CheckMenuItem(core.hmenu,IDM_VIEW_OUT_DOCK,(w.MF_BYCOMMAND));
+		w.ShowWindow(core.hVSplitBar,w.SW_HIDE);
 		and(!(VSPLIT),settings.winview);
 		and(!(OUTPUT_D),settings.winview);
 		
@@ -190,7 +190,7 @@ begin Proc_OutputEdit;
 				lea(eax,_chrg);
 				w.SendMessage(listebx.hwnd, w.EM_EXSETSEL,0,eax);
 				w.SendMessage(listebx.hwnd, w.EM_SCROLLCARET,0,0);
-				mov(&col,eax);
+				mov(&core.col,eax);
 				w.SendMessage(listebx.hwnd,REM_SETHILITELINE,_linenum,3);
 				_skip:
 			ENDUSE;
@@ -259,7 +259,7 @@ begin 	Proc_Output;
 			mov(core.hlinefont,rafnt.hLnrFont);
 
 			w.SendMessage(core.houtedt,REM_SETFONT,0,&rafnt);
-			w.SendMessage(core.houtedt,REM_SETCOLOR,0,&col);
+			w.SendMessage(core.houtedt,REM_SETCOLOR,0,&core.col);
 	
 			w.SendMessage(core.houtedt,REM_SUBCLASS,0,&Proc_OutputEdit);
 			mov(eax,oldoutputedit);

@@ -549,17 +549,17 @@ proc
 			lea (eax, hexfont);
 			w.SendMessage (listebx.hwnd, HEM_SETFONT, 0, eax);
 	
-			move (col.bckcol, hexcolor.bckcol);
-			move (col.txtcol, hexcolor.asctxtcol);
-			move (col.txtcol, hexcolor.adrtxtcol);
-			move (col.txtcol, hexcolor.dtatxtcol);
-			move (col.selbckcol, hexcolor.selbckcol);
-			move (col.seltxtcol, hexcolor.seltxtcol);
-			move (col.selbckcol, hexcolor.selascbckcol);
-			move (col.selbarbck, hexcolor.selbarbck);
-			move (col.selbarpen, hexcolor.selbarpen);
-			move (col.lnrcol, hexcolor.lnrcol);
-			move (col.cmntcol, hexcolor.sellfbckcol);
+			move (core.col.bckcol, hexcolor.bckcol);
+			move (core.col.txtcol, hexcolor.asctxtcol);
+			move (core.col.txtcol, hexcolor.adrtxtcol);
+			move (core.col.txtcol, hexcolor.dtatxtcol);
+			move (core.col.selbckcol, hexcolor.selbckcol);
+			move (core.col.seltxtcol, hexcolor.seltxtcol);
+			move (core.col.selbckcol, hexcolor.selascbckcol);
+			move (core.col.selbarbck, hexcolor.selbarbck);
+			move (core.col.selbarpen, hexcolor.selbarpen);
+			move (core.col.lnrcol, hexcolor.lnrcol);
+			move (core.col.cmntcol, hexcolor.sellfbckcol);
 			lea (eax, hexcolor);
 			w.SendMessage (listebx.hwnd, HEM_SETCOLOR, 0, eax);
 		
@@ -663,7 +663,7 @@ proc
 			endif;
 			
 			w.SendMessage(listebx.hwnd,REM_SETWORDGROUP,0, group);
-			w.SendMessage(listebx.hwnd,REM_SETCOLOR,0,&col);
+			w.SendMessage(listebx.hwnd,REM_SETCOLOR,0,&core.col);
 			w.SendMessage(core.hwnd,HIDE_SETINSERTMODE,0,0);
 			w.SetWindowLong(listebx.hwnd,w.GWL_STYLE, gwstyle);
 	
@@ -1045,12 +1045,12 @@ begin setFormatAll;
 	w.SendMessage (core.htab, w.TCM_GETITEMCOUNT, 0, 0);
 	mov (eax, count);
 	if (eax) then
-		mov	(w.TCIF_PARAM, tci.imask);
+		mov	(w.TCIF_PARAM, core.tci.imask);
 		while (count >=0) do
 			dec (count);
-			w.SendMessage (core.htab, w.TCM_GETITEM, count, &tci);
+			w.SendMessage (core.htab, w.TCM_GETITEM, count, &core.tci);
 			breakif (!eax);
-			mov (tci.lParam, ebx);
+			mov (core.tci.lParam, ebx);
 			RAEdit_setFormat( [ebx] );
 
 		endwhile;
@@ -1068,12 +1068,12 @@ begin closeAll;
 	w.SendMessage (core.htab, w.TCM_GETITEMCOUNT, 0, 0);
 	mov (eax, count);
 	if (eax) then
-		mov	(w.TCIF_PARAM, tci.imask);
+		mov	(w.TCIF_PARAM, core.tci.imask);
 		while (count >=0) do
 			dec (count);
-			w.SendMessage (core.htab, w.TCM_GETITEM, count, &tci);
+			w.SendMessage (core.htab, w.TCM_GETITEM, count, &core.tci);
 			breakif (!eax);
-			mov (tci.lParam, ebx);
+			mov (core.tci.lParam, ebx);
 			breakif (querySave ([ebx]));
 			w.SendMessage (core.htab, w.TCM_DELETEITEM, count,0);
 			

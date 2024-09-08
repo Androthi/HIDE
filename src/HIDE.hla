@@ -178,7 +178,7 @@ program HIDE_MAIN;
 			inc (ecx);
 		endwhile;
 		
-		w.GetSubMenu (hmenu,0);
+		w.GetSubMenu (core.hmenu,0);
 		w.ModifyMenu (eax, 4, w.MF_BYPOSITION | w.MF_POPUP| w.MF_ENABLED ,
 						_hmenu, &_openrecent );
 		w.DrawMenuBar(core.hwnd);
@@ -228,7 +228,7 @@ program HIDE_MAIN;
 			inc (ebx);
 		endwhile;
 	
-		w.InsertMenu (hmenu, 7, w.MF_BYPOSITION | w.MF_POPUP | w.MF_STRING, usermenu, szUser);
+		w.InsertMenu (core.hmenu, 7, w.MF_BYPOSITION | w.MF_POPUP | w.MF_STRING, usermenu, szUser);
 		w.DrawMenuBar(core.hwnd);
 		
 		done:
@@ -387,7 +387,7 @@ program HIDE_MAIN;
 		//	str.put2 (stringbuffer, ":= ", propebx.valuestr);
 		//endif;
 	
-		w.SendMessage(hsbr,w.SB_SETTEXT,STATUS_INFO, stringbuffer);
+		w.SendMessage(core.hsbr,w.SB_SETTEXT,STATUS_INFO, stringbuffer);
 
 		ENDUSE;	
 		ret();
@@ -910,7 +910,7 @@ program HIDE_MAIN;
 				call dispProp;
 			else
 				mov (0, buffer[0]);
-				w.SendMessage(hsbr,w.SB_SETTEXT,STATUS_INFO, &buffer);
+				w.SendMessage(core.hsbr,w.SB_SETTEXT,STATUS_INFO, &buffer);
 			endif;
 	
 		endif;
@@ -934,7 +934,7 @@ program HIDE_MAIN;
 				else
 					mov(w.MF_BYCOMMAND | w.MF_GRAYED, eax);
 				endif;
-				w.EnableMenuItem (hmenu, edx, eax);
+				w.EnableMenuItem (core.hmenu, edx, eax);
 			ENDUSE;
 			USE (EAX, EDX);
 				w.SendMessage(core.htbr, w.TB_ENABLEBUTTON,edx,eax);
@@ -2604,12 +2604,12 @@ proc
 			FindDeclare (&buffer, f2);
 			if (eax) then
 				mov (true, needsreturn);
-				w.CheckMenuItem(hmenu,IDM_EDIT_FD1 ,(w.MF_BYCOMMAND | w.MF_CHECKED));
+				w.CheckMenuItem(core.hmenu,IDM_EDIT_FD1 ,(w.MF_BYCOMMAND | w.MF_CHECKED));
 			endif;
 		else
 			FindDeclare (NULL, f2);
 			mov (false, needsreturn);
-			w.CheckMenuItem( hmenu, IDM_EDIT_FD1, (w.MF_BYCOMMAND | w.MF_UNCHECKED) );
+			w.CheckMenuItem( core.hmenu, IDM_EDIT_FD1, (w.MF_BYCOMMAND | w.MF_UNCHECKED) );
 		endif;
 	end Menu_FindDeclare;
 	
@@ -2627,12 +2627,12 @@ proc
 			FindDeclare (&buffer, sft_f2);
 			if (eax) then
 				mov (true, needsreturn);
-				w.CheckMenuItem(hmenu,IDM_EDIT_FD2 ,(w.MF_BYCOMMAND | w.MF_CHECKED));
+				w.CheckMenuItem(core.hmenu,IDM_EDIT_FD2 ,(w.MF_BYCOMMAND | w.MF_CHECKED));
 			endif;
 		else
 			FindDeclare (NULL, sft_f2);
 			mov (false, needsreturn);
-			w.CheckMenuItem(hmenu,IDM_EDIT_FD2 ,(w.MF_BYCOMMAND | w.MF_UNCHECKED));
+			w.CheckMenuItem(core.hmenu,IDM_EDIT_FD2 ,(w.MF_BYCOMMAND | w.MF_UNCHECKED));
 		endif;
 	end Menu_FindDeclare2;
 	
@@ -2651,12 +2651,12 @@ proc
 			FindDeclare (&buffer, ctl_f2);
 			if (eax) then
 				mov (true, needsreturn);
-				w.CheckMenuItem(hmenu,IDM_EDIT_FD3, (w.MF_BYCOMMAND | w.MF_CHECKED));
+				w.CheckMenuItem(core.hmenu,IDM_EDIT_FD3, (w.MF_BYCOMMAND | w.MF_CHECKED));
 			endif;
 		else
 			FindDeclare (NULL, ctl_f2);
 			mov (false, needsreturn);
-			w.CheckMenuItem(hmenu,IDM_EDIT_FD3, (w.MF_BYCOMMAND | w.MF_UNCHECKED));
+			w.CheckMenuItem(core.hmenu,IDM_EDIT_FD3, (w.MF_BYCOMMAND | w.MF_UNCHECKED));
 		endif;
 	end Menu_FindDeclare3;
 	
@@ -2674,12 +2674,12 @@ proc
 			FindDeclare (&buffer, alt_f2);
 			if (eax) then
 				mov (true, needsreturn);
-				w.CheckMenuItem(hmenu,IDM_EDIT_FD4 ,(w.MF_BYCOMMAND | w.MF_CHECKED));
+				w.CheckMenuItem(core.hmenu,IDM_EDIT_FD4 ,(w.MF_BYCOMMAND | w.MF_CHECKED));
 			endif;
 		else
 			FindDeclare (NULL, alt_f2);
 			mov (false, needsreturn);
-			w.CheckMenuItem(hmenu,IDM_EDIT_FD4 ,(w.MF_BYCOMMAND | w.MF_UNCHECKED));
+			w.CheckMenuItem(core.hmenu,IDM_EDIT_FD4 ,(w.MF_BYCOMMAND | w.MF_UNCHECKED));
 		endif;
 	end Menu_FindDeclare4;
 
@@ -2723,10 +2723,10 @@ proc
 		test(TOOL,settings.winview);
 		if (@nz) then
 			w.ShowWindow(core.htbr,w.SW_SHOWNA);
-			w.CheckMenuItem(hmenu,IDM_VIEW_TOOLBAR,(w.MF_BYCOMMAND | w.MF_CHECKED));
+			w.CheckMenuItem(core.hmenu,IDM_VIEW_TOOLBAR,(w.MF_BYCOMMAND | w.MF_CHECKED));
 		else
 			w.ShowWindow(core.htbr,w.SW_HIDE);
-			w.CheckMenuItem(hmenu,IDM_VIEW_TOOLBAR,(w.MF_BYCOMMAND));						
+			w.CheckMenuItem(core.hmenu,IDM_VIEW_TOOLBAR,(w.MF_BYCOMMAND));						
 	    endif;
 		w.SendMessage(core.hwnd,w.WM_SIZE,w.SIZENORMAL,1);
 		ret();
@@ -2737,11 +2737,11 @@ proc
 		xor(STATUS,settings.winview);
 		test(STATUS,settings.winview);
 		if (@nz) then
-			w.ShowWindow(hsbr,w.SW_SHOWNA);
-			w.CheckMenuItem(hmenu,IDM_VIEW_STATUS,(w.MF_BYCOMMAND | w.MF_CHECKED));
+			w.ShowWindow(core.hsbr,w.SW_SHOWNA);
+			w.CheckMenuItem(core.hmenu,IDM_VIEW_STATUS,(w.MF_BYCOMMAND | w.MF_CHECKED));
 		else
-			w.ShowWindow(hsbr,w.SW_HIDE);
-			w.CheckMenuItem(hmenu,IDM_VIEW_STATUS,(w.MF_BYCOMMAND));
+			w.ShowWindow(core.hsbr,w.SW_HIDE);
+			w.CheckMenuItem(core.hmenu,IDM_VIEW_STATUS,(w.MF_BYCOMMAND));
 	    endif;
 		w.SendMessage(core.hwnd,w.WM_SIZE,w.SIZENORMAL,1);
 		ret();
@@ -2893,7 +2893,7 @@ proc
 			if (!eax) then
 				ret();
 			endif;
-			cmp(hfind,0);
+			cmp(core.hfind,0);
 			jne _findopen;
 			
 			_find:	//dbg.put("creating find dialog");
@@ -2901,7 +2901,7 @@ proc
 					w.CreateDialogParam(core.hinst,val ID_FINDDLG,hwin,&Proc_FindDlg,false);
 					ret();
 			
-			_findopen:w.SetFocus(hfind);
+			_findopen:w.SetFocus(core.hfind);
 					ret();
 			
 	_mefnxt::
@@ -2911,7 +2911,7 @@ proc
 			endif;
 
 			
-			cmp(hfind,0);
+			cmp(core.hfind,0);
 			jne _cknbuf;
 			
 			_getnbuf:	GetSelText(&findbuff);
@@ -2931,7 +2931,7 @@ proc
 			if (!eax) then
 				ret();
 			endif;
-			cmp(hfind,0);
+			cmp(core.hfind,0);
 			jne _ckpbuf;
 			
 			_getpbuf:	GetSelText(&findbuff);
@@ -2950,7 +2950,7 @@ proc
 			if (listeax.hwnd = 0) then
 				ret();
 			endif;
-			cmp(hfind,0);
+			cmp(core.hfind,0);
 			jne _findfoc;
 			
 			_setrep:
@@ -2958,7 +2958,7 @@ proc
 					w.CreateDialogParam(core.hinst,val ID_FINDDLG,hwin,&Proc_FindDlg,true);
 					ret();
 			
-			_findfoc:	w.SetFocus(hfind);
+			_findfoc:	w.SetFocus(core.hfind);
 					ret();
 			
 	_megoto::
@@ -3089,7 +3089,7 @@ proc
 		mov(hwin, cf.hWndOwner);
 		mov(&mainfont, cf.lpLogFont);
 		mov(w.CF_SCREENFONTS | w.CF_EFFECTS | w.CF_INITTOLOGFONTSTRUCT, cf.Flags);
-		mov(col.txtcol, cf.rgbColors);
+		mov(core.col.txtcol, cf.rgbColors);
 		//mov(curnode, ebx);
 		w._ChooseFont(&cf);
 		if (eax) then
@@ -3104,12 +3104,12 @@ proc
 			mov	(eax, core.hitalic);
 			pop	(eax);
 			mov	(al, mainfont.lfItalic);
-			mov	(cf.rgbColors, col.txtcol);
-			//w.SendMessage(listebx.hwnd,REM_SETCOLOR,0,&col);
+			mov	(cf.rgbColors, core.col.txtcol);
+			//w.SendMessage(listebx.hwnd,REM_SETCOLOR,0,&core.col);
 			setFormatAll();
 			
 			hideini.writeBin ("Fonts","code",&mainfont,@size(mainfont));
-			hideini.writeBin ("Colors","col",&col,@size(col));
+			hideini.writeBin ("Colors","col",&core.col,@size(core.col));
 			
 		endif;
 		w.SetFocus( core.hwnd );
@@ -3122,19 +3122,19 @@ proc
 		mov(hwin, cf.hWndOwner);
 		mov(&linefont, cf.lpLogFont);
 		mov(w.CF_SCREENFONTS | w.CF_EFFECTS | w.CF_INITTOLOGFONTSTRUCT, cf.Flags);
-		mov(col.lnrcol, cf.rgbColors);
+		mov(core.col.lnrcol, cf.rgbColors);
 		//mov (curnode, ebx);
 		w._ChooseFont(&cf);
 		if (eax) then
 			w.DeleteObject(core.hlinefont);
 			w.CreateFontIndirect(&linefont);
 			mov(eax, core.hlinefont);
-			mov(cf.rgbColors,col.lnrcol);
-			//w.SendMessage(listebx.hwnd,REM_SETCOLOR,0,&col);
+			mov(cf.rgbColors,core.col.lnrcol);
+			//w.SendMessage(listebx.hwnd,REM_SETCOLOR,0,&core.col);
 			setFormatAll();
 
 			hideini.writeBin("Fonts", "line", &linefont, @size(linefont));
-			hideini.writeBin ("Colors","col",&col,@size(col));
+			hideini.writeBin ("Colors","col",&core.col,@size(core.col));
 			
 		endif;
 		w.SetFocus( core.hwnd );
@@ -3495,7 +3495,7 @@ proc
 		
 	
 	_setstatus:
-			w.SendMessage(hsbr,w.SB_SETTEXT,wparam,lparam);
+			w.SendMessage(core.hsbr,w.SB_SETTEXT,wparam,lparam);
 			jmp xWndProc;	
 			
 	_focus:
@@ -3734,7 +3734,7 @@ proc
 				
 			else
 
-				w.SendMessage( hsbr, w.SB_SETTEXT, STATUS_INFO, 0 );
+				w.SendMessage( core.hsbr, w.SB_SETTEXT, STATUS_INFO, 0 );
 				
 			endif;
 			
@@ -3785,11 +3785,11 @@ proc
 				je _cancel;
 			endif;
 	
-			if (htree) then
-				w.DestroyWindow(htree);
+			if (core.htree) then
+				w.DestroyWindow(core.htree);
 			endif;
-			if (hprop) then
-				w.DestroyWindow(hprop);
+			if (core.hprop) then
+				w.DestroyWindow(core.hprop);
 			endif;
 			if (core.hout) then
 	        	w.DestroyWindow(core.hout);
@@ -3885,13 +3885,13 @@ proc
 		// check for status window
 		if ( testz (STATUS,settings.winview)) then
 			// hide
-			w.ShowWindow(hsbr,w.SW_HIDE);
+			w.ShowWindow(core.hsbr,w.SW_HIDE);
 		else
 			mov(lparam,eax);
 			if (eax) then
-				w.MoveWindow(hsbr,0,0,0,0,true);
+				w.MoveWindow(core.hsbr,0,0,0,0,true);
 			endif;
-			w.GetWindowRect(hsbr,&rect);
+			w.GetWindowRect(core.hsbr,&rect);
 			mov(rect.bottom,eax);
 			sub(rect.top,eax);			// get height of statusbar
 			sub(eax,mainrect.bottom);	// shrink the main client area from bottom
@@ -3911,7 +3911,7 @@ proc
 		// see if panel is active
 		mov (settings.panelwin, eax);
 		if (! eax) then
-			w.ShowWindow (hHSplitBar, w.SW_HIDE);
+			w.ShowWindow (core.hHSplitBar, w.SW_HIDE);
 			
 		else
 	
@@ -3928,7 +3928,7 @@ proc
 			sub (eax, mainrect.right);
 			add (2, ebx);
 	
-			w.MoveWindow(hHSplitBar,settings.hsplitbar.x,settings.hsplitbar.y,3,settings.hsplitbar.ht,true);
+			w.MoveWindow(core.hHSplitBar,settings.hsplitbar.x,settings.hsplitbar.y,3,settings.hsplitbar.ht,true);
 			mov (settings.hsplitbar.x, eax);
 			add (3, eax);
 			mov (eax, rect.left);
@@ -3972,7 +3972,7 @@ proc
 		_endif;
 	
 		_updateoutput:
-			w.MoveWindow(hVSplitBar,0,settings.vsplitbar.y,settings.vsplitbar.wt,3,true);
+			w.MoveWindow(core.hVSplitBar,0,settings.vsplitbar.y,settings.vsplitbar.wt,3,true);
 				
 			mov(0,rect.left);
 			mov(settings.vsplitbar.y,eax);
@@ -4032,9 +4032,9 @@ proc
 		
 		// create status bar
 		w.CreateStatusWindow ( w.WS_CHILD, NULL, hwin, IDC_SBR);
-		mov(eax,hsbr);
-		w.SendMessage(hsbr,w.SB_SETPARTS,STATUS_PARTS,&parts);
-		w.SendMessage(hsbr,w.SB_SETTEXT,STATUS_PROJ, zStandard );
+		mov(eax,core.hsbr);
+		w.SendMessage(core.hsbr,w.SB_SETPARTS,STATUS_PARTS,&parts);
+		w.SendMessage(core.hsbr,w.SB_SETTEXT,STATUS_PROJ, zStandard );
 	
 	
 		//setup the toolbar buttons
@@ -4061,35 +4061,35 @@ proc
 		PanelSetup (hwin);
 	
 		w.GetDlgItem(hwin,IDC_VSPLITBAR);
-		mov(eax,hVSplitBar);
-		w.SetWindowLong(hVSplitBar,w.GWL_WNDPROC,&Proc_VSplit);
+		mov(eax,core.hVSplitBar);
+		w.SetWindowLong(core.hVSplitBar,w.GWL_WNDPROC,&Proc_VSplit);
 		mov(eax,Proc_OldVSplit);
 		w.GetDlgItem(hwin,IDC_HSPLITBAR);
-		mov(eax,hHSplitBar);
+		mov(eax,core.hHSplitBar);
 	
-		w.SetWindowLong(hHSplitBar,w.GWL_WNDPROC,&Proc_HSplit);
+		w.SetWindowLong(core.hHSplitBar,w.GWL_WNDPROC,&Proc_HSplit);
 		mov(eax,Proc_OldHSplit);
 	
 		w.GetMenu(hwin);
-		mov(eax,hmenu);
+		mov(eax,core.hmenu);
 		
 		// test and set initial window positions settings and update menus
 		test(TOOL,settings.winview);
 		_if(@nz)
-			w.CheckMenuItem(hmenu,IDM_VIEW_TOOLBAR,(w.MF_BYCOMMAND | w.MF_CHECKED));
+			w.CheckMenuItem(core.hmenu,IDM_VIEW_TOOLBAR,(w.MF_BYCOMMAND | w.MF_CHECKED));
 			w.ShowWindow (core.htbr, true);
 		_endif;
 		
 		test(STATUS,settings.winview);
 		_if(@nz)
-			w.CheckMenuItem(hmenu,IDM_VIEW_STATUS,(w.MF_BYCOMMAND | w.MF_CHECKED));
-			w.ShowWindow (hsbr, true);
+			w.CheckMenuItem(core.hmenu,IDM_VIEW_STATUS,(w.MF_BYCOMMAND | w.MF_CHECKED));
+			w.ShowWindow (core.hsbr, true);
 		_endif;
 		
 		w.CreateDialogParam(core.hinst,val ID_OUTPUT,hwin,&Proc_Output,false);
 		if( bitSet( OUTPUT, settings.winview ) )then
 
-			w.CheckMenuItem( hmenu, IDM_VIEW_OUTPUT, (w.MF_BYCOMMAND | w.MF_CHECKED) );
+			w.CheckMenuItem( core.hmenu, IDM_VIEW_OUTPUT, (w.MF_BYCOMMAND | w.MF_CHECKED) );
 			w.ShowWindow( core.hout, w.SW_SHOW );
 
 		else
@@ -4098,7 +4098,7 @@ proc
 	
 		test(OUTPUT_D,settings.winview);
 		_if(@nz);
-			w.CheckMenuItem(hmenu,IDM_VIEW_OUT_DOCK,(w.MF_BYCOMMAND | w.MF_CHECKED));
+			w.CheckMenuItem(core.hmenu,IDM_VIEW_OUT_DOCK,(w.MF_BYCOMMAND | w.MF_CHECKED));
 		_endif;
 		w.CreateDialogParam(core.hinst,val ID_TREEWIN, hwin, &Proc_ProjectView,false);
 		w.CreateDialogParam(core.hinst,val ID_PROPERTIES, hwin, &Proc_Properties,false);
@@ -4109,19 +4109,19 @@ proc
 				
 		if (testz (PROP_D, settings.winview)) then
 			dbg.put (">>>>>>>>>>prop visible");
-			w.ShowWindow (hprop, w.SW_SHOW);
+			w.ShowWindow (core.hprop, w.SW_SHOW);
 		endif;
 		
 		if (testz (TREE_D, settings.winview)) then
 			dbg.put(">>>>>>>>>>>tree visible");
-			w.ShowWindow (htree, w.SW_SHOW);
+			w.ShowWindow (core.htree, w.SW_SHOW);
 		endif;
 		
 		// if the previeous session had status bar active, update the vertical split
 		// bar settings by the size of the status bar to avoid loosing size.
 		test(STATUS,settings.winview);
 		_if(@nz);
-			w.GetWindowRect(hsbr,&rect);
+			w.GetWindowRect(core.hsbr,&rect);
 			mov(rect.bottom,eax);
 			sub(rect.top,eax);
 
@@ -4132,9 +4132,9 @@ proc
 			_endif;
 		_endif;
 		w.LoadCursor(core.hinst,val IDC_HSPLITTCUR);
-		mov(eax,hHsplitcursor);
+		mov(eax,core.hHsplitcursor);
 		w.LoadCursor(core.hinst,val IDC_VSPLITTCUR);
-		mov(eax,hVsplitcursor);
+		mov(eax,core.hVsplitcursor);
 	
 		w.SendMessage(hwin,HIDE_TOGGLEDEBUG,0,0);
 		w.SendMessage(hwin, w.WM_SIZE, 0, 0);
@@ -4196,8 +4196,8 @@ proc
 			w.DeleteObject(core.hitalic);
 			w.DeleteObject(core.hmainfont);
 			w.DeleteObject(core.hlinefont);
-			w.DestroyCursor(hVsplitcursor);
-			w.DestroyCursor(hHsplitcursor);
+			w.DestroyCursor(core.hVsplitcursor);
+			w.DestroyCursor(core.hHsplitcursor);
 			dbg.put ("done all destroy");
 			// float
 	xWndProc:
@@ -4292,9 +4292,9 @@ proc
 		hideini.readBin ("Fonts", "line", &linefont, @size(linefont));
 		
 		if (hideini.isKeyDefined ("Colors", "col")) then
-			hideini.readBin ("Colors", "col", &col, @size(col));
+			hideini.readBin ("Colors", "col", &core.col, @size(core.col));
 		else
-			hidesysini.readBin( "Default.theme", "col", &col, @size(col) );
+			hidesysini.readBin( "Default.theme", "col", &core.col, @size(core.col) );
 		endif;
 	
 		if (hideini.isKeyDefined ("Colors", "usrcol")) then
@@ -4582,7 +4582,7 @@ proc
 			je xWinMain;
 
 			w.IsDialogMessage(m_autocompletion.hDialog,msg); and(eax,eax); jnz _msgloop;
-			w.IsDialogMessage(hfind,msg); and(eax,eax); jnz _msgloop;
+			w.IsDialogMessage(core.hfind,msg); and(eax,eax); jnz _msgloop;
 			w.IsDialogMessage(core.hout,msg); and(eax,eax); jnz _msgloop;
 
 			w.TranslateAccelerator(core.hwnd,haccel,msg);

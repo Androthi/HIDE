@@ -82,7 +82,7 @@ USE (EBX);
 			endif;
 			str.put2 (stringbuffer, listebx.id);
 			move (stringbuffer, tvi.pszText);
-			w.SendMessage (htreeview, w.TVM_SETITEM, 0, &tvi);
+			w.SendMessage (core.htreeview, w.TVM_SETITEM, 0, &tvi);
 		endif;
 	endif;
 	mov (changed, eax);
@@ -119,7 +119,7 @@ USE (EDX);	// preserve so that SendMessage doesn't thrash it
 	mov (image, eax);
 	mov (eax, tvins.item.iImage);
 	mov (eax, tvins.item.iSelectedImage);
-	w.SendMessage (htreeview, w.TVM_INSERTITEM, 0, &tvins);
+	w.SendMessage (core.htreeview, w.TVM_INSERTITEM, 0, &tvins);
 ENDUSE;
 end TrvAddNode;
 
@@ -217,16 +217,16 @@ procedure TreeToolSetup;
 		endwhile;
 	
 		if (handles.files) then
-			w.SendMessage (htreeview, w.TVM_SORTCHILDREN, 0, handles.files);
+			w.SendMessage (core.htreeview, w.TVM_SORTCHILDREN, 0, handles.files);
 		endif;
 		if (handles.resources) then
-			w.SendMessage (htreeview, w.TVM_SORTCHILDREN, 0, handles.resources);
+			w.SendMessage (core.htreeview, w.TVM_SORTCHILDREN, 0, handles.resources);
 		endif;
 		if (handles.includes) then
-			w.SendMessage (htreeview, w.TVM_SORTCHILDREN, 0, handles.includes);
+			w.SendMessage (core.htreeview, w.TVM_SORTCHILDREN, 0, handles.includes);
 		endif;
 		if (handles.sources) then
-			w.SendMessage (htreeview, w.TVM_SORTCHILDREN, 0, handles.sources);
+			w.SendMessage (core.htreeview, w.TVM_SORTCHILDREN, 0, handles.sources);
 		endif;
 
 		done:
@@ -239,7 +239,7 @@ begin	TreeToolSetup;
 	
 USE (ESI, EDI, EBX);
 	dbg.put("TreeToolSetup");
-	w.SendMessage(htreeview,w.TVM_DELETEITEM,0,w.TVI_ROOT);
+	w.SendMessage(core.htreeview,w.TVM_DELETEITEM,0,w.TVI_ROOT);
 	
 	mem2.fillMem (&handles, @size (treeViewHandles_t), 0);
 	
@@ -289,7 +289,7 @@ USE (ESI, EDI, EBX);
 		endif;
 		mov(listebx.next, ebx);
 	endwhile;
-	w.SendMessage (htreeview, w.TVM_SORTCHILDREN, 0, handles.orphans);
+	w.SendMessage (core.htreeview, w.TVM_SORTCHILDREN, 0, handles.orphans);
 done:
 	projectview_checkUpdates();
 ENDUSE;
@@ -302,30 +302,30 @@ begin Project_View;
 
 	mov(message,eax);		
 	if (eax = DOCK_YES) then
-		w.GetWindowLong(htree,w.GWL_STYLE);
+		w.GetWindowLong(core.htree,w.GWL_STYLE);
 		and(!(w.WS_SIZEBOX),eax);
-		w.SetWindowLong(htree,w.GWL_STYLE,eax);
-		w.SetParent(htree,core.hwnd);
+		w.SetWindowLong(core.htree,w.GWL_STYLE,eax);
+		w.SetParent(core.htree,core.hwnd);
 		mov(eax,oldhtree);
 		or(TREE_D,settings.winview);
 		
 	elseif (eax = DOCK_NO) then
 
 		mov (settings.panelactive, eax);
-		if (eax = htree) then
+		if (eax = core.htree) then
 			PanelFold();
 		endif;
 
-		w.SetParent(htree,NULL);
+		w.SetParent(core.htree,NULL);
 		mov(0,oldhtree);
-		w.GetWindowLong(htree,w.GWL_STYLE);
+		w.GetWindowLong(core.htree,w.GWL_STYLE);
 		or(w.WS_SIZEBOX,eax);
-		w.SetWindowLong(htree,w.GWL_STYLE,eax);
-		w.ShowWindow (htree, w.SW_SHOW);
+		w.SetWindowLong(core.htree,w.GWL_STYLE,eax);
+		w.ShowWindow (core.htree, w.SW_SHOW);
 		and(!(TREE_D),settings.winview);
 	
 	elseif (eax = w.SW_HIDE) then
-		w.ShowWindow (htree, w.SW_HIDE);	
+		w.ShowWindow (core.htree, w.SW_HIDE);	
     endif;
     
     w.SendMessage(core.hwnd,w.WM_SIZE,0,0);
@@ -540,8 +540,8 @@ begin	Proc_ProjectView;
 		
 		_rightclick:
 				w.GetCursorPos (tvhtst.pt);
-				w.ScreenToClient (htreeview, tvhtst.pt);
-				w.SendMessage(htreeview,w.TVM_HITTEST,0,&tvhtst);
+				w.ScreenToClient (core.htreeview, tvhtst.pt);
+				w.SendMessage(core.htreeview,w.TVM_HITTEST,0,&tvhtst);
 				mov(tvhtst.flags,eax);
 				and(w.TVHT_ONITEM,eax);
 				jz _exitrightclick;
@@ -552,8 +552,8 @@ begin	Proc_ProjectView;
 				move( &treebuffer ,tvi.pszText);
 				mov(@size(treebuffer),tvi.cchTextMax);
 				
-				w.SendMessage(htreeview,w.TVM_SELECTITEM,w.TVGN_CARET,tvi.hItem);
-				w.SendMessage(htreeview,w.TVM_GETITEM,0,&tvi);
+				w.SendMessage(core.htreeview,w.TVM_SELECTITEM,w.TVGN_CARET,tvi.hItem);
+				w.SendMessage(core.htreeview,w.TVM_GETITEM,0,&tvi);
 				
 				str.cpyz (&treebuffer, stringbuffer);
 				dbg.put ("right click on ", stringbuffer);
@@ -573,15 +573,15 @@ begin	Proc_ProjectView;
 		mov	(rect.bottom,eax);
 		sub	(rect.top,eax);
 		// eax = height
-		w.MoveWindow(htreeview,0,rect.top,rect.right,eax,true);
+		w.MoveWindow(core.htreeview,0,rect.top,rect.right,eax,true);
 		call _savepos;
-		w.InvalidateRect(htreeview,NULL,true);
+		w.InvalidateRect(core.htreeview,NULL,true);
 		jmp xProc_ProjectView;
 
 	_init:	
 		pushabi;
 		mov (hwin, eax);
-		mov (eax, htree);
+		mov (eax, core.htree);
 		w.ImageList_Create(16,16,w.ILC_COLOR8,TREEICONS,TREEICONS);
 		mov(eax,himl);
 		w.LoadBitmap(core.hinst,val IDB_TRVMAP);
@@ -589,8 +589,8 @@ begin	Proc_ProjectView;
 		w.ImageList_Add(himl,hbmp,NULL);
 		w.DeleteObject(hbmp);
 		w.GetDlgItem(hwin,IDC_TRV);
-		mov(eax,htreeview);
-		w.SendMessage(htreeview,w.TVM_SETIMAGELIST,0,himl);
+		mov(eax,core.htreeview);
+		w.SendMessage(core.htreeview,w.TVM_SETIMAGELIST,0,himl);
 		if (testnz (TREE_D, settings.winview)) then
 			Project_View (DOCK_YES);
 		endif;
@@ -630,7 +630,7 @@ _GetItem:
 		mov(eax,(type w.TV_ITEM[edx]).pszText);
 		mov(@size(buffer),(type w.TV_ITEM [edx]).cchTextMax);
 		push(edx);
-		w.SendMessage(htreeview,w.TVM_GETITEM,0,edx);
+		w.SendMessage(core.htreeview,w.TVM_GETITEM,0,edx);
 		pop(edx);
 		ret();
 

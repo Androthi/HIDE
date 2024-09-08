@@ -10,11 +10,6 @@ unit data_unit;
 storage
 	align(4);
 	core			:tCORE;		// HIDE global state
-	hfind			:dword;		// find dialog handle
-	htreeview		:dword;		// handle for treeview control
-	htree			:dword;		// handle for treeview window
-	hprop			:dword;		// handel for properties window
-	hmenu			:dword;		// menu handle
 
 	hideini			:tConfig;	// HIDE.ini configuration file in memory
 	hidesysini		:tConfig;	// hide_system.ini configuration file in memory
@@ -27,12 +22,10 @@ storage
 	stringbuffer			:string;	// scratch string buffer ** use with caution, do not expect contents to be preserved across funtion calls
 
 	settings		:EDITOPTS;	// main settings for HIDE
-	col				:RACOLOR;	// hilite color settings
 	usrcol			:dword[nUserColors];	// custom user colors
 	rafnt			:RAFONT;	// font info
 
 	rect			:hide.rect_t;
-	tci				:w.TC_ITEM;
 
 	findbuff		:byte[300];		// buffer for find dialog
 	replacebuf		:byte[300];		// buffer for replace dialog
@@ -42,12 +35,7 @@ storage
 
 
 	// handles for split procs and bars
-	hVSplitBar		:dword;
-	hHSplitBar		:dword;
-	hHsplitcursor	:dword;
-	hVsplitcursor	:dword;
-	
-	hsbr			:dword;		// status bar handle
+
 	Proc_OldVSplit	:dword;		// old proc for split bar
 	Proc_OldHSplit	:dword;		// old proc for split bar
 

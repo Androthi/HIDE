@@ -256,8 +256,8 @@ begin find_next;
 		endif;
 
 	done:	
-	if (hfind) then
-		w.SetFocus (hfind);
+	if (core.hfind) then
+		w.SetFocus (core.hfind);
 	else
 		w.SetFocus (core.hwnd);
 	endif;
@@ -341,8 +341,8 @@ begin find_prev;
 			w.SendMessage( listebx.hwnd, w.EM_SCROLLCARET,0,0);
 		endif;
 	
-	if (hfind) then
-		w.SetFocus (hfind);
+	if (core.hfind) then
+		w.SetFocus (core.hfind);
 	else
 		w.SetFocus (core.hwnd);
 	endif;
@@ -522,7 +522,7 @@ begin	Proc_FindDlg;
 	if (eax = w.WM_INITDIALOG) then
 		
 		mov	(hWin, eax);
-		mov	(eax,hfind);
+		mov	(eax,core.hfind);
 		
 		resetFind();
 		
@@ -620,7 +620,7 @@ begin	Proc_FindDlg;
 							find_prev();
 						endif;						
 					endif;
-					w.SetFocus(hfind);
+					w.SetFocus(core.hfind);
 				endif;
 
 			elseif (eax = IDC_BTN_REPLACEALL) then
@@ -683,12 +683,12 @@ begin	Proc_FindDlg;
 
 	elseif (eax = w.WM_ACTIVATE) then
 
-		w.SetFocus(hfind);
+		w.SetFocus(core.hfind);
 
 	elseif (eax = w.WM_CLOSE) then
 
-		w.DestroyWindow(hfind);
-		mov	(0,hfind);
+		w.DestroyWindow(core.hfind);
+		mov	(0,core.hfind);
 		w.SetFocus (core.hwnd);
 	else
 		mov	(false, eax);

@@ -208,8 +208,6 @@ static	// externals
 		autountitled		:boolean;				@external;		// if true, Untitled is saved and built into temp folder (non-project only)
 		settings			:EDITOPTS;				@external;	// general settings				
 		rect				:hide.rect_t;			@external;		// generic rect struct
-		tci					:w.TC_ITEM;				@external;	// tabtool for main dialog
-		col					:RACOLOR;				@external;	// color structure
 		usrcol				:dword[nUserColors];	@external;
 		rafnt				:RAFONT;				@external;
 		linefont			:w.LOGFONT;				@external;
@@ -230,14 +228,6 @@ static	// externals
 		stringbuffer				:string;				@external;	// scratch static string
 
 		core				:tCORE;					@external;	// HIDE global state
-		htreeview			:dword;					@external;	// handle for treeview control
-		htree				:dword;					@external;	// handle for treeview window
-		hprop				:dword;					@external;	// handle for properties window
-		hmenu				:dword;					@external;	// menu handle
-		hfind				:dword;					@external;	// find dialog handle
-		hVSplitBar			:dword;					@external;
-		hHSplitBar			:dword;					@external;
-		hnotes				:dword;					@external;	// notes window handle
 		htimer				:dword; @external;  // 0 = output timer off,  >0 = output timer on
 	
 
@@ -249,11 +239,7 @@ static	// externals
 		szCmntStart			:byte;					@external;
 		szCmntEnd			:byte;					@external;
 
-		
-	hHsplitcursor	:dword;	@external;// for split procs
-	hVsplitcursor	:dword; @external;
-	hsbr		:dword;		@external;		// status bar handle
-	Proc_OldVSplit	:dword; @external;
+		Proc_OldVSplit	:dword; @external;
 	Proc_OldHSplit	:dword; @external;
 
 	hideini		:tConfig; @external;

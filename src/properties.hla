@@ -1283,30 +1283,30 @@ begin Property_View;
 	mov(message,eax);
 	
 	if (eax = DOCK_YES) then
-		w.GetWindowLong(hprop,w.GWL_STYLE);
+		w.GetWindowLong(core.hprop,w.GWL_STYLE);
 		and(!(w.WS_SIZEBOX),eax);
-		w.SetWindowLong(hprop,w.GWL_STYLE,eax);
-		w.SetParent(hprop,core.hwnd);
+		w.SetWindowLong(core.hprop,w.GWL_STYLE,eax);
+		w.SetParent(core.hprop,core.hwnd);
 		mov(eax,oldhprop);
 		or(PROP_D,settings.winview);	
 
 	elseif (eax = DOCK_NO) then
 
 		mov (settings.panelactive, eax);
-		if (eax = hprop) then
+		if (eax = core.hprop) then
 			PanelFold();
 		endif;
 		
-		w.SetParent(hprop,NULL);
+		w.SetParent(core.hprop,NULL);
 		mov(0,oldhprop);
-		w.GetWindowLong(hprop,w.GWL_STYLE);
+		w.GetWindowLong(core.hprop,w.GWL_STYLE);
 		or(w.WS_SIZEBOX,eax);
-		w.SetWindowLong(hprop,w.GWL_STYLE,eax);
+		w.SetWindowLong(core.hprop,w.GWL_STYLE,eax);
 		and(!(PROP_D),settings.winview);
-		w.ShowWindow (hprop, w.SW_SHOW);
+		w.ShowWindow (core.hprop, w.SW_SHOW);
 	
 	elseif (eax = w.SW_HIDE) then
-		w.ShowWindow (hprop, w.SW_HIDE);
+		w.ShowWindow (core.hprop, w.SW_HIDE);
 	
     endif;
     
@@ -1484,12 +1484,12 @@ begin prop_updateView;
 		w.SendMessage (core.htab, w.TCM_GETITEMCOUNT, 0, 0);
 		mov (eax, count);
 		if (eax) then
-			mov	(w.TCIF_PARAM, tci.imask);
+			mov	(w.TCIF_PARAM, core.tci.imask);
 			while (count >=0) do
 				dec (count);
-				w.SendMessage (core.htab, w.TCM_GETITEM, count, &tci);
+				w.SendMessage (core.htab, w.TCM_GETITEM, count, &core.tci);
 				breakif (!eax);
-				mov (tci.lParam, ebx);
+				mov (core.tci.lParam, ebx);
 				mov (listebx.props, esi);
 				if (esi) then
 					call prop_fillList;
@@ -1623,7 +1623,7 @@ end JumpProgramBegin;
 			if (eax) then
 				prop_scanFile (node);
 			endif;
-			if (w.IsWindowVisible (hprop)) then
+			if (w.IsWindowVisible (core.hprop)) then
 				prop_updateView();
 			endif;
 		endif;
@@ -1758,7 +1758,7 @@ _activate:
 	jmp _xProc_Properties;
 	
 _init:
-	mov(hwin,hprop);
+	mov(hwin,core.hprop);
 	w.GetDlgItem(hwin,PROPERTIES_TOOL);
 	mov(eax,hproptool);
 	w.GetDlgItem(hwin,PROPERTIES_COMBO);

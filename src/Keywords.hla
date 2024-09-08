@@ -418,7 +418,7 @@ proc
 		w.SendDlgItemMessage( hwin, IDC_LSTCOLORS, w.LB_RESETCONTENT, 0, 0 );
 		w.SendDlgItemMessage( hwin, IDC_LSTKWCOLORS, w.LB_RESETCONTENT, 0, 0 );
 		
-		mov( &col, edi );
+		mov( &core.col, edi );
 		for( xor( esi, esi ); esi < nRAcolors*4; add( 4, esi ) ) do
 			
 			w.SendDlgItemMessage( hwin, IDC_LSTCOLORS, w.LB_ADDSTRING, 0, RAcolors[esi] );
@@ -476,7 +476,7 @@ proc
 		endif;
 		
 		push( edi );
-		mov( &col,edi );
+		mov( &core.col,edi );
 		sub( eax, eax );
 	
 		_uploop:
@@ -486,10 +486,10 @@ proc
 			pop( eax );
 			inc( eax );
 			add( 4,edi );
-			cmp( edi, &col+@size(col) );
+			cmp( edi, &core.col+@size(core.col) );
 			jc _uploop;
 			setFormatAll();
-			hideini.writeBin( "Colors", "col", &col, @size(col) );
+			hideini.writeBin( "Colors", "col", &core.col, @size(core.col) );
 			hideini.writeBin( "Colors", "user", &CustColors, @size(CustColors) );
 			pop(edi);
 
@@ -630,7 +630,7 @@ proc
 					str.cpyz (&buffer, stringbuffer);
 					str.put2 (stringbuffer, ".theme");
 					//dbg.put ("loading :", stringbuffer);
-					ini.readBin (stringbuffer, "col", &col, @size(col));
+					ini.readBin (stringbuffer, "col", &core.col, @size(core.col));
 					ini.readBin (stringbuffer, "usrcol", &usrcol, @size(usrcol));
 					setupLists (hwin);
 	
@@ -670,7 +670,7 @@ proc
 						hideini.findItem ("Themes", stringbuffer);
 						hideini.writeItem ("Themes", eax, stringbuffer); // replace or append new
 						str.put2 (stringbuffer, ".theme");
-						hideini.writeBin (stringbuffer, "col", &col, @size(col));
+						hideini.writeBin (stringbuffer, "col", &core.col, @size(core.col));
 						hideini.writeBin (stringbuffer, "usrcol", &usrcol, @size(usrcol));
 	
 					endif;				
