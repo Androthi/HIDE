@@ -1,6 +1,6 @@
 const
 
-	version	:string := "HIDE 1.7.14";
+	hide_version	:string := "HIDE 1.7.16";
 	hlaversion :string := "hla 2.16/stdlib 8.0";
 
 	#includeonce	("os.hhf")
@@ -190,16 +190,13 @@ const
 	dll_c			:= ".dll";
 	
 	// relates to string array
-	nJobTypes				:= 5;
-		jobtype_program		:= 0;
+		jobtype_hlaprogram	:= 0;
 		jobtype_target		:= 1;
 		jobtype_dll			:= 2;
 		jobtype_library		:= 3;
 		jobtype_misc		:= 4;
 	
 	
-	// relates to string array
-	//nFileTypes				:=11;
 		type_hla		:= 0;		// main hla source file
 		type_unit		:= 1;		// hla unit with separate compilation
 		type_hhf		:= 2;		// header file

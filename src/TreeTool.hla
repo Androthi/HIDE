@@ -205,7 +205,6 @@ procedure TreeToolSetup;
 				
 				case (type_bin)
 					TrvAddNode (handles.files, listesi.id, [esi], IMG_BINARY);
-				
 					
 				default
 					TrvAddNode (handles.files, listesi.id, [esi], IMG_FILE);
@@ -395,17 +394,7 @@ USE (ESI, EDI);
 			case (type_kmake)
 				w.AppendMenu ( pviewmenu, w.MF_BYPOSITION | w.MF_ENABLED | w.MF_STRING,
 								PVIEW_KMAKETARGET, "Execute Script");
-								
-				//w.AppendMenu ( pviewmenu, w.MF_BYPOSITION | w.MF_ENABLED | w.MF_STRING,
-				//				PVIEW_EDIT, "Edit Script");
-				
-			//case (action_executable)
-			//	w.AppendMenu ( pviewmenu, w.MF_BYPOSITION | w.MF_ENABLED | w.MF_STRING,
-			//					PVIEW_KMAKETARGET, "Execute Program");
-			//					
-			//	w.AppendMenu ( pviewmenu, w.MF_BYPOSITION | w.MF_ENABLED | w.MF_STRING,
-			//					PVIEW_EDIT, "Edit Program Arguments");
-								
+																
 			case (type_hhf)
 				w.AppendMenu ( pviewmenu, w.MF_BYPOSITION | w.MF_ENABLED | w.MF_STRING,
 								PVIEW_SETFORWSCAN, "Dedicate to wscan");
@@ -429,13 +418,11 @@ USE (ESI, EDI);
 				
 		endif;
 		
-
 		
 		hideini.readInt( "HIDE Settings", "Auto Dependencies" );
 		if( eax ) then
 		
 			mov (node, eax);
-			//dbg.put ("autodep for :", listeax.relative, nl, "=", eax);
 			mov (listeax.deps, eax);
 			if (eax) then
 				(type tList[eax]).getHead();

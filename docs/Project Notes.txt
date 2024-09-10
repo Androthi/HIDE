@@ -1,6 +1,5 @@
 Experimental 	- v1.7.00
 				- adding odin support
-				- migrating some source to odin
 
 Project Update Notes
 renamed /bin/SavageEd.exe to /bin/DebugWin.exe to stop conflicts with

@@ -8,7 +8,7 @@ usetemp=false
 useunits=true
 useback=false
 findscope=00000001
-findflags=00000003
+findflags=00000001
 wscan header=src\win_inc.hhf
 
 [HPR Folders]
@@ -70,9 +70,7 @@ HIDE.khelp,Docs,khelp
 script concept,Docs,misc
 manager.hla,src,hlaunit
 Tools.khelp,Docs,khelp
-Instruction_Ref.khelp,Docs,khelp
 README.md,,misc
-odin_imports.odin,src,misc
 
 [Build Lexer]
 type=target
@@ -85,7 +83,6 @@ scanID.kmk,src,kmake
 [Held Jobs]
 Build Lexer
 Update Docs
-Build
 
 [HPR Jobs]
 HIDE
@@ -110,11 +107,3 @@ target=Docs\update_docs.kmk
 
 [Update Docs.files]
 update_docs.kmk,Docs,kmake
-
-[Build]
-type=target
-output=
-target=Build.kmk
-
-[Build.files]
-Build.kmk,,kmake

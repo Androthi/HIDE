@@ -42,7 +42,7 @@ const	// local constants
 				"Numbers & Hex"
 			];
 		
-		ColorGroups	:string[ nColorGroups ] :=
+		ColorGroups	:string[] :=
 			[
 				"x86",
 				"Resource",
@@ -52,7 +52,7 @@ const	// local constants
 				"Go"
 			];
 			
-		GroupFiles	:string[ nColorGroups ] :=
+		GroupFiles	:string[] :=
 			[
 				"Data\x86.ini",
 				"Data\resource.ini",
@@ -72,7 +72,6 @@ static
 	
 
 proc
-	//>SetKeyWords	:procedure( hwin:dword );
 	SetKeyWords :procedure( var node:fList.fnode );
 		var
 			index		:uns32;
@@ -83,15 +82,13 @@ proc
 			
 	begin SetKeyWords;
 		pushad();
-		//dbg.enters( "SetKeyWords" );
+		dbg.enters( "SetKeyWords" );
 		mov( node, edx );
 		w.SendMessage(listedx.hwnd,REM_SETHILITEWORDS,0,0);
 		mov( 0, index );
 		mov( &usrcol, ebx );
 		mov( node, edx );
-		if( listedx.ftype = type_hla ||
-				listebx.ftype = type_unit  ||
-				listebx.ftype = type_hhf ) then
+		if( listedx.ftype = type_hla || listedx.ftype = type_unit  || listedx.ftype = type_hhf ) then
 			while( index < 3 ) do  // items for HLA files
 				mov( index, eax );
 				str.put( stringbuffer, core.homepath, dirsep_c, GroupFiles[eax*4] );
@@ -107,7 +104,8 @@ proc
 				
 				inc( index );
 				
-			endwhile;	
+			endwhile;
+			
 		elseif( listedx.ftype = type_odin ) then
 			str.put( stringbuffer, core.homepath, dirsep_c, GroupFiles[3*4] ); // this is hacky! 3 == custom
 			if( filesys.exists( stringbuffer )) then
@@ -147,10 +145,12 @@ proc
 				w.SendMessage( listedx.hwnd, REM_SETHILITEWORDS, edi, eax );
 				buf.destroy();
 			endif;
+		else
+			dbg.put("ELSE : ", listedx.ftype)
 		endif;
 		
 
-		//dbg.exits( "SetKeyWords" );
+		dbg.exits( "SetKeyWords" );
 		popad();
 	end SetKeyWords;
 

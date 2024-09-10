@@ -339,7 +339,7 @@ proc
 		// job node in ebx
 		filesys.cd( project.folder );
 		mov( jobebx.ftype, eax );
-		if(  eax != jobtype_program  ) then
+		if(  eax != jobtype_hlaprogram  ) then
 			
 			toOutput("Can't run this type of job" nl );
 			clc();
@@ -641,7 +641,7 @@ proc
 			
 	
 			mov( jobebx.ftype, eax );
-			if( eax = jobtype_program ) then
+			if( eax = jobtype_hlaprogram ) then
 	
 				if( bitSet( opt_windows, buildOpt ) ) then
 					
@@ -698,7 +698,7 @@ proc
 			str.insert( """", -1, tmpStr );
 
 			mov( jobebx.ftype, eax );
-			if( eax = jobtype_program || eax = jobtype_dll ) then
+			if( eax = jobtype_hlaprogram || eax = jobtype_dll ) then
 				
 				dbg.put("here");
 				str.put( workpath, "polink @", tmpStr );
@@ -1058,7 +1058,7 @@ begin build_job;
 	
 	mov (jobebx.ftype, eax);
 	switch (eax)
-	case ( jobtype_program, jobtype_dll, jobtype_library )
+	case ( jobtype_hlaprogram, jobtype_dll, jobtype_library )
 		USE (ESI);
 			
 			linkobjs.erase();

@@ -225,17 +225,10 @@ type
 			vsplitbar	:WINPOS;	// saves position of long vertical split bar
 			panelwin	:dword;		// keeps track of which panel window is active
 			panelactive	:dword;		// handle of current panel window
-			unused01	:dword;		// spares
-			unused02	:dword;
-			unused03	:dword;
-			tab			:uns8;
-			reserve		:byte[3];	// more spares
-			resd1		:dword;
-			resd2		:dword;
 			findscope	:dword;		// where to search
 			findflags	:dword;		// determines direction, flags
+			tab			:uns8;
 			backups		:uns8;		// number of backups to created, as requested by user
-			reserve2	:byte[3];	// more spares
 		endrecord;
 	
 		jList	:class inherits( tBaseList );
@@ -245,11 +238,10 @@ type
 					id			:string;	// name of job
 					ftype		:dword;		// type number of job
 					inQueue		:BOOL;		// job is in active queue or Held
-					treenode	:dword;	// this objects node handle in Project View
+					treenode	:dword;		// this objects node handle in Project View
 					align(4);
 				endrecord;
 
-				
 			override procedure create; @external;
 			override method destroy; @external;
 			override method remove; @external;
@@ -264,28 +256,29 @@ type
 			type
 				fnode :record inherits( baseNode_t );
 			
-					id			:string;	// name + extension of file
+					id			:string;			// name + extension of file
 					union
-						fullname	:string;	// full path for orphan files or
-						relative	:string;	// path releative to project folder for project files
+						fullname	:string;		// full path for orphan files or
+						relative	:string;		// path releative to project folder for project files
 					endunion;
 					
-					ftype		:dword;		// determines what HIDE will do with this file
-					hwnd		:dword;		// attached handle for RAEDIT window
-					oldhwnd		:dword;		// subclassed proc
-					props		:pointer to table; // table of hla symbols, local
-					props_ext	:pointer to table; // table of hla symbols, external
+					ftype		:dword;				// determines what HIDE will do with this file
+					hwnd		:dword;				// attached handle for RAEDIT window
+					oldhwnd		:dword;				// subclassed proc
+					props		:pointer to table;	// table of hla symbols, local
+					props_ext	:pointer to table;	// table of hla symbols, external
 					union
-						job			:dword;		// points to job structure,
-						isproject	:BOOL;		// or NULL if this is not a project file
+						job			:dword;			// points to job structure,
+						isproject	:BOOL;			// or NULL if this is not a project file
 					endunion;
 					
 					// this keeps track of the last time this file was written to by HIDE
 					// used to check if external programs modified this file without
 					// HIDE's knowledge
+					// auto-dependencies will only work with HLA projects
 					writetime	:qword;
 					
-					treenode	:dword;	// objects node handle in the Project view
+					treenode	:dword;				// objects node handle in the Project view
 					
 					// a pointer to a linked list of dependencies associated with this file.
 					// this is used when autodependencies option is selected
@@ -294,7 +287,6 @@ type
 					align(4);
 				endrecord;
 				
-			
 			override procedure create; @external;
 			override method destroy; @external;
 			override method remove; @external;
@@ -310,9 +302,9 @@ type
 
 	propNode_t:
 		record
-			ptype	:id_types;				// property type
+			ptype	:id_types;					// property type
 			fnode	:pointer to fList.fnode;	// file where this is located
-			line	:uns32;					// line of property
+			line	:uns32;						// line of property
 			typestr	:string;
 		endrecord;
 
