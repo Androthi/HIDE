@@ -257,22 +257,24 @@ procedure project.new (projname:string);
 	var
 		pname	:string;
 		pdir	:string;
+		sbuffer	:string;
 		hpr		:tConfig;
 		
 begin new;
 
 	mov (str.talloc (pathsize_c), pname);
 	mov (str.talloc (pathsize_c), pdir);
+	mov (str.talloc (1000), sbuffer );
 	
 USE (ESI, EDI, EBX);
 	str.cpy (projname, pname);
 	project.close();	// close existing project, if any
 	
-	str.put (stringbuffer, core.projectpath, dirsep_c, pname);
-	dbg.put ("New project at: ", stringbuffer);
+	str.put (sbuffer, core.projectpath, dirsep_c, pname);
+	dbg.put ("New project at: ", sbuffer);
 	try
-		filesys.mkdir( stringbuffer );
-		filesys.cd (stringbuffer);
+		filesys.mkdir( sbuffer );
+		filesys.cd ( sbuffer );
 		hpr.create();
 		str.put2 (pname, ".hpr");
 		iniesi.writeUns ("HPR Settings", "Project Version", PROJ_VERSION);
@@ -363,9 +365,11 @@ procedure project.addMain (folder:string; fname:string; import:boolean);
 	var
 		hasfolder	:BOOL;
 		buf			:tBuffer;
+		sbuffer		:string;
 		
 begin addMain;
 
+	mov( str.talloc(1000), sbuffer );
 USE (EAX, ESI, EDI);
 	dbg.put ("addMain");
 	mov (false, hasfolder);
@@ -411,8 +415,8 @@ USE (EAX, ESI, EDI);
 		str.put2 (inwork, ",hlaprogram");
 
 		mov (curjob, eax);
-		str.put (stringbuffer, jobeax.id, ".files");
-		iniesi.writeItem (stringbuffer, -1, inwork);
+		str.put (sbuffer, jobeax.id, ".files");
+		iniesi.writeItem (sbuffer, -1, inwork);
 		iniesi.writeString (jobeax.id, "main", infile);
 	endif;	
 	dbg.put ("/addMain");
@@ -423,8 +427,10 @@ procedure project.addUnit (folder:string; fname:string; import:boolean);
 	var
 		hasfolder	:BOOL;
 		buf			:tBuffer;
+		sbuffer		:string;
 		
 begin addUnit;
+	mov( str.talloc(1000), sbuffer );
 USE (EAX, ESI, EDI);
 	mov (false, hasfolder);
 	addFile (folder, fname, ".hla");
@@ -464,8 +470,8 @@ USE (EAX, ESI, EDI);
 		
 		str.put2 (inwork, ",hlaunit");
 		mov (curjob, eax);
-		str.put (stringbuffer, jobeax.id, ".files");
-		iniesi.writeItem (stringbuffer, -1, inwork);
+		str.put (sbuffer, jobeax.id, ".files");
+		iniesi.writeItem (sbuffer, -1, inwork);
 	endif;
 ENDUSE;
 end addUnit;
@@ -475,8 +481,10 @@ procedure project.addResource (folder:string; fname:string; import:boolean);
 	var
 		hasfolder	:BOOL;
 		buf			:tBuffer;
+		sbuffer		:string;
 		
 begin addResource;
+	mov( str.talloc(1000), sbuffer );
 USE (EAX, ESI, EDI);
 	mov (false, hasfolder);
 	addFile (folder, fname, ".rc");
@@ -504,8 +512,8 @@ USE (EAX, ESI, EDI);
 		
 		str.put2 (inwork, ",resource");
 		mov (curjob, eax);
-		str.put (stringbuffer, jobeax.id, ".files");
-		iniesi.writeItem (stringbuffer, -1, inwork);
+		str.put (sbuffer, jobeax.id, ".files");
+		iniesi.writeItem (sbuffer, -1, inwork);
 	endif;
 ENDUSE;
 end addResource;
@@ -515,8 +523,10 @@ procedure project.addKhelp (folder:string; fname:string; import:boolean);
 	var
 		hasfolder	:BOOL;
 		buf			:tBuffer;
+		sbuffer		:string;
 		
 begin addKhelp;
+	mov( str.talloc(1000), sbuffer );
 USE (EAX, ESI, EDI);
 	mov (false, hasfolder);
 	addFile (folder, fname, ".khelp");
@@ -542,8 +552,8 @@ USE (EAX, ESI, EDI);
 		endif;
 		str.put2 (inwork, ',', "khelp");
 		mov (curjob, eax);
-		str.put (stringbuffer, jobeax.id, ".files");
-		iniesi.writeItem (stringbuffer, -1, inwork);
+		str.put (sbuffer, jobeax.id, ".files");
+		iniesi.writeItem (sbuffer, -1, inwork);
 	endif;
 ENDUSE;
 end addKhelp;
@@ -552,8 +562,10 @@ procedure project.addBinary(folder:string; fname:string; import:boolean);
 	var
 		hasfolder	:BOOL;
 		buf			:tBuffer;
+		sbuffer		:string;
 		
 begin addBinary;
+	mov( str.talloc(1000), sbuffer );
 USE (EAX, ESI, EDI);
 	mov (false, hasfolder);
 	addFile (folder, fname, "");
@@ -579,8 +591,8 @@ USE (EAX, ESI, EDI);
 		endif;
 		str.put2 (inwork, ',', "binary");
 		mov (curjob, eax);
-		str.put (stringbuffer, jobeax.id, ".files");
-		iniesi.writeItem (stringbuffer, -1, inwork);
+		str.put (sbuffer, jobeax.id, ".files");
+		iniesi.writeItem (sbuffer, -1, inwork);
 	endif;	
 ENDUSE;
 
@@ -591,8 +603,10 @@ procedure project.addMisc (folder:string; fname:string; import:boolean);
 	var
 		hasfolder	:BOOL;
 		buf			:tBuffer;
+		sbuffer		:string;
 		
 begin addMisc;
+	mov( str.talloc(1000), sbuffer );
 USE (EAX, ESI, EDI);
 	mov (false, hasfolder);
 	addFile (folder, fname, "");
@@ -618,8 +632,8 @@ USE (EAX, ESI, EDI);
 		endif;
 		str.put2 (inwork, ',', "misc");
 		mov (curjob, eax);
-		str.put (stringbuffer, jobeax.id, ".files");
-		iniesi.writeItem (stringbuffer, -1, inwork);
+		str.put (sbuffer, jobeax.id, ".files");
+		iniesi.writeItem (sbuffer, -1, inwork);
 	endif;	
 ENDUSE;
 end addMisc;
@@ -628,8 +642,10 @@ procedure project.addKmake (folder:string; fname:string; import:boolean);
 	var
 		hasfolder	:BOOL;
 		buf			:tBuffer;
+		sbuffer		:string;
 
 begin addKmake;
+	mov( str.talloc(1000), sbuffer );
 USE (EAX, ESI, EDI);
 	mov (false, hasfolder);
 	addFile (folder, fname, ".kmk");
@@ -661,8 +677,8 @@ USE (EAX, ESI, EDI);
 		endif;
 		str.put2 (inwork, ',', "kmake");
 	
-		str.put (stringbuffer, jobebx.id, ".files");
-		iniesi.writeItem (stringbuffer, -1, inwork);
+		str.put (sbuffer, jobebx.id, ".files");
+		iniesi.writeItem (sbuffer, -1, inwork);
 	endif;
 ENDUSE;
 end addKmake;
@@ -672,8 +688,10 @@ procedure project.addDef (folder:string; fname:string; import:boolean);
 	var
 		hasfolder	:BOOL;
 		buf			:tBuffer;
+		sbuffer		:string;
 		
 begin addDef;
+	mov( str.talloc(1000), sbuffer );
 USE (EAX, ESI, EDI);
 	mov (false, hasfolder);
 	addFile (folder, fname, ".def");
@@ -699,12 +717,12 @@ USE (EAX, ESI, EDI);
 		endif;
 		str.put2 (inwork, ',', "def");
 		mov (curjob, eax);
-		str.put (stringbuffer, jobeax.id, ".files");
-		iniesi.writeItem (stringbuffer, -1, inwork);	
+		str.put (sbuffer, jobeax.id, ".files");
+		iniesi.writeItem (sbuffer, -1, inwork);	
 		
 		// add this definition file to the linker response.
 		mov (curjob, ebx);
-		iniesi.writeItem (stringbuffer, -1, workpath);
+		iniesi.writeItem (sbuffer, -1, workpath);
 		iniesi.writeString (jobebx.id, "def", infile);
 	endif;
 ENDUSE;
@@ -714,8 +732,10 @@ procedure project.addInc (folder:string; fname:string; import:boolean);
 	var
 		hasfolder	:BOOL;
 		buf			:tBuffer;
+		sbuffer		:string;
 		
 begin addInc;
+	mov( str.talloc(1000), sbuffer );
 USE (EAX, ESI, EDI);
 
 	mov (false, hasfolder);
@@ -742,8 +762,8 @@ USE (EAX, ESI, EDI);
 		endif;
 		str.put2 (inwork, ',', "include");
 		mov (curjob, eax);
-		str.put (stringbuffer, jobeax.id, ".files");
-		iniesi.writeItem (stringbuffer, -1, inwork);
+		str.put (sbuffer, jobeax.id, ".files");
+		iniesi.writeItem (sbuffer, -1, inwork);
 	endif;	
 ENDUSE;	
 end addInc;
@@ -753,6 +773,7 @@ procedure project.convertToTpl (fname:string);
 	var
 		dest	:string;
 		tmp		:string;
+		sbuffer	:string;
 		buf		:tBuffer;
 		fbuf	:tBuffer;
 		bbuf	:tBuffer;
@@ -763,7 +784,7 @@ procedure project.convertToTpl (fname:string);
 begin convertToTpl;
 	mov (str.talloc (pathsize_c), dest);
 	mov( str.talloc( pathsize_c ), tmp );
-
+	mov( str.talloc( 1000 ), sbuffer );
 	dbg.enters("convertTotpl");
 USE (ESI, EDI, EBX);
 	saveAll();
@@ -806,8 +827,8 @@ USE (ESI, EDI, EBX);
 		hpr.getItemCount ("HPR Folders");
 		mov (eax, count);
 		for (xor (ebx, ebx); ebx < count; inc (ebx) ) do
-			hpr.readItem ("HPR Folders", ebx, stringbuffer);
-			buf.append (stringbuffer, ',');
+			hpr.readItem ("HPR Folders", ebx, sbuffer);
+			buf.append (sbuffer, ',');
 		endfor;
 		if (count > 0) then
 			buf.cursorLeft (1);
@@ -850,10 +871,6 @@ USE (ESI, EDI, EBX);
 		"[hpr_file]" nl
 		"<text>" nl);
 		
-		//mov( hpr.data, eax );
-		//lea( eax, hpr.data );
-		
-		//dbg.put("ins buf");
 		buf.insertBuffer( hpr );
 		buf.append (nl nl "</text>" nl nl
 		"[BUILD_SOURCES]" nl 
@@ -869,11 +886,11 @@ USE (ESI, EDI, EBX);
 			mov (eax, ecx);
 			buf.cursorToEOL();
 			buf.setBlock (ecx, eax);
-			buf.getBlockText (stringbuffer);
-			if ( filesys.hasExtension( stringbuffer )) then
-				filesys.extractExt( stringbuffer, tmp );
-				str.put (stringbuffer, "$(filename).", tmp );
-				buf.replaceBlock (stringbuffer);
+			buf.getBlockText (sbuffer);
+			if ( filesys.hasExtension( sbuffer )) then
+				filesys.extractExt( sbuffer, tmp );
+				str.put (sbuffer, "$(filename).", tmp );
+				buf.replaceBlock (sbuffer);
 			else
 				buf.replaceBlock ("$(filename)");
 			endif;
@@ -942,7 +959,6 @@ procedure project.open (fname:string);
 		filecount	:uns32;
 	
 begin open;
-	
 	
 	mov (str.talloc (pathsize_c), hprname_s);	// absolute name of .hpr
 	mov (str.talloc (pathsize_c), s);			// scratch string
