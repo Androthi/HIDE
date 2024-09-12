@@ -67,8 +67,6 @@ readonly
 	zSeperator	:zstring := "=====================================";
 	zRelease	:zstring := "Release";
 	zStandard	:zstring := "Standard";
-	zNotes		:zstring := "Notes";
-	zOutput		:zstring := "Output";
 	
 	
 	// as per enum id_types; must match correctly

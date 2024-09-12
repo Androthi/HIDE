@@ -338,7 +338,7 @@ proc
 		
 		// job node in ebx
 		filesys.cd( project.folder );
-		mov( jobebx.ftype, eax );
+		mov( jobebx.job_type, eax );
 		if(  eax != jobtype_hlaprogram  ) then
 			
 			toOutput("Can't run this type of job" nl );
@@ -640,7 +640,7 @@ proc
 			endif;
 			
 	
-			mov( jobebx.ftype, eax );
+			mov( jobebx.job_type, eax );
 			if( eax = jobtype_hlaprogram ) then
 	
 				if( bitSet( opt_windows, buildOpt ) ) then
@@ -697,7 +697,7 @@ proc
 			str.insert( """", 0, tmpStr );
 			str.insert( """", -1, tmpStr );
 
-			mov( jobebx.ftype, eax );
+			mov( jobebx.job_type, eax );
 			if( eax = jobtype_hlaprogram || eax = jobtype_dll ) then
 				
 				dbg.put("here");
@@ -1056,7 +1056,7 @@ begin build_job;
 	toOutput ("Build: ", jobebx.id, nl);
 	
 	
-	mov (jobebx.ftype, eax);
+	mov (jobebx.job_type, eax);
 	switch (eax)
 	case ( jobtype_hlaprogram, jobtype_dll, jobtype_library )
 		USE (ESI);

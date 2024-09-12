@@ -236,7 +236,7 @@ type
 			type
 				jnode :record inherits( baseNode_t );
 					id			:string;	// name of job
-					ftype		:dword;		// type number of job
+					job_type	:dword;		// type number of job
 					inQueue		:BOOL;		// job is in active queue or Held
 					treenode	:dword;		// this objects node handle in Project View
 					align(4);

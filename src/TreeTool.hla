@@ -133,7 +133,7 @@ procedure TreeToolSetup;
 		///dbg.put ("projectview_readjob");
 		mem2.fillMem (&handles, @size(handles), 0);
 		mov (node, ebx);		
-		if (jobebx.ftype = jobtype_target) then
+		if (jobebx.job_type = jobtype_target) then
 			mov (&project.hpr, esi);
 			if (iniesi._readString (jobebx.id, "target", stringbuffer)) then
 				fileList.findJobRelative ([ebx], stringbuffer);
@@ -161,7 +161,7 @@ procedure TreeToolSetup;
 		endif;
 		mov (eax, handles.base);
 		
-		if (jobebx.ftype = jobtype_misc) then
+		if (jobebx.job_type = jobtype_misc) then
 	
 			TrvAddNode (handles.base, "Includes", NULL, IMG_FOLDER);
 			mov (eax, handles.includes);
@@ -355,12 +355,12 @@ USE (ESI, EDI);
 	mov ( (type baseNode_t[ebx]).nodeID, eax);
 	if (eax = jnode_id) then
 		mov (node, eax);
-		if (jobeax.ftype != jobtype_misc) then
+		if (jobeax.job_type != jobtype_misc) then
 			w.AppendMenu ( pviewmenu, w.MF_BYPOSITION | w.MF_ENABLED | w.MF_STRING,
 							PVIEW_REBUILDJOB, "Rebuild Job");
 			
 			mov (node, eax);
-			if (jobeax.ftype < 4) then
+			if (jobeax.job_type < 4) then
 				w.AppendMenu ( pviewmenu, w.MF_BYPOSITION | w.MF_ENABLED | w.MF_STRING,
 							PVIEW_RUN, "Run");
 				w.AppendMenu ( pviewmenu, w.MF_BYPOSITION | w.MF_ENABLED | w.MF_STRING,

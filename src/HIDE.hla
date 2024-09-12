@@ -2272,9 +2272,11 @@ program HIDE_MAIN;
 
 	procedure Menu_ProjectMan; @noframe;
 	begin Menu_ProjectMan;
+		dbg.put("menu project manager");
 		if( project.isOpen ) then
 			w.DialogBoxParam (core.hinst, val ID_MANAGER, core.hwnd, &Proc_HIDEManager, manager_project );
 		endif;
+		dbg.put("/menu project manager");
 		ret();
 	end Menu_ProjectMan;
 	

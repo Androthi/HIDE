@@ -269,8 +269,6 @@ static	// externals
 	zSeperator	:zstring; @external;
 	zRelease	:zstring; @external;
 	zStandard	:zstring; @external;
-	zNotes		:zstring; @external;
-	zOutput		:zstring; @external;
 	
 	propertyList :dword[12]; @external;
 	id_strings :zstring[ 20 ]; @external;

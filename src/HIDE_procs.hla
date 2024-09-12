@@ -16,7 +16,7 @@ unit HIDE_procs;
 	const
 		def_align	:= 4096;
 		
-	
+/*	
 	static
 		aRC_XM_Init   : procedure;
 		aRC_XM_Play   : procedure( modulo_o_recurso: string; 
@@ -24,7 +24,7 @@ unit HIDE_procs;
                   @stdcall;
 		aRC_XM_Stop   : procedure;
 		aRC_XM_DeInit : procedure;
-
+*/
 	
 	storage
 		align(4);
@@ -387,7 +387,7 @@ begin SaveLinkResponse;
 	if (node) then
 		mov (node, eax);
 		if (eax) then
-			if (jobeax.ftype = jobtype_dll) then
+			if (jobeax.job_type = jobtype_dll) then
 				mov (true, isdll);
 				jmp _base;
 			endif;
@@ -638,6 +638,7 @@ proc
 		var	
 			count		:dword;
 			index		:dword;
+			sbuffer		:string;
 			
 		storage
 			thisjob		:dword;
@@ -646,8 +647,10 @@ proc
 			linksec_s	:str.strvar(20);
 	
 	begin Proc_AdvancedLink;
-		pushabi;
 		
+		mov( str.talloc(1000), sbuffer );
+		
+		pushabi;
 		mov(umsg,eax);
 		switch( eax );
 		case( w.WM_COMMAND )		
@@ -815,8 +818,8 @@ proc
 			
 			w.SendDlgItemMessage (hwin, ADVLINK_FYES, w.BM_SETCHECK, w.BST_CHECKED, 0);	
 		
-			if (thisini.readSection (linksec_s, stringbuffer)) then
-				LinkScanner (stringbuffer, hwin);
+			if (thisini.readSection (linksec_s, sbuffer)) then
+				LinkScanner (sbuffer, hwin);
 			else
 				error.warning("Link Section not found");
 				w.SendMessage(hwin,w.WM_CLOSE,0,0);
@@ -824,7 +827,7 @@ proc
 			endif;
 			
 			mov (thisjob, eax);
-			if (eax && jobeax.ftype = jobtype_dll) then
+			if (eax && jobeax.job_type = jobtype_dll) then
 		
 				// enable /disable stuff
 				w.SendDlgItemMessage(hwin,ADVLINK_FNO,w.BM_SETCHECK,w.BST_CHECKED,0);	
@@ -997,7 +1000,7 @@ procedure Stop_Text_Scroll;
 		w.DeleteObject( credits_brush );
 	end Stop_Text_Scroll;
 
-
+/*
 procedure Start_SoundTrack;
 		var
 			res	:dword;
@@ -1045,6 +1048,7 @@ procedure Stop_SoundTrack;
 		w.FreeLibrary (h_dll);
 
 	end Stop_SoundTrack;
+*/
 
 procedure Proc_About(	hwnd	: dword;
 					uMsg	: uns32;
@@ -1058,7 +1062,7 @@ procedure Proc_About(	hwnd	: dword;
 			// static back brush
 			w.CreateSolidBrush( $00FEC0A0 );
 			mov( eax, credits_brush );
-			Start_SoundTrack();
+			//Start_SoundTrack();
 
 		elseif ( uMsg = w.WM_COMMAND ) then
 			mov( lParam, eax );
@@ -1087,7 +1091,7 @@ procedure Proc_About(	hwnd	: dword;
 			w.SetFocus (hwnd);
 
 		elseif ( uMsg = w.WM_DESTROY ) then
-			Stop_SoundTrack();
+			//Stop_SoundTrack();
 			Stop_Text_Scroll();
 			w.PostQuitMessage( 0 );
 			sub( eax, eax );

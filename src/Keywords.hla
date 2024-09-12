@@ -162,6 +162,8 @@ proc
 	
 	begin SetKeyWordList;
 		
+		dbg.enters("SetKeyWordList");
+
 		pushabi;
 		
 		dbg.put("keywordlist, index = ",index);
@@ -241,6 +243,7 @@ proc
 	
 		done:
 		popabi;
+		dbg.exits("SetKeyWordList");
 		
 	end SetKeyWordList;
 

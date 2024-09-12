@@ -195,6 +195,7 @@ const
 		jobtype_dll			:= 2;
 		jobtype_library		:= 3;
 		jobtype_misc		:= 4;
+		jobtype_odin		:= 5;
 	
 	
 		type_hla		:= 0;		// main hla source file

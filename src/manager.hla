@@ -289,7 +289,14 @@ proc
 		
 
 	Proc_ManagerSettings	:procedure( lparam:dword; wparam:dword; umsg:uns32; hwin:dword );
+	
+		var
+			sbuffer	:string;
+			
+	
 	begin Proc_ManagerSettings;
+		
+		mov( str.talloc(1000), sbuffer );
 		pushabi;
 		mov( umsg, eax );
 		
@@ -318,18 +325,18 @@ proc
 							
 					if( w.IsDlgButtonChecked( hwin, ID_HIDE_THREADSAFE ) = w.BST_CHECKED ) then
 					
-						str.put( stringbuffer, "hlalib.lib" );
+						str.put( sbuffer, "hlalib.lib" );
 						str.put( workpath, "hlalib_safe.lib" );
 						
 					else
 
-						str.put( stringbuffer, "hlalib_safe.lib" );
+						str.put( sbuffer, "hlalib_safe.lib" );
 						str.put( workpath, "hlalib.lib" );
 					
 						
 					endif;
 	
-					w.SendDlgItemMessage( hwin, IDC_MANAGERSET_LIST, w.LB_FINDSTRINGEXACT, -1, stringbuffer );
+					w.SendDlgItemMessage( hwin, IDC_MANAGERSET_LIST, w.LB_FINDSTRINGEXACT, -1, sbuffer );
 					w.SendDlgItemMessage( hwin, IDC_MANAGERSET_LIST, w.LB_DELETESTRING, eax, 0 );
 					w.SendDlgItemMessage( hwin, IDC_MANAGERSET_LIST, w.LB_ADDSTRING, 0, workpath );
 					
@@ -454,14 +461,20 @@ proc
 		popabi;
 	end Proc_ManagerSettings;
 	
-	updateFolders :procedure { @NOFRAME };
+	updateFolders :procedure;
+	
+		var
+			sbuffer	:string;
+			
 	begin updateFolders;
+		
+		mov( str.talloc(1000), sbuffer );
 		
 		w.SendDlgItemMessage( optProject, IDC_MANAGERPROJ_FOLDERS, w.LB_RESETCONTENT, 0, 0);
 		
-		str.put( stringbuffer, project.id );
-		filesys.deleteExt( stringbuffer, stringbuffer );
-		w.SendDlgItemMessage( optProject, IDC_MANAGERPROJ_FOLDERS, w.LB_ADDSTRING, 0, stringbuffer );
+		str.put( sbuffer, project.id );
+		filesys.deleteExt( sbuffer, sbuffer );
+		w.SendDlgItemMessage( optProject, IDC_MANAGERPROJ_FOLDERS, w.LB_ADDSTRING, 0, sbuffer );
 		w.SendDlgItemMessage( optProject, IDC_MANAGERPROJ_FOLDERS, w.LB_SETCURSEL, eax, 0 );
 		
 		// user folders
@@ -471,20 +484,18 @@ proc
 			xor( ebx, ebx );
 			while( ebx < count ) do
 
-				iniesi.readItem( "HPR Folders", ebx, stringbuffer );
-				w.SendDlgItemMessage( optProject, IDC_MANAGERPROJ_FOLDERS, w.LB_ADDSTRING, 0, stringbuffer );
+				iniesi.readItem( "HPR Folders", ebx, sbuffer );
+				w.SendDlgItemMessage( optProject, IDC_MANAGERPROJ_FOLDERS, w.LB_ADDSTRING, 0, sbuffer );
 				inc (ebx);
 				
 			endwhile;			
 		endif;
-
-		ret();
+		
 	end updateFolders;
 
 	
 	Proc_ManagerProjOpt	:procedure( lparam:dword; wparam:dword; umsg:uns32; hwin:dword );
 	begin Proc_ManagerProjOpt;
-		
 		mov( umsg, eax );
 		if( eax = w.WM_COMMAND ) then
 			
@@ -714,9 +725,6 @@ proc
 					updateFolders();
 					
 				endif;
-
-
-
 			
 			elseif( edx = w.LBN_SELCHANGE ) then
 				
@@ -746,7 +754,6 @@ proc
 			or( 1, eax );
 			
 		elseif( eax = w.WM_INITDIALOG ) then
-			
 			move( hwin, optProject );
 			w.SetDlgItemText( hwin, IDC_MANAGERPROJ_PATH, project.folder );
 			w.SetDlgItemText( hwin, IDC_MANAGERPROJ_NAME, project.id);
@@ -786,9 +793,8 @@ proc
 				w.CheckDlgButton( hwin, IDC_MANAGERPROJ_USEBAK, true );
 			endif;
 
-
 			updateFolders();
-
+	
 			or( 1, eax );
 			
 		else
@@ -797,7 +803,6 @@ proc
 			
 		endif;
 			
-		
 	end Proc_ManagerProjOpt;
 	
 	saveSettings	:procedure;
@@ -1197,11 +1202,11 @@ proc
 
 	Proc_HIDEManager	:procedure( lparam:dword; wparam:dword; umsg:uns32; hwin:dword );
 	begin Proc_HIDEManager;
+		
 		pushabi;
 
 		mov( umsg, eax );
 		if( eax = w.WM_INITDIALOG ) then
-			
 			mov( false, linksChanged );
 			mov( false, settingsChanged );
 			mov( false, newCodeFont );
@@ -1215,15 +1220,21 @@ proc
 			w.CreateDialogParam( core.hinst, val ID_MANAGERENV, hwin, &Proc_ManagerEnv, false );
 			w.CreateDialogParam( core.hinst, val ID_MANAGERGEN, hwin, &Proc_ManagerGen, false );
 			w.CreateDialogParam( core.hinst, val ID_KEYWORDS, hwin, &Proc_KeyWords, false );
+			
+			dbg.put("params created");
+			
 			mov( eax, optThemes );
 			w.CreateDialogParam( core.hinst,val ID_MANAGERSET, hwin, &Proc_ManagerSettings, false );
+
 			
 			if( project.isOpen ) then
 				w.CreateDialogParam( core.hinst, val ID_MANAGERPROJ, hwin, &Proc_ManagerProjOpt, false );
-				
+			dbg.put("params created 3");				
 				w.CreateDialogParam( core.hinst, val ID_MANAGERJOBS, hwin, &Proc_JobsManager, false );
 				mov( eax, optJobs );
 			endif;
+			
+			
 			
 			// fill the tab tool
 			mov( w.TCIF_TEXT, optTCI.imask );

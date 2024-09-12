@@ -80,7 +80,8 @@ readonly
 		"kMake Script",
 		"DLL",
 		"Library",
-		"Misc"
+		"Misc",
+		"Odin Package",
 	];
 		
 	fileTypes	:zstring[] :=
@@ -386,7 +387,7 @@ USE (EAX, ESI, EDI);
 		if( eax ) then
 	
 			mov( curjob, eax );
-			if( jobeax.ftype = jobtype_dll ) then
+			if( jobeax.job_type = jobtype_dll ) then
 				
 				writeStdTpl( inwork, type_def );
 				
@@ -954,6 +955,7 @@ procedure project.open (fname:string);
 		folder		:string;
 		ftype		:string;
 		s			:string;
+		sbuffer		:string;
 		buf			:tBuffer;
 		jobcount	:uns32;
 		filecount	:uns32;
@@ -966,6 +968,7 @@ begin open;
 	mov (str.talloc (pathsize_c), jfname);
 	mov (str.talloc (pathsize_c), folder);
 	mov (str.talloc (pathsize_c), ftype);
+	mov (str.talloc (1000), sbuffer);
 
 	dbg.enters("project.open");
 	pushabi;
@@ -983,20 +986,20 @@ begin open;
 
 	else
 
-		str.put (stringbuffer, core.projectpath, dirsep_c, hprname_s);
-		filesys.deleteExt( stringbuffer, stringbuffer );
+		str.put (sbuffer, core.projectpath, dirsep_c, hprname_s);
+		filesys.deleteExt( sbuffer, sbuffer );
 		
-		if( filesys.exists( stringbuffer ) ) then
+		if( filesys.exists( sbuffer ) ) then
 		
-			str.a_cpy (stringbuffer);
+			str.a_cpy (sbuffer);
 			mov (eax, project.folder);
 			filesys.cd (project.folder);
 			
 		else
 			
-			str.put( stringbuffer, "Unable to open project: ", fname );
+			str.put( sbuffer, "Unable to open project: ", fname );
 			hideini.deleteKey ("HIDE Settings", "LastProject" );
-			error.warning (stringbuffer);
+			error.warning (sbuffer);
 			jmp exitopen;
 			
 		endif;
@@ -1023,11 +1026,11 @@ begin open;
 		endif;
 	else
 		
-		str.put (stringbuffer, "Project file not found :", project.id, nl,
+		str.put (sbuffer, "Project file not found :", project.id, nl,
 					"Note: Project folder must match hpr name for detection");
 		hideini.deleteKey ("HIDE Settings", "LastProject" );
 		str.free( project.id );
-		error.warning (stringbuffer);
+		error.warning (sbuffer);
 		jmp exitopen;	
 		
 	endif;
@@ -1077,10 +1080,10 @@ begin open;
 		mov( eax, ebx );
 
 		mov( true, jobebx.inQueue );
-		iniesi._readString( jobname, "type", stringbuffer );
+		iniesi._readString( jobname, "type", sbuffer );
 
-		project.switchType( stringbuffer );
-		mov( eax, jobebx.ftype );
+		project.switchType( sbuffer );
+		mov( eax, jobebx.job_type );
 		
 		// read job files into filelist
 		str.put( s, jobname, ".files" );
@@ -1106,9 +1109,9 @@ begin open;
 		mov( eax, ebx );
 		
 		mov( false, jobebx.inQueue );
-		iniesi._readString( jobname, "type", stringbuffer );
-		project.switchType( stringbuffer );
-		mov( eax, jobebx.ftype );
+		iniesi._readString( jobname, "type", sbuffer );
+		project.switchType( sbuffer );
+		mov( eax, jobebx.job_type );
 		
 		// read job files into filelist
 		str.put( s, jobname, ".files" );
@@ -1192,8 +1195,8 @@ begin open;
 	endif;
 	
 	w.SendMessage( core.hwnd, w.WM_SETFOCUS, 0, 0);
-	str.put( stringbuffer, project.folder, dirsep_c, project.id );
-	Recent_Insert( stringbuffer );
+	str.put( sbuffer, project.folder, dirsep_c, project.id );
+	Recent_Insert( sbuffer );
 	
 	exitopen:
 	
@@ -1220,9 +1223,9 @@ begin open;
 			
 			checkSA( ftype );
 			if( eax = sa_extlinked ) then
-				str.put( stringbuffer, jobname, ".extlinked" );
+				str.put( sbuffer, jobname, ".extlinked" );
 				mov( ebx, esi );
-				iniesi.writeItem( stringbuffer, -1, workpath );
+				iniesi.writeItem( sbuffer, -1, workpath );
 				iniesi.deleteItem( s, edx );
 				dec( edx );	// since 1 item removed!
 				dec( filecount );
@@ -1330,10 +1333,12 @@ end removeLib;
 
 procedure project.importLib (src:string);
 	var
-		s	:string;
+		s		:string;
+		sbuffer	:string;
 		
 begin importLib;
 	dbg.put("importLib");
+	mov( str.talloc( 1000), sbuffer );
 	move( str.talloc( $300 ), s );
 
 	USE (ESI, EDI, EBX);
@@ -1344,9 +1349,9 @@ begin importLib;
 	dbg.put ("importLib :", s);
 	
 	mov( curjob, eax );
-	str.put( stringbuffer, jobeax.id, ".extlinked" );
+	str.put( sbuffer, jobeax.id, ".extlinked" );
 	mov( &project.hpr, esi );
-	iniesi.writeItem( stringbuffer, -1, s );
+	iniesi.writeItem( sbuffer, -1, s );
 	
 	ENDUSE;
 	dbg.put("/importLib");
@@ -1356,6 +1361,7 @@ procedure project.deleteFile (var bnode:fList.fnode);
 	// delete a file and remove it from the project
 	@alignstack;
 	var
+		sbuffer		:string;
 		hasfolder	:boolean;
 		
 	procedure delFile_checkMain; @noframe;
@@ -1372,62 +1378,64 @@ procedure project.deleteFile (var bnode:fList.fnode);
 	end delFile_checkMain;
 
 begin deleteFile;
+	
+	mov( str.talloc(1000), sbuffer );
 	USE (ESI, EDI, EBX, ECX);
 	dbg.enters( "deleteFile" );
 	mov( bnode, ebx );
-	str.cpy( listebx.relative, stringbuffer );
+	str.cpy( listebx.relative, sbuffer );
 	
 	str.cpy( "", infolder );
 	mov( false, hasfolder );
 	
-	if( filesys.hasPath( stringbuffer ) ) then
+	if( filesys.hasPath( sbuffer ) ) then
 		
-		filesys.extractPath( stringbuffer, infolder );
+		filesys.extractPath( sbuffer, infolder );
 		mov( true, hasfolder );
 		
 	endif;
 	
-	filesys.extractFilename( stringbuffer, infile );
+	filesys.extractFilename( sbuffer, infile );
 	
-	str.put (stringbuffer, infile, ',');
+	str.put (sbuffer, infile, ',');
 	if (hasfolder) then
-		str.put2 (stringbuffer, infolder, ',');
+		str.put2 (sbuffer, infolder, ',');
 	else
-		str.put2 (stringbuffer, ',');
+		str.put2 (sbuffer, ',');
 	endif;
 	
 	mov (listebx.ftype, eax);
 	switch (eax);
 	case (type_misc)
-		str.put2 (stringbuffer, "misc");
+		str.put2 (sbuffer, "misc");
 		
 	case (type_khelp)
-		str.put2 (stringbuffer,"khelp");
+		str.put2 (sbuffer,"khelp");
 	
 	case (type_hla)
-		str.put2 (stringbuffer, "hlaprogram");
+		str.put2 (sbuffer, "hlaprogram");
 		delFile_checkMain();
 		
 	case (type_unit)
-		str.put2 (stringbuffer, "hlaunit");
+		str.put2 (sbuffer, "hlaunit");
 		
 	case (type_rc)
-		str.put2 (stringbuffer, "resource");
+		str.put2 (sbuffer, "resource");
 		
 	case (type_hhf)
-		str.put2 (stringbuffer, "include");
+		str.put2 (sbuffer, "include");
 		
 	case (type_def)
 		mov (listebx.job, eax);
 		mov (&project.hpr, esi);
 		iniesi.deleteKey (jobeax.id, "def");
-		str.put2 (stringbuffer, "def");
+		str.put2 (sbuffer, "def");
 	
 	case (type_kmake)
 		mov (listebx.job, eax);
 		mov (&project.hpr, esi);
 		iniesi.deleteKey (jobeax.id, "target");
-		str.put2 (stringbuffer, "kmake");
+		str.put2 (sbuffer, "kmake");
 	
 	endswitch;
 
@@ -1435,7 +1443,7 @@ begin deleteFile;
 	mov (&project.hpr, esi);
 	mov (listebx.job, eax);
 	str.put (workpath, jobeax.id, ".files");
-	if (iniesi.findItem (workpath, stringbuffer) != -1) then
+	if (iniesi.findItem (workpath, sbuffer) != -1) then
 		iniesi.deleteItem (workpath, eax);
 	endif;
 	
@@ -1449,7 +1457,7 @@ end deleteFile;
 procedure getCurJobType; @returns ("EAX"); @noframe;
 begin getCurJobType;
 	mov (curjob, eax);
-	mov (jobeax.ftype, eax);
+	mov (jobeax.job_type, eax);
 	ret();
 end getCurJobType;
 
@@ -1571,9 +1579,12 @@ proc
 	
 		var
 			count	:uns32;
+			sbuffer	:string;
 			
 	
 	begin updateFiles;
+		
+		mov( str.talloc(1000), sbuffer );
 		pushabi;
 		dbg.enters( "updateFiles" );
 		
@@ -1595,13 +1606,13 @@ proc
 				
 				mov( w.LVIF_TEXT, lvi.imask );
 				mov( 1, lvi.iSubItem );
-				str.put( stringbuffer, listebx.relative );
-				filesys.extractPath( stringbuffer, stringbuffer );
-				if( str.length( stringbuffer ) = 0 ) then 
-					str.put( stringbuffer, project.id );
-					filesys.deleteExt( stringbuffer, stringbuffer );
+				str.put( sbuffer, listebx.relative );
+				filesys.extractPath( sbuffer, sbuffer );
+				if( str.length( sbuffer ) = 0 ) then 
+					str.put( sbuffer, project.id );
+					filesys.deleteExt( sbuffer, sbuffer );
 				endif;
-				mov( stringbuffer, eax );
+				mov( sbuffer, eax );
 				mov( eax, lvi.pszText );
 				w.SendMessage( hFiles, w.LVM_SETITEM, 0, &lvi );
 				
@@ -1624,8 +1635,15 @@ proc
 		popabi;
 	end updateFiles;
 
-	updateJobs :procedure { @noframe };
+	updateJobs :procedure;
+	
+		var
+			sbuffer	:string;
+			
+	
 	begin updateJobs;
+		
+		mov( str.talloc(1000), sbuffer );
 		dbg.enters("updateJobs");
 		
 		manager_updateDisplay( state_deselectall );
@@ -1641,8 +1659,8 @@ proc
 		xor( ebx, ebx );
 		while( ebx < count ) do
 			mov( &project.hpr, esi );
-			iniesi.readItem( workpath, ebx, stringbuffer );
-			jobList.findID( stringbuffer );
+			iniesi.readItem( workpath, ebx, sbuffer );
+			jobList.findID( sbuffer );
 			mov( eax, edi );
 			move( jobedi.id, lvi.pszText );
 			mov( 0, lvi.iSubItem );
@@ -1652,7 +1670,7 @@ proc
 			w.SendMessage( hJobs, w.LVM_INSERTITEM, 0, &lvi );
 			
 			mov( w.LVIF_TEXT, lvi.imask );
-			mov( jobedi.ftype, eax );
+			mov( jobedi.job_type, eax );
 			mov( jobTypes[eax*4], eax );
 			mov( eax, lvi.pszText );
 			mov( 1, lvi.iSubItem ); 
@@ -1662,12 +1680,17 @@ proc
 		endwhile;
 		
 		dbg.exits("updateJobs");
-		ret();
 	end updateJobs;
 
 
-	updateLinkedObjects :procedure { @noframe };
+	updateLinkedObjects :procedure;
+	
+		var
+			sbuffer	:string;
+			
 	begin updateLinkedObjects;
+		
+		mov( str.talloc(1000), sbuffer );
 		pushabi;
 	
 		w.SendDlgItemMessage( hmanager, IDC_MANAGERJOBS_LINKLIST, w.LB_RESETCONTENT, 0, 0 );
@@ -1679,18 +1702,18 @@ proc
 		xor( ebx, ebx );
 		while( ebx < count ) do
 			
-			iniesi.readItem( workpath, ebx, stringbuffer );
-			w.SendDlgItemMessage( hmanager, IDC_MANAGERJOBS_LINKLIST, w.LB_ADDSTRING, 0, stringbuffer );
+			iniesi.readItem( workpath, ebx, sbuffer );
+			w.SendDlgItemMessage( hmanager, IDC_MANAGERJOBS_LINKLIST, w.LB_ADDSTRING, 0, sbuffer );
 			
 			w.GetDlgItem( hmanager, IDC_MANAGERJOBS_THREADSAFE );
 			mov( eax, edi );
 			
-			if( str.ieq( stringbuffer, "hlalib.lib" )) then
+			if( str.ieq( sbuffer, "hlalib.lib" )) then
 
 				w.EnableWindow( edi, true );
 				w.CheckDlgButton( hmanager, IDC_MANAGERJOBS_THREADSAFE, w.BST_UNCHECKED );
 
-			elseif( str.ieq( stringbuffer, "hlalib_safe.lib" )) then
+			elseif( str.ieq( sbuffer, "hlalib_safe.lib" )) then
 
 				w.EnableWindow( edi, true );
 				w.CheckDlgButton( hmanager, IDC_MANAGERJOBS_THREADSAFE, w.BST_CHECKED );
@@ -1701,18 +1724,21 @@ proc
 		endwhile;
 		
 		popabi;
-		ret();
 	end updateLinkedObjects;
 	
-	job_defaultlibs :procedure { @noframe };
+	job_defaultlibs :procedure;
+	
+		var
+			sbuffer	:string;
+			
 	begin job_defaultlibs;
 
+		mov( str.talloc(1000), sbuffer );
 		str.put( inwork, infile, ".extlinked" );
-		hideini.readSection( "default libs", stringbuffer );
+		hideini.readSection( "default libs", sbuffer );
 		mov (&project.hpr, esi);
-		iniesi._writeSection( inwork, stringbuffer );
+		iniesi._writeSection( inwork, sbuffer );
 		
-		ret();
 	end job_defaultlibs;
 
 	
@@ -1720,9 +1746,12 @@ proc
 		
 		// support procedure for job_addxxx procedures
 		// returns in EBX = job list node pointer
+		var
+			sbuffer	:string;			
 		
 	begin job_add;
 
+		mov( str.talloc(1000), sbuffer );
 		str.cpy (src, infile);
 		if ( filesys.hasExtension( infile ) ) then
 			filesys.deleteExt( infile, infile );
@@ -1753,28 +1782,50 @@ proc
 
 		// add linker info
 		str.put( inwork, infile, ".link" );
-		hideini.readSection( "default link", stringbuffer );
+		hideini.readSection( "default link", sbuffer );
 		mov (&project.hpr, esi);
-		iniesi._writeSection( inwork, stringbuffer );
+		iniesi._writeSection( inwork, sbuffer );
 		
 	end job_add;
 
 
 	job_addprogram :procedure( src:string );
 
+		var
+			sbuffer	:string;
+			
+
 	begin job_addprogram;
 		
+		mov( str.talloc(1000), sbuffer );
 		job_add( src );
 		// job in ebx
-		mov( jobtype_hlaprogram, jobebx.ftype );
+		mov( jobtype_hlaprogram, jobebx.job_type );
 
 		// create job section
 		mov( &project.hpr, esi );
-		str.put( stringbuffer, infile, exe_c );
-		iniesi.writeString( infile, "output", stringbuffer );
+		str.put( sbuffer, infile, exe_c );
+		iniesi.writeString( infile, "output", sbuffer );
 		iniesi.writeString (infile, "type", "program" );
 
 	end job_addprogram;
+	
+	job_addodinpackage :procedure( src:string );
+		var
+			sbuffer	:string;
+			
+	begin job_addodinpackage;
+		mov( str.talloc(1000), sbuffer );
+		job_add( src );
+		mov( jobtype_odin, jobebx.job_type );
+				// create job section
+		mov( &project.hpr, esi );
+		str.put( sbuffer, infile, exe_c );
+		iniesi.writeString( infile, "output", sbuffer );
+		iniesi.writeString (infile, "type", "odin" );
+
+	end job_addodinpackage;
+
 	
 	job_addtarget :procedure( src:string );
 	begin job_addtarget;
@@ -1794,7 +1845,7 @@ proc
 		if (! holdjobmode) then
 			mov (true, jobeax.inQueue);
 		endif;
-		mov (jobtype_target, jobeax.ftype);
+		mov (jobtype_target, jobeax.job_type);
 		mov (eax, ebx);
 		mov (&project.hpr, esi);
 		iniesi.writeString (jobebx.id, "type", "target");
@@ -1802,8 +1853,13 @@ proc
 	end job_addtarget;
 	
 	job_addlibrary :procedure( src:string ); 
+	
+		var
+			sbuffer	:string;
+			
 	begin job_addlibrary;
 
+		mov( str.talloc(1000), sbuffer );
 		str.cpy (src, infile);
 		if ( filesys.hasExtension( infile )) then
 			filesys.deleteExt( infile, infile );
@@ -1820,23 +1876,25 @@ proc
 		if (! holdjobmode) then
 			mov (true, jobebx.inQueue);
 		endif;
-		mov (jobtype_library, jobebx.ftype);
+		mov (jobtype_library, jobebx.job_type);
 
 		// create job section
 		mov (&project.hpr, esi);
 		iniesi.writeString (infile, "type", "library");
-		str.put (stringbuffer, infile, lib_c); 
-		iniesi.writeString (infile, "output", stringbuffer);
+		str.put (sbuffer, infile, lib_c); 
+		iniesi.writeString (infile, "output", sbuffer);
 
 	end job_addlibrary;
 	
 	job_adddll :procedure( src:string ); 
 		
 		var
-			buf	:tBuffer;
+			buf		:tBuffer;
+			sbuffer	:string;
 			
 	begin job_adddll;
 
+		mov( str.talloc(1000), sbuffer );
 		str.cpy (src, infile);
 		if ( filesys.hasExtension( infile )) then
 			filesys.deleteExt( infile, infile );
@@ -1853,7 +1911,7 @@ proc
 		if (! holdjobmode) then
 			mov (true, jobebx.inQueue);
 		endif;
-		mov (jobtype_dll, jobebx.ftype);
+		mov (jobtype_dll, jobebx.job_type);
 		
 		job_defaultlibs();
 
@@ -1870,8 +1928,8 @@ proc
 		str.put (inwork, infile, ".link");
 		iniesi.writeBufSection (inwork, buf);
 
-		str.put (stringbuffer, infile, dll_c); 
-		iniesi.writeString (infile, "output", stringbuffer);
+		str.put (sbuffer, infile, dll_c); 
+		iniesi.writeString (infile, "output", sbuffer);
 
 		buf.destroy();
 		
@@ -1892,7 +1950,7 @@ proc
 		if (! holdjobmode) then
 			mov (true, jobeax.inQueue);
 		endif;
-		mov (jobtype_misc, jobeax.ftype);
+		mov (jobtype_misc, jobeax.job_type);
 		mov (eax, ebx);
 		mov (&project.hpr, esi);
 		iniesi.writeString (jobebx.id, "type", "miscjob");
@@ -1994,18 +2052,18 @@ proc
 		mov( eax, listebx.relative );
 		
 		
-		if( jobecx.ftype = jobtype_target ) then
+		if( jobecx.job_type = jobtype_target ) then
 			
 			iniesi.writeString( jobecx.id, "target", listebx.relative );
 			
-		elseif( jobecx.ftype = jobtype_dll ) then
+		elseif( jobecx.job_type = jobtype_dll ) then
 			
 			filesys.extractExt( listebx.id, inwork );
 			if( str.eq( inwork, "def" ) ) then
 				iniesi.writeString( jobecx.id, "def", listebx.relative );
 			endif;
 			
-		elseif( jobecx.ftype = jobtype_hlaprogram ) then
+		elseif( jobecx.job_type = jobtype_hlaprogram ) then
 			
 			// change the main file
 			iniesi.writeString( jobecx.id, "main", listebx.relative );
@@ -2046,7 +2104,12 @@ proc
 	end lvGetSel;
 
 	Proc_NewFile :procedure( lparam:dword; wparam:dword; umsg:uns32; hwin:dword );
+	
+		var
+			sbuffer	:string;			
+	
 	begin Proc_NewFile;
+		mov( str.talloc(1000), sbuffer );
 		mov( umsg, eax );
 		if( eax = w.WM_COMMAND ) then
 
@@ -2065,8 +2128,8 @@ proc
 					test( eax, eax );
 					jz cancel;
 					
-					str.cpyz( &buffer, stringbuffer );
-					dbg.put( "fname :", stringbuffer );					
+					str.cpyz( &buffer, sbuffer );
+					dbg.put( "fname :", sbuffer );					
 					w.SendDlgItemMessage( hwin, IDC_NEWFILE_TYPE, w.CB_GETCURSEL, 0, 0 );
 					cmp( eax, w.CB_ERR );
 					je cancel;
@@ -2086,39 +2149,39 @@ proc
 					
 					case( type_hla )
 					
-						project.addMain( workpath, stringbuffer, al );
+						project.addMain( workpath, sbuffer, al );
 						
 					case( type_unit )
 					
-						project.addUnit( workpath, stringbuffer, al );
+						project.addUnit( workpath, sbuffer, al );
 						
 					case( type_hhf )
 					
-						project.addInc( workpath, stringbuffer, al );
+						project.addInc( workpath, sbuffer, al );
 						
 					case( type_rc )
 					
-						project.addResource( workpath, stringbuffer, al );
+						project.addResource( workpath, sbuffer, al );
 						
 					case( type_khelp )
 					
-						project.addKhelp( workpath, stringbuffer, al );
+						project.addKhelp( workpath, sbuffer, al );
 						
 					case( type_def )
 					
-						project.addDef( workpath, stringbuffer, al );
+						project.addDef( workpath, sbuffer, al );
 						
 					case( type_bin )
 					
-						project.addBinary( workpath, stringbuffer, al );
+						project.addBinary( workpath, sbuffer, al );
 						
 					case( type_misc )
 					
-						project.addMisc( workpath, stringbuffer, al );
+						project.addMisc( workpath, sbuffer, al );
 						
 					case( type_kmake )
 					
-						project.addKmake( workpath, stringbuffer, al );
+						project.addKmake( workpath, sbuffer, al );
 			
 					endswitch;
 					
@@ -2158,17 +2221,17 @@ proc
 		elseif( eax = w.WM_INITDIALOG ) then
 			
 			// init folders
-			str.cpy( project.id, stringbuffer );
-			filesys.deleteExt( stringbuffer, stringbuffer );
-			w.SendDlgItemMessage( hwin, IDC_NEWFILE_FOLDER, w.CB_ADDSTRING, 0, stringbuffer );
+			str.cpy( project.id, sbuffer );
+			filesys.deleteExt( sbuffer, sbuffer );
+			w.SendDlgItemMessage( hwin, IDC_NEWFILE_FOLDER, w.CB_ADDSTRING, 0, sbuffer );
 			mov( &project.hpr, esi );
 			iniesi.getItemCount( "HPR Folders" );
 			mov( eax, count );
 			
 			for( xor( ebx, ebx ); ebx < count; inc( ebx ) ) do
 				
-				iniesi.readItem( "HPR Folders", ebx, stringbuffer );
-				w.SendDlgItemMessage( hwin, IDC_NEWFILE_FOLDER, w.CB_ADDSTRING, 0, stringbuffer );
+				iniesi.readItem( "HPR Folders", ebx, sbuffer );
+				w.SendDlgItemMessage( hwin, IDC_NEWFILE_FOLDER, w.CB_ADDSTRING, 0, sbuffer );
 				
 			endfor;
 			
@@ -2177,7 +2240,7 @@ proc
 			// init filetypes
 			dbg.put("init fileTypes" );
 			mov( curjob, eax );
-			mov( jobeax.ftype, eax );
+			mov( jobeax.job_type, eax );
 			switch( eax )
 			case( jobtype_hlaprogram )
 
@@ -2287,10 +2350,13 @@ proc
 	
 		storage
 			node	:dword;
+		var
+			sbuffer	:string;
 			
 	
 	begin Proc_RenameFile;
 		
+		mov( str.talloc(1000), sbuffer );
 		mov( umsg, eax );
 		
 		if( eax = w.WM_COMMAND ) then
@@ -2308,7 +2374,7 @@ proc
 					test( eax, eax );
 					jz cancel;
 					
-					str.cpyz( &buffer, stringbuffer );
+					str.cpyz( &buffer, sbuffer );
 					
 					w.SendDlgItemMessage( hwin, IDC_RENAMEFILE_FOLDER, w.CB_GETCURSEL, 0, 0 );
 					w.SendDlgItemMessage( hwin, IDC_RENAMEFILE_FOLDER, w.CB_GETLBTEXT, EAX, workpath );
@@ -2317,8 +2383,8 @@ proc
 					
 					mov( node, ebx );
 					//dbg.put("renaming :", listebx.relative );
-					//dbg.put("to :", workpath, dirsep_c, stringbuffer );
-					project_rename( [ebx], workpath, stringbuffer );
+					//dbg.put("to :", workpath, dirsep_c, sbuffer );
+					project_rename( [ebx], workpath, sbuffer );
 					
 					w.SendMessage( hwin, w.WM_CLOSE, true, 0 );
 					
@@ -2334,17 +2400,17 @@ proc
 		elseif( eax = w.WM_INITDIALOG ) then
 
 			// fill folders
-			str.cpy( project.id, stringbuffer );
-			filesys.deleteExt( stringbuffer, stringbuffer );
-			w.SendDlgItemMessage( hwin, IDC_RENAMEFILE_FOLDER, w.CB_ADDSTRING, 0, stringbuffer );
+			str.cpy( project.id, sbuffer );
+			filesys.deleteExt( sbuffer, sbuffer );
+			w.SendDlgItemMessage( hwin, IDC_RENAMEFILE_FOLDER, w.CB_ADDSTRING, 0, sbuffer );
 			mov( &project.hpr, esi );
 			iniesi.getItemCount( "HPR Folders" );
 			mov( eax, count );
 			
 			for( xor( ebx, ebx ); ebx < count; inc( ebx ) ) do
 				
-				iniesi.readItem( "HPR Folders", ebx, stringbuffer );
-				w.SendDlgItemMessage( hwin, IDC_RENAMEFILE_FOLDER, w.CB_ADDSTRING, 0, stringbuffer );
+				iniesi.readItem( "HPR Folders", ebx, sbuffer );
+				w.SendDlgItemMessage( hwin, IDC_RENAMEFILE_FOLDER, w.CB_ADDSTRING, 0, sbuffer );
 				
 			endfor;
 
@@ -2357,17 +2423,16 @@ proc
 			
 			if( str.eq( listebx.id, listebx.relative ) ) then
 				
-				str.put( stringbuffer, project.id );
-				filesys.deleteExt( stringbuffer, stringbuffer );
+				str.put( sbuffer, project.id );
+				filesys.deleteExt( sbuffer, sbuffer );
 				
 			else
 				
-				str.put( stringbuffer, listebx.relative );
-				filesys.extractPath( stringbuffer, stringbuffer );
+				str.put( sbuffer, listebx.relative );
+				filesys.extractPath( sbuffer, sbuffer );
 				
 			endif;
-			//dbg.put("folder path =", stringbuffer );
-			w.SendDlgItemMessage( hwin, IDC_RENAMEFILE_FOLDER, w.CB_FINDSTRINGEXACT, -1, stringbuffer );
+			w.SendDlgItemMessage( hwin, IDC_RENAMEFILE_FOLDER, w.CB_FINDSTRINGEXACT, -1, sbuffer );
 			w.SendDlgItemMessage( hwin, IDC_RENAMEFILE_FOLDER, w.CB_SETCURSEL, eax, 0 );
 			
 		elseif( eax = w.WM_CLOSE ) then
@@ -2381,8 +2446,13 @@ proc
 	end Proc_RenameFile;
 
 	Proc_NewJob :procedure( lparam:dword; wparam:dword; umsg:uns32; hwin:dword );
+	
+		var
+			sbuffer	:string;
+			
 	begin Proc_NewJob;
 		
+		mov( str.talloc(1000), sbuffer );
 		//dbg.put("NEW JOB")
 		mov( umsg, eax );
 		if( eax = w.WM_COMMAND ) then
@@ -2400,7 +2470,7 @@ proc
 					test( eax, eax );
 					jz cancel;
 					
-					str.cpyz( &buffer, stringbuffer );						
+					str.cpyz( &buffer, sbuffer );						
 					w.SendDlgItemMessage( hwin, IDC_NEWJOB_TYPE, w.CB_GETCURSEL, 0, 0 );
 					cmp( eax, w.CB_ERR );
 					je cancel;
@@ -2409,23 +2479,27 @@ proc
 					
 					case( jobtype_hlaprogram )
 						
-						job_addprogram( stringbuffer );
+						job_addprogram( sbuffer );
 						
 					case( jobtype_target )
 					
-						job_addtarget( stringbuffer );
+						job_addtarget( sbuffer );
 						
 					case( jobtype_dll )
 					
-						job_adddll( stringbuffer );
+						job_adddll( sbuffer );
 					
 					case( jobtype_library )
 					
-						job_addlibrary( stringbuffer );
+						job_addlibrary( sbuffer );
 					
 					case( jobtype_misc )
 					
-						job_addmisc( stringbuffer );
+						job_addmisc( sbuffer );
+						
+					case( jobtype_odin )
+					
+						job_addodinpackage( sbuffer );
 			
 					endswitch;
 					
@@ -2831,7 +2905,7 @@ proc
 						updateLinkedObjects();
 						
 						mov( curjob, ebx );
-						mov( jobebx.ftype, eax );
+						mov( jobebx.job_type, eax );
 						if( eax = jobtype_library ) then
 							
 							pushd( state_selectlibrary );
