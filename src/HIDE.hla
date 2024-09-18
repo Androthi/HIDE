@@ -4104,19 +4104,21 @@ proc
 		_endif;
 		w.CreateDialogParam(core.hinst,val ID_TREEWIN, hwin, &Proc_ProjectView,false);
 		w.CreateDialogParam(core.hinst,val ID_PROPERTIES, hwin, &Proc_Properties,false);
-	
+		w.CreateDialogParam(core.hinst,val ID_EXPLORER, hwin, &Proc_Explorer, false);
 		w.SendMessage(core.hpaneltab, w.TCM_SETCURSEL, settings.panelwin, 0);
 		
 		PanelViewWin();
 				
 		if (testz (PROP_D, settings.winview)) then
-			dbg.put (">>>>>>>>>>prop visible");
 			w.ShowWindow (core.hprop, w.SW_SHOW);
 		endif;
 		
 		if (testz (TREE_D, settings.winview)) then
-			dbg.put(">>>>>>>>>>>tree visible");
 			w.ShowWindow (core.htree, w.SW_SHOW);
+		endif;
+		
+		if (testz (EXPLORER_D, settings.winview)) then
+			w.ShowWindow( core.hexplorer, w.SW_SHOW);
 		endif;
 		
 		// if the previeous session had status bar active, update the vertical split

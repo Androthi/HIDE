@@ -1,6 +1,6 @@
 const
 
-	hide_version	:string := "HIDE 1.7.19";
+	hide_version	:string := "HIDE 1.7.20";
 	hlaversion :string := "hla 2.16/stdlib 8.0";
 
 	#includeonce	("os.hhf")
@@ -150,20 +150,21 @@ const
 	STATUS	:= @{1};
 	OUTPUT	:= @{2};
 	NOTES_A	:= @{3};	// depricated  -- change to scripts window in the future
-	PROP_A	:= @{4};
+	PROP_A	:= @{4};	// depricated
 	VSPLIT	:= @{5};
-	NOTES_D	:= @{6};	// depricated  -- change to scripts window in the future
+	EXPLORER_D	:= @{6};	// depricated  -- change to scripts window in the future
 	HSPLIT	:= @{7};
 	OUTPUT_D:= @{8};
 	TREE_D	:= @{9};
 	PROP_D	:= @{10};
-	TREE_A	:= @{11};
+	TREE_A	:= @{11};	// depricated
 
 
 	// used for side panel	
 	panel_closed	:=0;
 	panel_project	:=1;
 	panel_prop		:=2;
+	panel_explorer	:=3;
 		
 	enum0
 	(	// docking window messages

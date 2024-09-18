@@ -71,6 +71,7 @@ script concept,Docs,misc
 manager.hla,src,hlaunit
 Tools.khelp,Docs,khelp
 README.md,,misc
+Explorer.hla,src,hlaunit
 
 [Build Lexer]
 type=target

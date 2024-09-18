@@ -1810,7 +1810,7 @@ _close:
 	    w.SendMessage(core.hwnd,w.WM_SIZE,0,0);
 	endif;
 	or (PROP_D, settings.winview);	// force docking
-	and (! PROP_A, settings.winview); // remove anchor
+//	and (! PROP_A, settings.winview); // remove anchor
 
 _xProc_Properties:
 	popabi;

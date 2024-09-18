@@ -1,8 +1,7 @@
 unit TabTool;  
 
 #includeonce ("HIDE.hhf")
-//#includeonce	("hll.hhf")
-#includeonce	("memory.hhf")
+#includeonce ("memory.hhf")
 
 ?@nodisplay:=true;
 ?@align:=4;
@@ -12,14 +11,14 @@ unit TabTool;
 		// for panel
 		align (4);
 		strs	:dword; @nostorage;
-			dword &s_panel, &s_project, &s_properties;
+			dword &s_panel, &s_project, &s_properties, &s_explorer;
 			dword 0;
 			
 		align (4);
 		s_panel		:string :="Fold";
 		s_project	:string :="Project";
 		s_properties:string :="Properties";
-		
+		s_explorer	:string :="Explorer";
 		
 	
 	storage
@@ -121,7 +120,6 @@ USE (EBX, ESI, EDI, EDX);
 ENDUSE;		
 end tabtool_isOpen;
 
-	
 procedure Proc_TabToolSubclass(lparam:dword; wparam:dword; umsg:uns32; hwin:dword);
 begin Proc_TabToolSubclass;
 	mov(umsg,eax);
@@ -331,6 +329,11 @@ begin Panel_HideDocked;
 		if (testnz (PROP_D, settings.winview)) then
 			w.ShowWindow (core.hprop, w.SW_HIDE);
 		endif;
+	elseif (eax = core.hexplorer) then
+		if (testnz (EXPLORER_D, settings.winview)) then
+			w.ShowWindow (core.hexplorer, w.SW_HIDE);
+		endif;
+		
 	endif;
 	dbg.put("/Panel_HideDocked");
 	ret();
@@ -355,14 +358,6 @@ USE(edi, esi, ebx);
 	w.SendMessage(core.htab,w.TCM_SETCURSEL, 0,0);
 	mov (0, panel_from);
 	
-	// need to clear these in case there is junk there from previous settings versions
-	if (testnz (TREE_D, settings.winview)) then
-		and (! TREE_A, settings.winview);
-	endif;
-	if (testnz (PROP_D, settings.winview)) then
-		and (! PROP_A, settings.winview);
-	endif;
-	
 ENDUSE;
 end PanelSetup;
 
@@ -383,15 +378,6 @@ end PanelFold;
 procedure PanelActivate;
 	var
 		s	:string;
-	
-	procedure anchor_reset; @noframe;
-	begin anchor_reset;
-		toOutput ("Window is anchored, remove anchor to Dock" nl);
-		mov (panel_from, settings.panelwin);
-		PanelViewWin();
-		ret();
-	end anchor_reset;
-
 
 begin PanelActivate;
 	dbg.put ("panel activate");
@@ -405,21 +391,13 @@ begin PanelActivate;
 	mov (core.tci.pszText, eax);
 	str.cpyz (eax, s);
 	if (str.eq (s, s_project)) then
-		if (testz (TREE_A, settings.winview)) then
-			PanelProject();
-		else
-			anchor_reset();
-		endif;
-		
+		PanelProject();
 	elseif (str.eq (s, s_panel)) then
 		PanelFold();
-
 	elseif (str.eq (s, s_properties)) then
-		if (testz (PROP_A, settings.winview)) then
-			PanelProperty();
-		else
-			anchor_reset();
-		endif;
+		PanelProperty();
+	elseif (str.eq (s, s_explorer)) then
+		PanelExplorer();
 	endif;
 	w.SendMessage (core.hwnd, w.WM_SIZE, 0, 0);
 	dbg.put ("/panel activate");
@@ -440,14 +418,14 @@ begin panel_setfrom;
 	w.SendMessage(core.hpaneltab ,w.TCM_GETITEM, EAX, &core.tci);
 	mov (core.tci.pszText, eax);
 	str.cpyz (eax, s);
-
 	if (str.eq (s, s_project)) then
 		mov (panel_project, panel_from);
 	elseif (str.eq (s, s_panel)) then
 		mov (panel_closed, panel_from);
 	elseif (str.eq (s, s_properties)) then
 		mov (panel_prop, panel_from);
-
+	elseif (str.eq (s, s_explorer)) then
+		mov( panel_explorer, panel_from);
 	endif;
 	
 //		dbg.put("panel_setfrom :", panel_from);
@@ -484,6 +462,20 @@ begin PanelProperty;
 	ret();
 end PanelProperty;
 
+procedure PanelExplorer; @noframe;
+begin PanelExplorer;
+	Explorer_View ( DOCK_YES);
+	mov (panel_explorer, settings.panelwin);
+	Panel_HideDocked();
+	move (core.hexplorer, settings.panelactive);
+	w.ShowWindow (core.hexplorer, w.SW_SHOW);
+	w.ShowWindow (core.hHSplitBar, w.SW_SHOW);
+	w.SendMessage(core.hpaneltab, w.TCM_SETCURSEL, panel_explorer, 0);	
+	w.CheckMenuItem (core.hmenu,IDM_VIEW_PANEL,w.MF_BYCOMMAND | w.MF_CHECKED);
+	//prop_update();
+	ret();
+end PanelExplorer;
+
 procedure PanelViewWin; @noframe;
 begin PanelViewWin;
 	mov (settings.panelwin, eax);
@@ -496,7 +488,10 @@ begin PanelViewWin;
 		
 	case (panel_prop)
 		PanelProperty();
-			
+	
+	case (panel_explorer)
+		PanelExplorer();
+		
 	default
 		PanelFold();
 	endswitch;
@@ -515,6 +510,8 @@ begin PanelViewActive;
 				PanelProject();
 			elseif (eax = core.hprop) then
 				PanelProperty();
+			elseif (eax = core.hexplorer) then 
+				PanelExplorer();
 			endif;
 		endif;
 	else

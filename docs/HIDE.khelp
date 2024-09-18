@@ -1070,12 +1070,9 @@ This option is available with all include file-types.
 	
 [Panel]
 	The collapsable panel on the right side hosts several windows.
-Each window has a Pin button and a Close button.
+Each window has a Close button.
 
 To undock a window from the Panel, simply click on the title bar and drag the window out.
-To dock a window back into the Panel, click its tab on the Panel.
-If you wish to anchor an undocked window so that it does not dock when the its Panel tab is clicked, click on the Pin button.  The icon will change to indicate window is pinned.
-Click the Pin button againt to deactivate anchor.
 The close button hides the window and docks it back to the Panel.
 
 [Editor]

@@ -1,0 +1,283 @@
+unit explorer;
+	
+	#includeonce ("hide.hhf")
+	
+	
+	?@nodisplay:=true;
+	?@align:=4;
+
+type
+	explorerTreeHandles_t:
+		record
+			base		:dword;
+			files		:dword;
+			includes	:dword;
+			sources		:dword;
+			resources	:dword;
+			extlink		:dword;
+			misc		:dword;
+			orphans		:dword;
+		endrecord;
+
+storage	// internal variables
+	align(4);
+	handles			:explorerTreeHandles_t;
+	selType			:dword;
+	oldhtree		:dword;
+	selMem			:pointer to fList.fnode;
+	eview_curSel	:dword;
+
+	tvins	:w.TV_INSERTSTRUCT;
+	tvhtst	:w.TV_HITTESTINFO;
+	tvi		:w.TV_ITEM;
+	pt		:hide.point_t;
+	treebuffer	:byte[w.MAX_PATH];
+	//pviewmenu	:dword;
+	align(4);	
+
+procedure Explorer_View (message:dword);
+	
+begin Explorer_View;
+
+	mov(message,eax);		
+	if (eax = DOCK_YES) then
+		w.GetWindowLong(core.hexplorer,w.GWL_STYLE);
+		and(!(w.WS_SIZEBOX),eax);
+		w.SetWindowLong(core.hexplorer,w.GWL_STYLE,eax);
+		w.SetParent(core.hexplorer,core.hwnd);
+		mov(eax,oldhtree);
+		or(EXPLORER_D,settings.winview);
+		
+	elseif (eax = DOCK_NO) then
+
+		mov (settings.panelactive, eax);
+		if (eax = core.hexplorer) then
+			PanelFold();
+		endif;
+
+		w.SetParent(core.hexplorer,NULL);
+		mov(0,oldhtree);
+		w.GetWindowLong(core.hexplorer,w.GWL_STYLE);
+		or(w.WS_SIZEBOX,eax);
+		w.SetWindowLong(core.hexplorer,w.GWL_STYLE,eax);
+		w.ShowWindow (core.hexplorer, w.SW_SHOW);
+		and(!(EXPLORER_D),settings.winview);
+	
+	elseif (eax = w.SW_HIDE) then
+		w.ShowWindow (core.hexplorer, w.SW_HIDE);	
+    endif;
+    
+    w.SendMessage(core.hwnd,w.WM_SIZE,0,0);
+    w.SetFocus (core.hwnd);
+    
+end Explorer_View;
+
+
+procedure Proc_Explorer (lparam:dword; wparam:dword; umsg:uns32; hwin:dword);
+	var
+		chrg	:w.CHARRANGE;
+		himl	:dword;
+		hbmp	:dword;
+		sbuffer	:string;
+
+
+begin	Proc_Explorer;
+
+	mov( str.talloc(1000), sbuffer );
+	mov(umsg,eax);
+	cmp(eax,w.WM_NOTIFY);
+	je _notify;
+	cmp(eax,w.WM_COMMAND);
+	je _command;
+	cmp(eax,w.WM_SIZE);
+	je _size;
+	cmp(eax,w.WM_MOVING);
+	je _changing;
+	cmp(eax,w.WM_CLOSE);
+	je _close;
+	cmp(eax,w.WM_MOUSEACTIVATE);
+	je _activate;
+	cmp(eax,w.WM_INITDIALOG);
+	je _init;
+	cmp(eax,w.WM_DESTROY);
+	je _destroy;
+	jmp xProc_Explorer;
+		
+	_changing:
+			cmp(oldhtree,0);
+			je xProc_Explorer;
+			Explorer_View(DOCK_NO);
+			jmp xProc_Explorer;
+		
+	_command:	
+			mov(wparam,eax);
+			mov(eax,edx);
+			shr(16,edx);
+			and($0ffff,eax);
+			
+//> delete this section?
+			jmp xProc_Explorer;
+		
+	_notify:	
+			cmp(wparam,ID_EXPLORER_TREE);
+			jne xProc_Explorer;
+			mov(lparam,edx);
+			mov((type w.NM_TREEVIEW [edx]).hdr.code,eax);
+			cmp(eax,w.NM_DBLCLK);
+			je _leftdoubleclick;
+			cmp(eax,w.TVN_SELCHANGEDA);
+			je _selchanged;
+			cmp(eax,w.NM_RCLICK);
+			je _rightclick;
+			
+			jmp xProc_Explorer;
+		
+		_leftdoubleclick:
+//				mov(selType,eax);
+//				if (eax = IMG_FILE || eax = IMG_RC || eax = IMG_PROGRAM || eax = IMG_UNIT || eax = IMG_BINARY) then
+//					if (! selectOpenMem (selMem)) then
+//						hide_openNode( selMem );
+//					endif;
+//
+//				elseif (eax = IMG_TARGET || eax = IMG_NOTARGET) then
+//					mov (selMem, eax);
+//					if ( eax = 0) then
+//						toOutput ("No target file selected, add one using Project Manager" nl);
+//					else
+//						if (! selectOpenMem (selMem)) then
+//							hide_openNode( selMem );
+//						endif;
+//					endif;
+//				endif;
+//				w.PostMessage(core.hwnd, w.WM_SETFOCUS, 0, 0);
+				jmp xProc_Explorer;
+
+		_selchanged:
+			call _GetItem;
+			mov((type w.TV_ITEM [edx]).iImage,eax);
+			mov(eax,selType);
+			mov ((type w.TV_ITEM [edx]).lParam, eax);
+			mov (eax, selMem);
+
+			jmp xProc_Explorer;
+		
+		_rightclick:
+				w.GetCursorPos (tvhtst.pt);
+				w.ScreenToClient (core.hexplorertree, tvhtst.pt);
+				w.SendMessage(core.hexplorertree,w.TVM_HITTEST,0,&tvhtst);
+				mov(tvhtst.flags,eax);
+				and(w.TVHT_ONITEM,eax);
+				jz _exitrightclick;
+				mov(tvhtst.hItem,eax);
+				mov(eax,tvi.hItem);
+				mov(w.TVIF_HANDLE | w.TVIF_PARAM | w.TVIF_TEXT,tvi.imask);
+				
+				move( &treebuffer ,tvi.pszText);
+				mov(@size(treebuffer),tvi.cchTextMax);
+				
+				w.SendMessage(core.htreeview,w.TVM_SELECTITEM,w.TVGN_CARET,tvi.hItem);
+				w.SendMessage(core.htreeview,w.TVM_GETITEM,0,&tvi);
+				
+				str.cpyz (&treebuffer, sbuffer);
+				mov (tvi.lParam, eax);
+//				if (eax) then
+//					mov (eax, eview_curSel);
+//					buildProjectViewMenu ([eax]);
+//					w.GetCursorPos(&pt);
+//					w.TrackPopupMenu (eviewmenu, w.TPM_LEFTALIGN | w.TPM_RIGHTBUTTON, pt.x, pt.y, 0, core.hwnd, NULL);
+//				endif; 
+
+			_exitrightclick:
+				jmp xProc_Explorer;
+		
+	_size:
+		w.GetClientRect(hwin, &rect);
+		mov	(rect.bottom,eax);
+		sub	(rect.top,eax);
+		// eax = height
+		w.MoveWindow(core.hexplorertree,0,rect.top,rect.right,eax,true);
+		call _savepos;
+		w.InvalidateRect(core.hexplorertree,NULL,true);
+		jmp xProc_Explorer;
+
+	_init:	
+		pushabi;
+		mov (hwin, eax);
+		mov (eax, core.hexplorer);
+//		w.ImageList_Create(16,16,w.ILC_COLOR8,TREEICONS,TREEICONS);
+//		mov(eax,himl);
+//		w.LoadBitmap(core.hinst,val IDB_TRVMAP);
+//		mov(eax,hbmp);
+//		w.ImageList_Add(himl,hbmp,NULL);
+//		w.DeleteObject(hbmp);
+		w.GetDlgItem(hwin,ID_EXPLORER_TREE);
+		mov(eax,core.hexplorertree);
+//		w.SendMessage(core.htreeview,w.TVM_SETIMAGELIST,0,himl);
+		if (testnz (EXPLORER_D, settings.winview)) then
+			Explorer_View (DOCK_YES);
+		endif;
+		w.MoveWindow(hwin,settings.explorerwin.x,settings.explorerwin.y,settings.explorerwin.wt,settings.explorerwin.ht,true);
+		popabi;
+		jmp xProc_Explorer;
+
+	_activate:
+			w.SetForegroundWindow(core.hwnd);
+			jmp xProc_Explorer;
+		
+	_destroy:
+			call _savepos;
+			jmp xProc_Explorer;
+		
+	_close:	
+		call _savepos;
+		Explorer_View( w.SW_HIDE);
+		if (testnz (EXPLORER_D, settings.winview)) then
+			PanelFold();
+		    w.SendMessage(core.hwnd,w.WM_SIZE,0,0);
+		endif;
+		or (EXPLORER_D, settings.winview);	// force docking
+
+			//float		
+		
+xProc_Explorer:
+		xor(EAX,EAX);
+		exit Proc_Explorer;
+		
+// internal procedures
+_GetItem:
+//		lea(edx,(type w.NM_TREEVIEW [edx]).itemNew);
+//		mov(w.TVIF_PARAM | w.TVIF_TEXT | w.TVIF_IMAGE,(type w.TV_ITEM [edx]).imask);
+//		lea(eax,treebuffer);
+//		mov(eax,(type w.TV_ITEM[edx]).pszText);
+//		mov(@size(buffer),(type w.TV_ITEM [edx]).cchTextMax);
+//		push(edx);
+//		w.SendMessage(core.htreeview,w.TVM_GETITEM,0,edx);
+//		pop(edx);
+		ret();
+
+_savepos:
+		w.GetWindowLong(hwin,w.GWL_STYLE);
+		test(w.WS_MAXIMIZE,eax);
+		jnz _setmax;
+		test(w.WS_MINIMIZE,eax);
+		jnz _retsavepos;
+		mov(false,settings.explorerwin.fmax);
+		w.GetWindowRect(hwin,&rect);
+		mov(rect.left,settings.explorerwin.x);
+		mov(rect.top,settings.explorerwin.y);
+		mov(rect.right,eax);
+		sub(rect.left,eax);
+		mov(eax,settings.explorerwin.wt);
+		mov(rect.bottom,eax);
+		sub(rect.top,eax);
+		mov(eax,settings.explorerwin.ht);
+		ret();
+	
+_setmax:	
+		mov(true,settings.explorerwin.fmax);
+_retsavepos:
+	ret();
+
+end Proc_Explorer;
+
+end explorer;

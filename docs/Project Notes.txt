@@ -29,6 +29,10 @@ HIDE
 	
 Output folder may be changed using Project Manager
 	
+Changing the .rc file using Resed.
 
-
+Resed needs to be setup with some options:
+Name Export Format = hla
+Name Export Output to File = rsrc.hhf
+Set Behavior option 'style as hex'
 

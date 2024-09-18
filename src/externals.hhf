@@ -101,6 +101,7 @@ procedure PanelSetup (hwin:dword); @external;
 procedure PanelFold; @external;
 procedure PanelProject; @external;
 procedure PanelProperty; @external;
+procedure PanelExplorer; @external;
 procedure PanelViewWin; @external;
 procedure PanelViewActive; @external;
 procedure PanelActivate; @external;
@@ -114,9 +115,10 @@ procedure Output_View (message:dword);	@external;
 procedure WriteOutput ( _msg_:string);	@external;
 procedure CancelTimerCloseOutput; @external;
 
-// properties
-procedure Proc_Properties(lparam:dword; wparam:dword; umsg:uns32; hwin:dword);			@external;
+procedure Proc_Explorer(lparam:dword; wparam:dword; umsg:uns32; hwin:dword);	@external;
+procedure Proc_Properties(lparam:dword; wparam:dword; umsg:uns32; hwin:dword);	@external;
 procedure ScanProject;			@external;
+procedure Explorer_View (message:dword); @external;
 procedure Property_View (message:dword); @external;
 procedure FindDeclare (src:dword; key:dword);	@external;
 procedure JumpProgramBegin; @external;

@@ -1,7 +1,6 @@
 unit TreeTool;
 
 #includeonce ("HIDE.hhf")
-//#includeonce	("hll.hhf")
 
 	?@nodisplay:=true;
 	?@align:=4;
@@ -388,9 +387,6 @@ USE (ESI, EDI);
 				w.AppendMenu ( pviewmenu, w.MF_BYPOSITION | w.MF_ENABLED | w.MF_STRING,
 								PVIEW_OPENWITHKHELP, "Open With kHelp");
 								
-				//w.AppendMenu ( pviewmenu, w.MF_BYPOSITION | w.MF_ENABLED | w.MF_STRING,
-				//				PVIEW_EDIT, "Edit Docs");
-
 			case (type_kmake)
 				w.AppendMenu ( pviewmenu, w.MF_BYPOSITION | w.MF_ENABLED | w.MF_STRING,
 								PVIEW_KMAKETARGET, "Execute Script");
@@ -601,7 +597,7 @@ begin	Proc_ProjectView;
 		    w.SendMessage(core.hwnd,w.WM_SIZE,0,0);
 		endif;
 		or (TREE_D, settings.winview);	// force docking
-		and (! TREE_A, settings.winview); // remove anchor
+//		and (! TREE_A, settings.winview); // remove anchor
 
 			//float		
 		

@@ -181,6 +181,8 @@ type
 			hdialogfont		:dword;
 			htreeview		:dword;
 			htree			:dword;
+			hexplorer		:dword;
+			hexplorertree	:dword;
 			hprop			:dword;
 			hfind			:dword;
 			hmenu			:dword;
@@ -220,6 +222,7 @@ type
 			edtwin		:WINPOS;	// saves position of main window
 			outwin		:WINPOS;	// saves position of undocked output window
 			treewin		:WINPOS;	// saves position of undocked treeview window
+			explorerwin	:WINPOS;
 			propwin		:WINPOS;	// saves position of undocked properties window
 			hsplitbar	:WINPOS;	// saves position of long horizontal split bar
 			vsplitbar	:WINPOS;	// saves position of long vertical split bar
