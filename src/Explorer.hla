@@ -1,7 +1,7 @@
 unit explorer;
 	
 	#includeonce ("hide.hhf")
-	
+	#includeonce ("filesys.hhf")	
 	
 	?@nodisplay:=true;
 	?@align:=4;
@@ -16,7 +16,6 @@ type
 			resources	:dword;
 			extlink		:dword;
 			misc		:dword;
-			orphans		:dword;
 		endrecord;
 
 storage	// internal variables
@@ -72,6 +71,51 @@ begin Explorer_View;
     
 end Explorer_View;
 
+procedure Explorer_AddNode(hparent:dword; item:string);
+begin Explorer_AddNode;
+	pushad;
+	mov (hparent, tvins.hParent);
+	mov (w.TVIF_TEXT,tvins.item.imask);
+	mov (item, tvins.item.pszText);
+	w.SendMessage (core.hexplorertree, w.TVM_INSERTITEM, 0, &tvins);
+	popad;
+end Explorer_AddNode;
+
+procedure Explorer_ReadFiles(hparent:dword);
+	var
+		itemstr	:string;
+		curdir	:string;
+		
+begin Explorer_ReadFiles;
+	mov(str.talloc(500), curdir);
+	foreach filesys.itemInCwd() do
+		
+		filesys.gwd(curdir);
+		mov(eax, itemstr);
+		if(filesys.isDir(itemstr)) then
+			toOutput("Directory :", itemstr, nl);
+			Explorer_AddNode(hparent, itemstr);
+			filesys.cd(itemstr);
+			Explorer_ReadFiles(eax);
+			filesys.cd(curdir);
+		elseif(filesys.isFile(itemstr)) then
+			toOutput("File :", itemstr, nl);
+		else
+			toOutput("something else", nl);
+		endif;
+		str.free(itemstr);
+	endfor;
+end Explorer_ReadFiles;
+
+
+procedure Explorer_Reload;
+begin Explorer_Reload;
+
+	w.SendMessage(core.hexplorertree,w.TVM_DELETEITEM,0,w.TVI_ROOT);
+	mem2.fillMem (&handles, @size (explorerTreeHandles_t), 0);
+	Explorer_ReadFiles(NULL); // null for base node
+	
+end Explorer_Reload;
 
 procedure Proc_Explorer (lparam:dword; wparam:dword; umsg:uns32; hwin:dword);
 	var
@@ -217,6 +261,7 @@ begin	Proc_Explorer;
 			Explorer_View (DOCK_YES);
 		endif;
 		w.MoveWindow(hwin,settings.explorerwin.x,settings.explorerwin.y,settings.explorerwin.wt,settings.explorerwin.ht,true);
+		Explorer_Reload();
 		popabi;
 		jmp xProc_Explorer;
 
