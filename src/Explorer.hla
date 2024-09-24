@@ -71,14 +71,12 @@ begin Explorer_View;
     
 end Explorer_View;
 
-procedure Explorer_AddNode(hparent:dword; item:string);
+procedure Explorer_AddNode(hparent:dword; item:string); @returns("EAX");
 begin Explorer_AddNode;
-	pushad;
 	mov (hparent, tvins.hParent);
 	mov (w.TVIF_TEXT,tvins.item.imask);
 	mov (item, tvins.item.pszText);
 	w.SendMessage (core.hexplorertree, w.TVM_INSERTITEM, 0, &tvins);
-	popad;
 end Explorer_AddNode;
 
 procedure Explorer_ReadFiles(hparent:dword);
@@ -90,18 +88,22 @@ begin Explorer_ReadFiles;
 	mov(str.talloc(500), curdir);
 	foreach filesys.itemInCwd() do
 		
-		filesys.gwd(curdir);
 		mov(eax, itemstr);
+		filesys.gwd(curdir);
+
 		if(filesys.isDir(itemstr)) then
-			toOutput("Directory :", itemstr, nl);
+			//toOutput("Directory :", itemstr, nl);
 			Explorer_AddNode(hparent, itemstr);
+			push(eax);
 			filesys.cd(itemstr);
+			pop(eax);
 			Explorer_ReadFiles(eax);
 			filesys.cd(curdir);
 		elseif(filesys.isFile(itemstr)) then
-			toOutput("File :", itemstr, nl);
+			//toOutput("	File :", itemstr, nl);
+			Explorer_AddNode(hparent, itemstr);
 		else
-			toOutput("something else", nl);
+			//toOutput("something else", nl);
 		endif;
 		str.free(itemstr);
 	endfor;
@@ -159,7 +161,6 @@ begin	Proc_Explorer;
 			shr(16,edx);
 			and($0ffff,eax);
 			
-//> delete this section?
 			jmp xProc_Explorer;
 		
 	_notify:	
@@ -197,11 +198,11 @@ begin	Proc_Explorer;
 				jmp xProc_Explorer;
 
 		_selchanged:
-			call _GetItem;
-			mov((type w.TV_ITEM [edx]).iImage,eax);
-			mov(eax,selType);
-			mov ((type w.TV_ITEM [edx]).lParam, eax);
-			mov (eax, selMem);
+			//call _GetItem;
+			//mov((type w.TV_ITEM [edx]).iImage,eax);
+			//mov(eax,selType);
+			//mov ((type w.TV_ITEM [edx]).lParam, eax);
+			//mov (eax, selMem);
 
 			jmp xProc_Explorer;
 		
@@ -223,7 +224,8 @@ begin	Proc_Explorer;
 				w.SendMessage(core.htreeview,w.TVM_GETITEM,0,&tvi);
 				
 				str.cpyz (&treebuffer, sbuffer);
-				mov (tvi.lParam, eax);
+				toOutput(sbuffer);
+//				mov (tvi.lParam, eax);
 //				if (eax) then
 //					mov (eax, eview_curSel);
 //					buildProjectViewMenu ([eax]);
@@ -281,8 +283,6 @@ begin	Proc_Explorer;
 		    w.SendMessage(core.hwnd,w.WM_SIZE,0,0);
 		endif;
 		or (EXPLORER_D, settings.winview);	// force docking
-
-			//float		
 		
 xProc_Explorer:
 		xor(EAX,EAX);

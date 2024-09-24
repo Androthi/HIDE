@@ -404,7 +404,6 @@ procedure find_replaceAll;
 			mov (eax, ft.chrgText.cpMax);
 			mov (eax, ft.chrgText.cpMin);
 			w.SendMessage (listebx.hwnd, w.EM_EXSETSEL, 0, &ft.chrgText);
-			//dbg.put ("after = ", ft.chrgText.cpMin, "  ", ft.chrgText.cpMax);
 			jmp next;
 		endif;
 		

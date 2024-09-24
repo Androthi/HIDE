@@ -475,7 +475,6 @@ begin	Proc_ProjectView;
 			shr(16,edx);
 			and($0ffff,eax);
 			
-//> delete this section?
 			jmp xProc_ProjectView;
 		
 	_notify:	
