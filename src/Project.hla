@@ -1192,6 +1192,9 @@ begin open;
 		TreeToolSetup();
 		repaintAll();
 		w.SendMessage( core.hwnd, HIDE_SETSTATUS, STATUS_PROJ, zProject );
+		
+		Explorer_Reload();
+
 	endif;
 	
 	w.SendMessage( core.hwnd, w.WM_SETFOCUS, 0, 0);

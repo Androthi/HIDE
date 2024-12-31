@@ -1392,10 +1392,6 @@ program HIDE_MAIN;
 		ENDUSE;
  	end hide_closeNode;
 
-
-
-
-	
 	procedure Menu_NewFile; @noframe;
 	begin Menu_NewFile;
 		//dbg.put ("Menu_NewFile");
@@ -1580,8 +1576,6 @@ program HIDE_MAIN;
 		if (ebx) then
 			if (! querySave ([ebx])) then
 				hide_closeNode( [ebx] );
-				//tabtool_close ([ebx]);
-				//w.DestroyWindow (listebx.hwnd);
 				
 				if (! listebx.job) then
 				

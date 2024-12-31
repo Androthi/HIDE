@@ -52,8 +52,10 @@ procedure projectview_checkUpdate (var fnode:fList.fnode);
 	var
 		tm		:qword;
 		changed	:BOOL;
+		sbuffer	:string;
 		
 begin projectview_checkUpdate;
+	mov(str.talloc(1000), sbuffer);
 USE (EBX);
 	//dbg.put ("projectview_checkUpdate");
 	mov (false, changed);
@@ -75,12 +77,12 @@ USE (EBX);
 			mov (eax,tvi.hItem);
 			mov (w.TVIF_TEXT, tvi.imask);
 			mov (@size(treebuffer),tvi.cchTextMax);
-			str.cpy ("", stringbuffer);
+			str.cpy ("", sbuffer);
 			if (changed) then
-				str.put (stringbuffer, "* ");
+				str.put (sbuffer, "* ");
 			endif;
-			str.put2 (stringbuffer, listebx.id);
-			move (stringbuffer, tvi.pszText);
+			str.put2 (sbuffer, listebx.id);
+			move (sbuffer, tvi.pszText);
 			w.SendMessage (core.htreeview, w.TVM_SETITEM, 0, &tvi);
 		endif;
 	endif;
@@ -177,8 +179,6 @@ procedure TreeToolSetup;
 			mov (eax, handles.resources);
 			TrvAddNode (handles.base, "Files", NULL, IMG_FOLDER);
 			mov (eax, handles.files);
-			//TrvAddNode (handles.base, "Linked Objects", NULL, IMG_FOLDER);
-			//mov (eax, handles.extlink);
 		endif;
 		
 
@@ -538,7 +538,6 @@ begin	Proc_ProjectView;
 				w.SendMessage(core.htreeview,w.TVM_GETITEM,0,&tvi);
 				
 				str.cpyz (&treebuffer, stringbuffer);
-				dbg.put ("right click on ", stringbuffer);
 				mov (tvi.lParam, eax);
 				if (eax) then
 					mov (eax, pview_curSel);

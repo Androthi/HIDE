@@ -89,6 +89,10 @@ procedure Project_View ( message:dword);	@external;
 procedure projectview_checkUpdate (var fnode:fList.fnode); @returns ("EAX"); @external;
 procedure projectview_checkUpdates; @external;
 
+// explorer
+procedure Explorer_Reload; @external;
+
+
 // tabtool
 procedure tabtool_activate; @external;
 procedure tabtool_add (var node:fList.fnode); @external;

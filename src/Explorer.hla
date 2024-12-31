@@ -6,21 +6,9 @@ unit explorer;
 	?@nodisplay:=true;
 	?@align:=4;
 
-type
-	explorerTreeHandles_t:
-		record
-			base		:dword;
-			files		:dword;
-			includes	:dword;
-			sources		:dword;
-			resources	:dword;
-			extlink		:dword;
-			misc		:dword;
-		endrecord;
 
 storage	// internal variables
 	align(4);
-	handles			:explorerTreeHandles_t;
 	selType			:dword;
 	oldhtree		:dword;
 	selMem			:pointer to fList.fnode;
@@ -114,7 +102,6 @@ procedure Explorer_Reload;
 begin Explorer_Reload;
 
 	w.SendMessage(core.hexplorertree,w.TVM_DELETEITEM,0,w.TVI_ROOT);
-	mem2.fillMem (&handles, @size (explorerTreeHandles_t), 0);
 	Explorer_ReadFiles(NULL); // null for base node
 	
 end Explorer_Reload;
@@ -263,7 +250,6 @@ begin	Proc_Explorer;
 			Explorer_View (DOCK_YES);
 		endif;
 		w.MoveWindow(hwin,settings.explorerwin.x,settings.explorerwin.y,settings.explorerwin.wt,settings.explorerwin.ht,true);
-		Explorer_Reload();
 		popabi;
 		jmp xProc_Explorer;
 

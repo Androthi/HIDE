@@ -1547,7 +1547,6 @@ USE (ebx, edx);
 				hide_openNode( [ebx] );
 			endif;
 			pop( eax );  // linenumber
-			//mov (propedx.line, eax);
 			
 		else
 			// error, no nodes!

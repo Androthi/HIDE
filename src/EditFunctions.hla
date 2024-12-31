@@ -419,25 +419,29 @@ end RAEdit_openNew;
 
 proc
 	updateAction :procedure( var fnode:fList.fnode );
+		var
+			sbuffer	:string;
+			
 	begin updateAction;
+		mov(str.talloc(1000), sbuffer);
 		USE( EBX, EAX );
 		mov( fnode, ebx );
 		
-		filesys.extractExt( listebx.id, stringbuffer );
+		filesys.extractExt( listebx.id, sbuffer );
 		
-		if( str.ieq( stringbuffer, "hla" ) ) then
+		if( str.ieq( sbuffer, "hla" ) ) then
 	
 			mov( type_hla, listebx.ftype );
 		
-		elseif( str.ieq( stringbuffer, "hhf") ) then
+		elseif( str.ieq( sbuffer, "hhf") ) then
 	
 			mov( type_hhf, listebx.ftype );
 		
-		elseif( str.ieq( stringbuffer, "odin" )) then
+		elseif( str.ieq( sbuffer, "odin" )) then
 			
 			mov( type_odin, listebx.ftype );
 			
-		elseif( str.ieq( stringbuffer, "go" )) then
+		elseif( str.ieq( sbuffer, "go" )) then
 			
 			mov( type_go, listebx.ftype );
 		
@@ -674,7 +678,11 @@ proc
 	end RAEdit_setFormat;
 
 procedure saveFileAs (var node:fList.fnode);
+	var
+		sbuffer	:string;
+		
 begin saveFileAs;
+	mov(str.talloc(1000), sbuffer);
 USE (EBX);
 	dbg.put ("saveFileAs");
 	mov (node, ebx);
@@ -686,15 +694,15 @@ USE (EBX);
 	if ( str.eq (listebx.id, "Untitled")) then
 		if (autountitled) then
 			
-			env2.get ("hlatmp", stringbuffer);
+			env2.get ("hlatmp", sbuffer);
 			if(eax) then
-				str.put2 ( stringbuffer, dirsep_c, "temp.hla");
-				WriteToFile (listebx.hwnd, stringbuffer);
+				str.put2 ( sbuffer, dirsep_c, "temp.hla");
+				WriteToFile (listebx.hwnd, sbuffer);
 				GetFileTime (listebx.relative, listebx.writetime);
 				str.cpy ("temp.hla", listebx.id);
 				mov( type_hla, listebx.ftype );
 				str.free (listebx.fullname);
-				str.a_cpy (stringbuffer);
+				str.a_cpy (sbuffer);
 				mov (eax, listebx.fullname);
 				tabtool_update ([ebx]);
 				prop_updateMem ([ebx]);

@@ -153,20 +153,16 @@ begin Proc_OutputEdit;
 				endfor;
 				if (! selectOpen (_extFileName)) then
 					// is it a project file?
-					dbg.put ("file: ", _extFileName);
 					if  ( fileList.findFullname(_extFileName)) then
-						//dbg.put ("found :", listeax.id);
 						mov (eax, ebx);
 						if (! selectOpenMem ([ebx])) then
 							hide_openNode( [ebx] );
-							//tabtool_add ([ebx]);
 						endif;
 
 					elseif (fileList.findID (_extFileName)) then
 						mov (eax, ebx);
 						if (! selectOpenMem ([ebx])) then
 							hide_openNode( [ebx] );
-							//tabtool_add ([ebx]);
 						endif;
 						
 					else
@@ -182,7 +178,6 @@ begin Proc_OutputEdit;
 				conv.strTou32(_extLineNum,0);
 				dec(eax);
 				mov(eax,_linenum);
-				//dbg.put("line number = ",_linenum);
 				
 				w.SendMessage(listebx.hwnd,w.EM_LINEINDEX,_linenum,0);
 				mov	(eax, _chrg.cpMin);
