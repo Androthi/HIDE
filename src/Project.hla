@@ -13,7 +13,8 @@ Unit Project_unit;
 
 const	// local	
 
-	PROJ_VERSION	:=10;		// current .hpr version, used for compatibility checks between updates
+	PROJ_VERSION	:= 10;		// current .hpr version, used for compatibility checks between updates
+	PROJ_NEWVERSION := 20;		//+ migrating to new project format
 	delims			:cset := {',',#0};
 
 	state_deselectall	:= 0;
