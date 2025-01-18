@@ -4113,6 +4113,10 @@ proc
 		w.CreateDialogParam(core.hinst,val ID_EXPLORER, hwin, &Proc_Explorer, false);
 		w.SendMessage(core.hpaneltab, w.TCM_SETCURSEL, settings.panelwin, 0);
 		
+		w.ShowWindow (core.htree, w.SW_HIDE);
+		w.ShowWindow (core.hprop, w.SW_HIDE);
+		w.ShowWindow (core.hexplorer, w.SW_HIDE);
+		
 		PanelViewWin();
 				
 		if (testz (PROP_D, settings.winview)) then
