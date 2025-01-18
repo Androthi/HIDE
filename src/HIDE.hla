@@ -2291,38 +2291,9 @@ proc
 	begin Menu_ProjectCustomNew;
 		mov (str.talloc (pathsize_c), s);
 		pushabi;
-		InitOF(	"New Custom Project", NULL, type_all);
-		if ( GetSaveName() ) then
-			mov (eax, openfile_s);
-			str.cpy (openfile_s, s);
-			str.free (openfile_s);
-			dbg.put("got open file name :", openfile_s);
-			//WriteToFile (listebx.hwnd, s);
-
-			// if this is project file, open it as a new RAEdit window
-//			if (listebx.job) then
-//				if (selectOpen (s)) then
-//
-//					mov (eax, ebx);
-//					w.SendMessage (listebx.hwnd, w.EM_SETSEL, 0, -1);
-//					w.SendMessage(listebx.hwnd, w.WM_CLEAR,0,0);
-//					RAEdit_loadFile ([ebx], s);
-//
-//				else
-//					hide_openFile (s);
-//					Recent_Insert( s );
-//					UpdateMenu();
-//				endif;
-//				
-//			else
-//				// just update curnode without creating a new node
-//				str.free (listebx.fullname);
-//				str.free (listebx.id);
-//				str.a_cpy (s);
-//				mov (eax, listebx.fullname);
-//				
-//			endif;
-		endif;
+		if ( getStringInput( "New Empty Project", s )) then
+			project.new_custom( s );
+		endif;	
 		updateDisplay (update_general);
 		popabi;		
 	end Menu_ProjectCustomNew;

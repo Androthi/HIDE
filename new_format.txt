@@ -16,7 +16,7 @@ wscan header=			- needed?
 [HPR Folders]			- depricate section
 
 						- these are basicaaly build steps
-[HPR Jobs]				- jobs to buil, in order
+[HPR Jobs]				- jobs to build, in order
 [HELD Jobs]				- jobs to build, upon request
 
 						- each HPR job has unique sections

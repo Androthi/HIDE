@@ -37,6 +37,7 @@ procedure Proc_KeyWords (lparam:dword; wparam:dword; umsg:uns32; hwin:dword);	@e
 
 
 // editfunctions
+procedure SetKeyWordsByFile(var fname:string); @external;
 procedure SetKeyWords(var node:fList.fnode); @external;
 procedure saveAll; @external;
 procedure closeAll; @external;
@@ -185,6 +186,7 @@ namespace project;
 		findscope	:dword;		@external;
 	
 	procedure new (projname:string); @returns ("EAX"); @external;
+	procedure new_custom (projname:string); @returns ("EAX"); @external;
 	procedure open (fname:string); @external;
 	procedure addFileNode (fname:string; ftype:string); @returns ("EAX"); @external;
 	procedure switchType (ftype:string); @returns ("EAX"); @external;

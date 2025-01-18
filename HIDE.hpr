@@ -72,6 +72,7 @@ manager.hla,src,hlaunit
 Tools.khelp,Docs,khelp
 README.md,,misc
 Explorer.hla,src,hlaunit
+new_format.txt,,misc
 
 [Build Lexer]
 type=target
