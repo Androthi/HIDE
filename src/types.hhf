@@ -196,6 +196,8 @@ type
 			tci				:w.TC_ITEM;
 			col				:RACOLOR;
 
+			new_format		:boolean; // transitioning phase
+
 			// string data
 			projectpath		:string;
 			tplpath			:string;

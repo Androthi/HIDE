@@ -13,7 +13,8 @@ Unit Project_unit;
 
 const	// local	
 
-	PROJ_VERSION	:=10;		// current .hpr version, used for compatibility checks between updates
+	PROJ_VERSION	:= 10;		// current .hpr version, used for compatibility checks between updates
+	PROJ_NEWVERSION := 20;		//+ migrating to new project format
 	delims			:cset := {',',#0};
 
 	state_deselectall	:= 0;
@@ -252,6 +253,49 @@ USE (ESI, EDI, EBX);
 //	dbg.put ("/openNonText");
 ENDUSE;
 end openNonText;
+
+procedure project.new_custom( projname:string);
+	var
+		pname	:string;
+		pdir	:string;
+		sbuffer	:string;
+		hpr		:tConfig;
+		
+begin new_custom;
+	
+	mov (str.talloc (pathsize_c), pname);
+	mov (str.talloc (pathsize_c), pdir);
+	mov (str.talloc (1000), sbuffer );
+	USE (ESI, EDI, EBX);
+	str.cpy (projname, pname);
+	project.close();	// close existing project, if any
+	
+	str.put (sbuffer, core.projectpath, dirsep_c, pname);
+	dbg.put ("New project at: ", sbuffer);
+	try
+		filesys.mkdir( sbuffer );
+		filesys.cd ( sbuffer );
+		hpr.create();
+		str.put2 (pname, ".hpr");
+		iniesi.writeUns ("HPR Settings", "Project Version", PROJ_NEWVERSION);
+		iniesi.writeHex ("HPR Settings", "options", project.options);
+		movzx (project.tab, eax);
+		iniesi.writeUns ("HPR Settings", "tab", eax);
+		iniesi.write (pname);
+		iniesi.destroy();
+		
+		filesys.cd (core.projectpath);
+		project.open (pname);
+		or (1, eax);
+
+	anyexception
+		error.warning ("A project by that name already exists");
+		xor (eax, eax);
+
+	endtry;
+
+ENDUSE;
+end new_custom;
 
 
 procedure project.new (projname:string);
@@ -959,7 +1003,7 @@ procedure project.open (fname:string);
 		buf			:tBuffer;
 		jobcount	:uns32;
 		filecount	:uns32;
-	
+		
 begin open;
 	
 	mov (str.talloc (pathsize_c), hprname_s);	// absolute name of .hpr
@@ -969,7 +1013,7 @@ begin open;
 	mov (str.talloc (pathsize_c), folder);
 	mov (str.talloc (pathsize_c), ftype);
 	mov (str.talloc (1000), sbuffer);
-
+	mov (false, core.new_format);
 	dbg.enters("project.open");
 	pushabi;
 	
@@ -1023,6 +1067,8 @@ begin open;
 			error.warning( "Older project versions not supported.");
 			str.free( project.id );
 			jmp exitopen;
+		elseif ( eax >= PROJ_NEWVERSION ) then
+			mov (true, core.new_format);
 		endif;
 	else
 		
@@ -1036,165 +1082,263 @@ begin open;
 	endif;
 	
 	// 		setup project
-	
-	mov (&project.hpr, esi);
-	if (iniesi.readUns ("HPR Settings", "tab")) then
-		if( ! al ) then
-			inc( al );
-		endif;
-		mov (al, project.tab);
-	endif;
-	
-	if (iniesi.readHex ("HPR Settings", "options")) then
-		mov (eax, project.options);
-	endif;
-	
-	if ( iniesi.readInt ("HPR Settings", "backups")) then
-		mov (al, project.backups);
-	endif;
-	
-	if (iniesi.readHex ("HPR Settings", "findscope")) then
-		mov (eax, project.findscope);
-	endif;
-	
-	if (iniesi.readHex ("HPR Settings", "findflags")) then
-		mov (eax, project.findflags);
-	endif;
-
-	// read jobs
-	
-	USE (ESI);
-		jobList.create();
-	ENDUSE;
-
-	iniesi.getItemCount ("HPR Jobs");
-	mov (eax, jobcount);
-	xor (ecx, ecx);
-	while (ecx < jobcount) do
-		iniesi.readItem( "HPR Jobs", ecx, jobname );
-		push( esi );
-		jobList.appendJob( jobname );
-		pop( esi );
-		
-		mov( eax, curjob );
-		mov( eax, ebx );
-
-		mov( true, jobebx.inQueue );
-		iniesi._readString( jobname, "type", sbuffer );
-
-		project.switchType( sbuffer );
-		mov( eax, jobebx.job_type );
-		
-		// read job files into filelist
-		str.put( s, jobname, ".files" );
-		iniesi.getItemCount( s );
-		
-		mov (esi, ebx);
-		mov (eax, filecount);
-		xor (edx, edx);
-		call readFiles;
-		
-		inc (ecx);
-	endwhile;
-
-	iniesi.getItemCount( "Held Jobs" );
-	mov( eax, jobcount );
-	xor( ecx, ecx );
-	while( ecx < jobcount ) do
-		iniesi.readItem( "Held Jobs", ecx, jobname );
-		USE( ESI );
-			jobList.appendJob( jobname );
-		ENDUSE;
-		mov( eax, curjob );
-		mov( eax, ebx );
-		
-		mov( false, jobebx.inQueue );
-		iniesi._readString( jobname, "type", sbuffer );
-		project.switchType( sbuffer );
-		mov( eax, jobebx.job_type );
-		
-		// read job files into filelist
-		str.put( s, jobname, ".files" );
-		iniesi.getItemCount( s );
-		mov( eax, filecount );
-		mov( esi, ebx );
-		xor( edx, edx );
-		call readFiles;
-		
-		inc( ecx );
-	endwhile;
-	dbg.put("/read files" );
-	buf.destroy();
-	
-	hideini.readInt( "HIDE Settings", "Scan Properties" );
-	if( eax ) then
-		prop_reset();
-	endif;
-
-	// project files may need a local Temp folder, a Units folder or a Bak folder.
-	// these folders may be missing due to downloading project files from repositories
-	// or zip programs that don't create empty folders.
-	// if the project uses these folders, make sure they exist in the project folder.
-	
-	mov (&project.hpr, esi);
-	if (iniesi.readBool ("HPR Settings", "usetemp")) then
-		// set temp folder for project
-		str.put (workpath, project.folder, dirsep_c, "temp");
-		dbg.put ("putting project temp:", workpath);
-		env2.put ("hlatmp", workpath);
-		
-		// make sure the folder exists.
-		try
-			filesys.mkdir( workpath );
-		anyexception
-			// don't care
-		endtry;
-	endif;
-	
-	if( iniesi.readBool( "HPR Settings", "useunits" )) then
-		// make sure a units folder exists
-		str.put( workpath, project.folder, dirsep_c, "units");
-		try
-			filesys.mkdir( workpath );
-		anyexception
-			// don't care
-		endtry;
-	endif;
-	
-	if( iniesi.readBool( "HPR Settings", "useback" )) then
-		str.put( workpath, project.folder, dirsep_c, "bak");
-		try
-			filesys.mkdir( workpath );
-		anyexception
-			// don't care
-		endtry;
-	endif;
-	
-	mov (true, project.isOpen);
-
-	if (mode = mode_gui) then
-
+	if (!core.new_format) then
+		dbg.put("old format");	
+		// do depricated stuff for now
 		mov (&project.hpr, esi);
-		if (iniesi._readString ("HPR Settings", "mainfile", workpath)) then
-			if (fileList.findFullname (workpath)) then
-				hide_openNode( [eax] );
-			else
-				mov( &project.hpr, esi );
-				iniesi.deleteKey ("HPR Settings", "mainfile");
-				error.warning ("Project mainfile not found, please select a new file");
+		if (iniesi.readUns ("HPR Settings", "tab")) then
+			if( ! al ) then
+				inc( al );
 			endif;
-		else
-			SetWindowCaption();
+			mov (al, project.tab);
 		endif;
-
-		prop_updateView();
-		w.SendMessage(core.hwnd,HIDE_TOGGLEDEBUG,0,0);
-		TreeToolSetup();
-		repaintAll();
-		w.SendMessage( core.hwnd, HIDE_SETSTATUS, STATUS_PROJ, zProject );
 		
-		Explorer_Reload();
-
+		if (iniesi.readHex ("HPR Settings", "options")) then
+			mov (eax, project.options);
+		endif;
+		
+		if ( iniesi.readInt ("HPR Settings", "backups")) then
+			mov (al, project.backups);
+		endif;
+		
+		if (iniesi.readHex ("HPR Settings", "findscope")) then
+			mov (eax, project.findscope);
+		endif;
+		
+		if (iniesi.readHex ("HPR Settings", "findflags")) then
+			mov (eax, project.findflags);
+		endif;
+	
+		// read jobs
+		
+		USE (ESI);
+			jobList.create();
+		ENDUSE;
+	
+		iniesi.getItemCount ("HPR Jobs");
+		mov (eax, jobcount);
+		xor (ecx, ecx);
+		while (ecx < jobcount) do
+			iniesi.readItem( "HPR Jobs", ecx, jobname );
+			push( esi );
+			jobList.appendJob( jobname );
+			pop( esi );
+			
+			mov( eax, curjob );
+			mov( eax, ebx );
+	
+			mov( true, jobebx.inQueue );
+			iniesi._readString( jobname, "type", sbuffer );
+	
+			project.switchType( sbuffer );
+			mov( eax, jobebx.job_type );
+			
+			// read job files into filelist
+			str.put( s, jobname, ".files" );
+			iniesi.getItemCount( s );
+			
+			mov (esi, ebx);
+			mov (eax, filecount);
+			xor (edx, edx);
+			call readFiles;
+			
+			inc (ecx);
+		endwhile;
+	
+		iniesi.getItemCount( "Held Jobs" );
+		mov( eax, jobcount );
+		xor( ecx, ecx );
+		while( ecx < jobcount ) do
+			iniesi.readItem( "Held Jobs", ecx, jobname );
+			USE( ESI );
+				jobList.appendJob( jobname );
+			ENDUSE;
+			mov( eax, curjob );
+			mov( eax, ebx );
+			
+			mov( false, jobebx.inQueue );
+			iniesi._readString( jobname, "type", sbuffer );
+			project.switchType( sbuffer );
+			mov( eax, jobebx.job_type );
+			
+			// read job files into filelist
+			str.put( s, jobname, ".files" );
+			iniesi.getItemCount( s );
+			mov( eax, filecount );
+			mov( esi, ebx );
+			xor( edx, edx );
+			call readFiles;
+			
+			inc( ecx );
+		endwhile;
+		dbg.put("/read files" );
+		buf.destroy();
+		
+		hideini.readInt( "HIDE Settings", "Scan Properties" );
+		if( eax ) then
+			prop_reset();
+		endif;
+	
+		// project files may need a local Temp folder, a Units folder or a Bak folder.
+		// these folders may be missing due to downloading project files from repositories
+		// or zip programs that don't create empty folders.
+		// if the project uses these folders, make sure they exist in the project folder.
+		
+		mov (&project.hpr, esi);
+		if (iniesi.readBool ("HPR Settings", "usetemp")) then
+			// set temp folder for project
+			str.put (workpath, project.folder, dirsep_c, "temp");
+			dbg.put ("putting project temp:", workpath);
+			env2.put ("hlatmp", workpath);
+			
+			// make sure the folder exists.
+			try
+				filesys.mkdir( workpath );
+			anyexception
+				// don't care
+			endtry;
+		endif;
+		
+		if( iniesi.readBool( "HPR Settings", "useunits" )) then
+			// make sure a units folder exists
+			str.put( workpath, project.folder, dirsep_c, "units");
+			try
+				filesys.mkdir( workpath );
+			anyexception
+				// don't care
+			endtry;
+		endif;
+		
+		if( iniesi.readBool( "HPR Settings", "useback" )) then
+			str.put( workpath, project.folder, dirsep_c, "bak");
+			try
+				filesys.mkdir( workpath );
+			anyexception
+				// don't care
+			endtry;
+		endif;
+		
+		mov (true, project.isOpen);
+	
+		if (mode = mode_gui) then
+	
+			mov (&project.hpr, esi);
+			if (iniesi._readString ("HPR Settings", "mainfile", workpath)) then
+				if (fileList.findFullname (workpath)) then
+					hide_openNode( [eax] );
+				else
+					mov( &project.hpr, esi );
+					iniesi.deleteKey ("HPR Settings", "mainfile");
+					error.warning ("Project mainfile not found, please select a new file");
+				endif;
+			else
+				SetWindowCaption();
+			endif;
+	
+			prop_updateView();
+			w.SendMessage(core.hwnd,HIDE_TOGGLEDEBUG,0,0);
+			TreeToolSetup();
+			repaintAll();
+			w.SendMessage( core.hwnd, HIDE_SETSTATUS, STATUS_PROJ, zProject );
+			
+			Explorer_Reload();
+	
+		endif;
+	else
+		dbg.put ("new format");
+		// new_format
+		mov (&project.hpr, esi);
+		if (iniesi.readUns ("HPR Settings", "tab")) then
+			if( ! al ) then
+				inc( al );
+			endif;
+			mov (al, project.tab);
+		endif;
+		
+		if (iniesi.readHex ("HPR Settings", "options")) then
+			mov (eax, project.options);
+		endif;
+		
+		if (iniesi.readHex ("HPR Settings", "findscope")) then
+			mov (eax, project.findscope);
+		endif;
+		
+		if (iniesi.readHex ("HPR Settings", "findflags")) then
+			mov (eax, project.findflags);
+		endif;
+	
+		// read jobs	
+		USE (ESI);
+			jobList.create();
+		ENDUSE;
+	
+		iniesi.getItemCount ("HPR Jobs");
+		mov (eax, jobcount);
+		xor (ecx, ecx);
+		while (ecx < jobcount) do
+			iniesi.readItem( "HPR Jobs", ecx, jobname );
+			push( esi );
+			jobList.appendJob( jobname );
+			pop( esi );
+			
+			mov( eax, curjob );
+			mov( eax, ebx );
+	
+			mov( true, jobebx.inQueue );
+			iniesi._readString( jobname, "type", sbuffer );
+	
+			project.switchType( sbuffer );
+			mov( eax, jobebx.job_type );
+			
+		endwhile;
+	
+		iniesi.getItemCount( "Held Jobs" );
+		mov( eax, jobcount );
+		xor( ecx, ecx );
+		while( ecx < jobcount ) do
+			iniesi.readItem( "Held Jobs", ecx, jobname );
+			USE( ESI );
+				jobList.appendJob( jobname );
+			ENDUSE;
+			mov( eax, curjob );
+			mov( eax, ebx );
+			
+			mov( false, jobebx.inQueue );
+			iniesi._readString( jobname, "type", sbuffer );
+			project.switchType( sbuffer );
+			mov( eax, jobebx.job_type );
+		endwhile;
+		buf.destroy();
+		
+		hideini.readInt( "HIDE Settings", "Scan Properties" );
+		if( eax ) then
+			prop_reset();
+		endif;		
+		mov (true, project.isOpen);
+		if (mode = mode_gui) then
+	
+			mov (&project.hpr, esi);
+			if (iniesi._readString ("HPR Settings", "mainfile", workpath)) then
+				if (fileList.findFullname (workpath)) then
+					hide_openNode( [eax] );
+				else
+					mov( &project.hpr, esi );
+					iniesi.deleteKey ("HPR Settings", "mainfile");
+					error.warning ("Project mainfile not found, please select a new file");
+				endif;
+			else
+				SetWindowCaption();
+			endif;
+	
+			prop_updateView();
+			w.SendMessage(core.hwnd,HIDE_TOGGLEDEBUG,0,0);
+			TreeToolSetup();
+			repaintAll();
+			w.SendMessage( core.hwnd, HIDE_SETSTATUS, STATUS_PROJ, zProject );
+			
+			Explorer_Reload();
+	
+		endif;
 	endif;
 	
 	w.SendMessage( core.hwnd, w.WM_SETFOCUS, 0, 0);
@@ -1268,7 +1412,9 @@ USE (EBX, ESI, EDI);
 		mov (&project.hpr, esi);
 		iniesi.writeHex ("HPR Settings", "options", project.options);
 		movzx (project.backups, eax);
-		iniesi.writeInt ("HPR Settings", "backups", eax);
+		if (!core.new_format) then
+			iniesi.writeInt ("HPR Settings", "backups", eax);
+		endif;
 		movzx (project.tab, eax);
 		iniesi.writeUns ("HPR Settings", "tab", eax);
 		iniesi.writeHex ("HPR Settings", "findscope", project.findscope);
@@ -1310,6 +1456,8 @@ USE (EBX, ESI, EDI);
 		xor (eax, eax);
 	endif;
 	_cancel:
+
+	mov (false, core.new_format);
 ENDUSE;
 ret();
 end close;

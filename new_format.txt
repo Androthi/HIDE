@@ -1,0 +1,45 @@
+planning the new project format
+
+[HPR Settings]
+mainfile = ...			- same, file to open by default
+tab = ...				- same
+backups =				- depricate
+options	=				- same
+Project Version = 20	- 20+ means the new format
+usetemp =				- depricate
+useunits =				- depricate
+useback =				- depricate
+findscope = 			- keep
+findflags = 			- keep
+wscan header=			- needed?
+
+[HPR Folders]			- depricate section
+
+						- these are basicaaly build steps
+[HPR Jobs]				- jobs to build, in order
+[HELD Jobs]				- jobs to build, upon request
+
+						- each HPR job has unique sections
+[<Job>.files]			- can i depricate? use separate folders instead
+[<Job>.extlinked]		- dependencies to link / optinal
+[<Job>]
+type = 					- current types
+							hlaprogram
+							target
+							dll
+							library
+							misc
+							odin (unsupported)
+							modular (same as hlaprogram)
+						- device new strategy here
+output =				- output name for compiled types
+target = 				- depricated - use [<Job>.build/run]
+console = true/false	- windows only, link for console or gui
+
+
+[<Job>.build]			- commands to run with F5
+[<Job>.run]				- commands to run with F6
+
+[<Job>.link]			- depricate use default link or have
+						  a .link file in job folder
+								

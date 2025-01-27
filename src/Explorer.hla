@@ -194,6 +194,7 @@ begin	Proc_Explorer;
 			jmp xProc_Explorer;
 		
 		_rightclick:
+			// DEBUG will go into left click
 				w.GetCursorPos (tvhtst.pt);
 				w.ScreenToClient (core.hexplorertree, tvhtst.pt);
 				w.SendMessage(core.hexplorertree,w.TVM_HITTEST,0,&tvhtst);
@@ -211,7 +212,8 @@ begin	Proc_Explorer;
 				w.SendMessage(core.htreeview,w.TVM_GETITEM,0,&tvi);
 				
 				str.cpyz (&treebuffer, sbuffer);
-				toOutput(sbuffer);
+				hide_openFile (sbuffer);
+				//toOutput(sbuffer);
 //				mov (tvi.lParam, eax);
 //				if (eax) then
 //					mov (eax, eview_curSel);

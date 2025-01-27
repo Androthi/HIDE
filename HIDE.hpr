@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 [HPR Settings]
 mainfile=src\HIDE.hla
 tab=4
@@ -108,3 +109,116 @@ target=Docs\update_docs.kmk
 
 [Update Docs.files]
 update_docs.kmk,Docs,kmake
+=======
+[HPR Settings]
+mainfile=src\HIDE.hla
+tab=4
+backups=0
+options=00000040
+Project Version=10
+usetemp=false
+useunits=true
+useback=false
+findscope=00000001
+findflags=00000001
+wscan header=src\win_inc.hhf
+
+[HPR Folders]
+units
+res
+src
+Docs
+
+[HIDE]
+console=false
+output=%h\..\HIDE_WORK\hide.exe
+type=modular
+main=HIDE.hla
+debug=false
+
+[HIDE.link]
+-heap:0x100,0x100
+-stack:0xF4240,0xF4240
+-base:0x4000000
+-entry:HLAMain
+-fixed
+-section:.data,RW
+-section:.text,ER
+-machine:ix86
+
+
+[HIDE.files]
+HIDE.hla,src,hlaprogram
+HIDE.hhf,src,include
+raedit.hhf,src,include
+EditFunctions.hla,src,hlaunit
+TabTool.hla,src,hlaunit
+TreeTool.hla,src,hlaunit
+Project.hla,src,hlaunit
+Output.hla,src,hlaunit
+make.hla,src,hlaunit
+Keywords.hla,src,hlaunit
+HIDE.rc,res,resource
+find.hla,src,hlaunit
+HIDEerrors.hla,src,hlaunit
+properties.hla,src,hlaunit
+externals.hhf,src,include
+types.hhf,src,include
+print.hla,src,hlaunit
+win_inc.hhf,src,include
+rsrc.hhf,res,include
+HIDE_procs.hla,src,hlaunit
+scanID.txt,src,misc
+data.hla,src,hlaunit
+autocompletion.hla,src,hlaunit
+autocompletion.hhf,src,include
+autocompletion.rc,res,resource
+filelist.hla,src,hlaunit
+genLexer.hla,src,hlaunit
+genLexer.hhf,src,include
+Project Notes.txt,Docs,misc
+RAHexEd.hhf,src,include
+HIDE.khelp,Docs,khelp
+script concept,Docs,misc
+manager.hla,src,hlaunit
+Tools.khelp,Docs,khelp
+README.md,,misc
+Explorer.hla,src,hlaunit
+new_format.txt,,misc
+
+[Build Lexer]
+type=target
+target=src\scanID.kmk
+output=
+
+[Build Lexer.files]
+scanID.kmk,src,kmake
+
+[Held Jobs]
+Build Lexer
+Update Docs
+
+[HPR Jobs]
+HIDE
+
+[HIDE.extlinked]
+kernel32.lib
+user32.lib
+hlalib.lib
+comdlg32.lib
+ole32.lib
+shell32.lib
+comctl32.lib
+hidelib.lib
+olepro32.lib
+GraphicEx_Lib.lib
+GDI32.LIB
+
+[Update Docs]
+type=target
+output=
+target=Docs\update_docs.kmk
+
+[Update Docs.files]
+update_docs.kmk,Docs,kmake
+>>>>>>> b576e151a7a38a13e5f505e63d5d5bc3d8670db1

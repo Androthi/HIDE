@@ -72,6 +72,12 @@ static
 	
 
 proc
+	SetKeyWordsByFile :procedure ( var fname:string );
+	begin SetKeyWordsByFile;
+		
+	end SetKeyWordsByFile;
+
+	
 	SetKeyWords :procedure( var node:fList.fnode );
 		var
 			index		:uns32;
@@ -364,8 +370,6 @@ proc
 		
 		popad();
 	end MoveKeyWords;
-
-
 
 	loadThemes	:procedure;
 		

@@ -2284,9 +2284,20 @@ proc
 		ret();
 	end Menu_ProjectJob;
 
-	
-	
-	
+
+	procedure Menu_ProjectCustomNew;
+		var
+			s	:string;
+	begin Menu_ProjectCustomNew;
+		mov (str.talloc (pathsize_c), s);
+		pushabi;
+		if ( getStringInput( "New Empty Project", s )) then
+			project.new_custom( s );
+		endif;	
+		updateDisplay (update_general);
+		popabi;		
+	end Menu_ProjectCustomNew;
+
 	procedure Menu_ProjectNew;	@noframe;
 	begin Menu_ProjectNew;
 		pushabi;
@@ -3296,6 +3307,7 @@ proc
 			dword	IDM_PROJECT_MANAGER,	&Menu_ProjectMan;
 			dword	IDM_PROJECT_JOBS,		&Menu_ProjectJob;
 			dword	IDM_PROJECT_NEW,		&Menu_ProjectNew;
+			dword	IDM_PROJECT_NEWV2,		&Menu_ProjectCustomNew;
 			dword	IDM_PROJECT_OPEN,		&Menu_ProjectOpen;
 			dword	IDM_PROJECT_CLOSE,		&Menu_ProjectClose;
 			
@@ -4100,6 +4112,10 @@ proc
 		w.CreateDialogParam(core.hinst,val ID_PROPERTIES, hwin, &Proc_Properties,false);
 		w.CreateDialogParam(core.hinst,val ID_EXPLORER, hwin, &Proc_Explorer, false);
 		w.SendMessage(core.hpaneltab, w.TCM_SETCURSEL, settings.panelwin, 0);
+		
+		w.ShowWindow (core.htree, w.SW_HIDE);
+		w.ShowWindow (core.hprop, w.SW_HIDE);
+		w.ShowWindow (core.hexplorer, w.SW_HIDE);
 		
 		PanelViewWin();
 				
