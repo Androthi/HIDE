@@ -1,3 +1,14 @@
+# Refactoring
+
+I've started a side project of refactoring HIDE into a more agnostic code editor  
+Current project status is in prealpha, sources can be found here:  
+
+https://github.com/Androthi/HED.git
+
+I have stripped pretty much all of the HLA specific functions from HED.  
+
+Development of HIDE will likely not continue.
+
 ![HIDE](https://user-images.githubusercontent.com/46191274/124802325-d8433800-df25-11eb-85ce-46bf37e12300.png)
 
 # HIDE
