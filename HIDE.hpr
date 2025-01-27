@@ -8,7 +8,7 @@ usetemp=false
 useunits=true
 useback=false
 findscope=00000001
-findflags=00000001
+findflags=00000003
 wscan header=src\win_inc.hhf
 
 [HPR Folders]
